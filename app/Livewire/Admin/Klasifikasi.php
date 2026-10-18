@@ -2,10 +2,9 @@
 
 namespace App\Livewire\Admin;
 
-use App\Enums\SyaratSelesai;
+use App\Actions\MasterData\UpdateKlasifikasi;
 use App\Models\Klasifikasi as Model;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -39,17 +38,11 @@ class Klasifikasi extends Component
         $this->open = true;
     }
 
-    public function save(): void
+    public function save(UpdateKlasifikasi $update): void
     {
         Gate::authorize('manage-master-data');
-        $data = $this->validate([
-            'wajibItemPkpt' => ['boolean'],
-            'syaratSelesai' => ['required', Rule::enum(SyaratSelesai::class)],
-            'tampilPublik' => ['boolean'],
-        ], attributes: ['syaratSelesai' => 'Syarat selesai']);
-
-        $k = Model::findOrFail($this->editingId);
-        $k->update(['wajib_item_pkpt' => $data['wajibItemPkpt'], 'syarat_selesai' => $data['syaratSelesai'], 'tampil_publik' => $data['tampilPublik']]);
+        $data = $this->validate(UpdateKlasifikasi::rules(), attributes: ['syaratSelesai' => 'Syarat selesai']);
+        $k = $update->handle(Model::findOrFail($this->editingId), $data);
 
         $this->open = false;
         $this->dispatch('toast', type: 'success', message: "Aturan {$k->nama} disimpan.");

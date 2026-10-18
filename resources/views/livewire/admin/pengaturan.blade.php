@@ -101,7 +101,7 @@
                 <ul role="list" class="space-y-3">
                     @foreach ($v['kendala']['kategori'] as $i => $nama)
                         @php $locked = $nama === 'Lainnya'; $e = $errors->first("v.kendala.kategori.$i"); @endphp
-                        <li wire:key="kategori-{{ $i }}">
+                        <li wire:key="kategori-{{ $kategoriIds[$i] ?? $i }}">
                             <div class="flex items-start gap-2">
                                 <div class="min-w-0 flex-1">
                                     <input type="text" wire:model="v.kendala.kategori.{{ $i }}" aria-label="Nama kategori {{ $i + 1 }}" @readonly($locked)

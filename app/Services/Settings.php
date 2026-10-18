@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Closure;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -27,6 +28,17 @@ class Settings
         'kendala.kategori' => ['Jadwal PKPT belum disahkan', 'Bentrok penugasan lain', 'Personel tidak tersedia', 'Objek tidak siap', 'Lainnya'],
     ];
 
+    /** Settings page card => the keys it owns. */
+    public const GROUPS = [
+        'penomoran' => ['penomoran.format', 'penomoran.kode_arsip', 'penomoran.kode_sekretariat', 'penomoran.scope', 'penomoran.reset_tahunan', 'penomoran.klasifikasi_di_nomor'],
+        'penugasan' => ['penugasan.hitungan_hari', 'penanda.batas_terlambat_hari'],
+        'rekap' => ['rekap.dasar_triwulan'],
+        'pkpt' => ['pkpt.draf_memblokir'],
+        'publik' => ['publik.tampilkan_nomor_spt', 'publik.tampilkan_nama_objek'],
+        'unggahan' => ['upload.maks_mb'],
+        'kendala' => ['kendala.kategori'],
+    ];
+
     private const CACHE_KEY = 'settings.all';
 
     public function get(string $key): mixed
@@ -45,6 +57,66 @@ class Settings
             ['value', 'updated_at'],
         );
         Cache::forget(self::CACHE_KEY);
+    }
+
+    /** Current values as a nested array (dot keys become nested keys), e.g. ['penomoran' => ['format' => ...]]. */
+    public function all(): array
+    {
+        $nested = [];
+        foreach (array_keys(self::DEFAULTS) as $key) {
+            Arr::set($nested, $key, $this->get($key));
+        }
+
+        return $nested;
+    }
+
+    /** Trim text input of one card before validation, so "Lainnya " still counts as "Lainnya". */
+    public static function sanitize(string $group, array $nested): array
+    {
+        foreach (self::groupKeys($group) as $key) {
+            $value = Arr::get($nested, $key);
+            if (is_string($value)) {
+                Arr::set($nested, $key, trim($value));
+            } elseif (is_array($value)) {
+                Arr::set($nested, $key, array_map(fn ($v) => is_string($v) ? trim($v) : $v, $value));
+            }
+        }
+
+        return $nested;
+    }
+
+    /** Validation rules for one card, keyed under $prefix (the page's state property). */
+    public static function groupRules(string $group, string $prefix = 'v'): array
+    {
+        $rules = [];
+        foreach (self::groupKeys($group) as $key) {
+            $rules["$prefix.$key"] = self::rules($key);
+        }
+        if ($group === 'kendala') {
+            $rules["$prefix.kendala.kategori.*"] = ['required', 'string', 'max:100', 'distinct'];
+        }
+
+        return $rules;
+    }
+
+    /** Persist one card from validated nested input, coercing each value to its default's type. Other cards' keys are untouched. */
+    public function saveGroup(string $group, array $nested): void
+    {
+        foreach (self::groupKeys($group) as $key) {
+            $value = Arr::get($nested, $key);
+            $default = self::DEFAULTS[$key];
+            $this->set($key, match (true) {
+                is_bool($default) => (bool) $value,
+                is_int($default) => (int) $value,
+                is_array($default) => array_values(array_map('trim', (array) $value)),
+                default => $value,
+            });
+        }
+    }
+
+    private static function groupKeys(string $group): array
+    {
+        return self::GROUPS[$group] ?? throw new InvalidArgumentException("Kartu pengaturan tidak dikenal: {$group}");
     }
 
     /** Validation rules for one key; the page prefixes the attribute path with its own property. */

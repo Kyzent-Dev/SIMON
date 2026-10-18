@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\MasterData;
 
+use App\Enums\Role;
 use App\Enums\SyaratSelesai;
 use App\Livewire\Admin\Klasifikasi as Page;
 use App\Models\Klasifikasi;
@@ -44,7 +45,7 @@ class KlasifikasiTest extends TestCase
         $this->get('/admin/klasifikasi')->assertRedirect('/masuk');
         $this->actingAs(User::factory()->irban()->create())->get('/admin/klasifikasi')->assertForbidden();
         $this->actingAs(User::factory()->admin()->create())->get('/admin/klasifikasi')->assertOk()
-            ->assertSee('Klasifikasi &amp; Aturan', false)->assertSee('LUAR DAERAH')->assertSee('Laporan perjalanan opsional');
+            ->assertSee('LUAR DAERAH')->assertSee('Laporan perjalanan opsional');
     }
 
     public function test_update_persists(): void
@@ -83,5 +84,27 @@ class KlasifikasiTest extends TestCase
         $this->actingAs($admin)->post('/admin/klasifikasi')->assertStatus(405);
         $this->actingAs($admin)->delete('/admin/klasifikasi/1')->assertStatus(404);
         $this->assertCount(5, Klasifikasi::all());
+    }
+
+    public function test_demoted_admin_is_rejected_on_edit_and_save_and_nothing_changes(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $k = Klasifikasi::where('kode', 'KHUSUS')->first();
+        $demoted = function (string $method, ...$args) use ($admin, $k) {
+            $admin->role = Role::Admin;
+            $c = Livewire::actingAs($admin)->test(Page::class)->call('edit', $k->id)->set('tampilPublik', true);
+            $admin->role = Role::Irban;
+            $c->call($method, ...$args)->assertForbidden();
+        };
+        $demoted('edit', $k->id);
+        $demoted('save');
+        $this->assertFalse($k->fresh()->tampil_publik);
+    }
+
+    public function test_title_is_escaped_once(): void
+    {
+        $html = $this->actingAs(User::factory()->admin()->create())->get('/admin/klasifikasi')->getContent();
+        $this->assertStringContainsString('>Klasifikasi &amp; Aturan</h1>', $html);
+        $this->assertStringNotContainsString('&amp;amp;', $html);
     }
 }

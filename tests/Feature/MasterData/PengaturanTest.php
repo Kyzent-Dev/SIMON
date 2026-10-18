@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\MasterData;
 
+use App\Enums\Role;
 use App\Livewire\Admin\Pengaturan;
 use App\Models\User;
 use App\Services\Settings;
@@ -95,5 +96,56 @@ class PengaturanTest extends TestCase
     {
         app(Settings::class)->set('penomoran.kode_arsip', '123');
         Livewire::actingAs($this->admin())->test(Pengaturan::class)->assertSet('v.penomoran.kode_arsip', '123');
+    }
+
+    public function test_demoted_admin_is_rejected_on_every_action_and_nothing_changes(): void
+    {
+        $admin = $this->admin();
+        // A forbidden call leaves the test component unusable, so mount a fresh one per action, then demote.
+        $demoted = function (string $method, ...$args) use ($admin) {
+            $admin->role = Role::Admin;
+            $c = Livewire::actingAs($admin)->test(Pengaturan::class)->set('v.penomoran.kode_arsip', '999')->set('v.upload.maks_mb', 77);
+            $admin->role = Role::Irban;
+            $c->call($method, ...$args)->assertForbidden();
+        };
+
+        foreach (array_keys(Settings::GROUPS) as $group) {
+            $demoted('save', $group);
+        }
+        $demoted('addKategori');
+        $demoted('removeKategori', 0);
+
+        $this->assertDatabaseCount('settings', 0);
+        $this->assertCount(5, app(Settings::class)->get('kendala.kategori'));
+    }
+
+    public function test_unknown_group_is_404(): void
+    {
+        Livewire::actingAs($this->admin())->test(Pengaturan::class)->call('save', 'nope')->assertNotFound();
+    }
+
+    public function test_kategori_values_are_trimmed_before_validation_and_saved(): void
+    {
+        Livewire::actingAs($this->admin())->test(Pengaturan::class)
+            ->set('v.kendala.kategori.4', 'Lainnya ')
+            ->call('addKategori')->set('v.kendala.kategori.5', '  Cuaca buruk  ')
+            ->call('save', 'kendala')->assertHasNoErrors();
+        $saved = app(Settings::class)->get('kendala.kategori');
+        $this->assertSame('Lainnya', $saved[4]);
+        $this->assertSame('Cuaca buruk', $saved[5]);
+    }
+
+    public function test_removing_a_middle_kategori_keeps_the_right_rows_and_stable_ids(): void
+    {
+        $c = Livewire::actingAs($this->admin())->test(Pengaturan::class);
+        $ids = $c->get('kategoriIds');
+        $c->call('removeKategori', 1);
+
+        $this->assertSame(
+            ['Jadwal PKPT belum disahkan', 'Personel tidak tersedia', 'Objek tidak siap', 'Lainnya'],
+            $c->get('v.kendala.kategori'),
+        );
+        $this->assertSame([$ids[0], $ids[2], $ids[3], $ids[4]], $c->get('kategoriIds'));
+        $c->assertSeeHtml('wire:key="kategori-'.$ids[2].'"')->assertDontSeeHtml('wire:key="kategori-'.$ids[1].'"');
     }
 }

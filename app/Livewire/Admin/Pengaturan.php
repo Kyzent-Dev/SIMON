@@ -3,78 +3,57 @@
 namespace App\Livewire\Admin;
 
 use App\Services\Settings;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Pengaturan Sistem')]
 class Pengaturan extends Component
 {
-    /** Card => the settings keys it owns. Each card saves only these. */
-    private const GROUPS = [
-        'penomoran' => ['penomoran.format', 'penomoran.kode_arsip', 'penomoran.kode_sekretariat', 'penomoran.scope', 'penomoran.reset_tahunan', 'penomoran.klasifikasi_di_nomor'],
-        'penugasan' => ['penugasan.hitungan_hari', 'penanda.batas_terlambat_hari'],
-        'rekap' => ['rekap.dasar_triwulan'],
-        'pkpt' => ['pkpt.draf_memblokir'],
-        'publik' => ['publik.tampilkan_nomor_spt', 'publik.tampilkan_nama_objek'],
-        'unggahan' => ['upload.maks_mb'],
-        'kendala' => ['kendala.kategori'],
-    ];
-
     /** Nested form state: v.penomoran.format, v.kendala.kategori, ... (dot keys become nested arrays). */
     public array $v = [];
+
+    /** Stable row ids parallel to v.kendala.kategori, so wire:key survives removals. */
+    public array $kategoriIds = [];
 
     public function mount(Settings $settings): void
     {
         Gate::authorize('manage-master-data');
-        foreach (array_keys(Settings::DEFAULTS) as $key) {
-            Arr::set($this->v, $key, $settings->get($key));
-        }
+        $this->v = $settings->all();
+        $this->kategoriIds = array_map(fn () => (string) Str::uuid(), $this->v['kendala']['kategori']);
     }
 
     public function save(string $group, Settings $settings): void
     {
         Gate::authorize('manage-master-data');
-        $keys = self::GROUPS[$group] ?? abort(404);
+        abort_unless(isset(Settings::GROUPS[$group]), 404);
 
-        $rules = [];
-        foreach ($keys as $key) {
-            $rules["v.$key"] = Settings::rules($key);
-        }
-        if ($group === 'kendala') {
-            $rules['v.kendala.kategori.*'] = ['required', 'string', 'max:100', 'distinct'];
-        }
-        $this->validate($rules);
-
-        foreach ($keys as $key) {
-            $value = Arr::get($this->v, $key);
-            $default = Settings::DEFAULTS[$key];
-            $settings->set($key, match (true) {
-                is_bool($default) => (bool) $value,
-                is_int($default) => (int) $value,
-                is_array($default) => array_values($value),
-                default => $value,
-            });
-        }
+        $this->v = Settings::sanitize($group, $this->v);
+        $this->validate(Settings::groupRules($group));
+        $settings->saveGroup($group, $this->v);
 
         $this->dispatch('toast', type: 'success', message: 'Pengaturan disimpan.');
     }
 
     public function addKategori(): void
     {
+        Gate::authorize('manage-master-data');
         $this->v['kendala']['kategori'][] = '';
+        $this->kategoriIds[] = (string) Str::uuid();
     }
 
     public function removeKategori(int $index): void
     {
+        Gate::authorize('manage-master-data');
         $list = $this->v['kendala']['kategori'];
         // "Lainnya" must stay and at least one category must remain.
-        if (count($list) <= 1 || ($list[$index] ?? 'Lainnya') === 'Lainnya') {
+        if (count($list) <= 1 || trim($list[$index] ?? 'Lainnya') === 'Lainnya') {
             return;
         }
-        unset($list[$index]);
+        unset($list[$index], $this->kategoriIds[$index]);
         $this->v['kendala']['kategori'] = array_values($list);
+        $this->kategoriIds = array_values($this->kategoriIds);
     }
 
     protected function validationAttributes(): array

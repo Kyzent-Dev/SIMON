@@ -52,11 +52,22 @@ class DashboardShellTest extends TestCase
 
     public function test_empty_groups_are_dropped(): void
     {
-        // Only routes that exist show up; no Pegawai route yet, so no Pegawai item, but Master Data survives via Klasifikasi.
-        $routes = array_column(array_merge(...array_column(Navigation::groups(Role::Admin), 'items')), 'route');
+        $groups = Navigation::groups(Role::Admin);
+        $labels = array_column($groups, 'label');
+        // Master Data survives because admin.klasifikasi exists; its missing siblings (e.g. admin.pegawai) are filtered out.
+        $this->assertContains('Master Data', $labels);
+        $routes = array_column(array_merge(...array_column($groups, 'items')), 'route');
+        $this->assertContains('admin.klasifikasi', $routes);
         $this->assertNotContains('admin.pegawai', $routes);
-        $this->assertSame([], array_filter($routes, fn ($r) => ! Route::has($r)));
-        $this->assertNotContains('Konten Beranda', array_column(Navigation::groups(Role::Admin), 'label'));
+        // Konten Beranda has no existing route yet, so the whole group (label included) is dropped.
+        $this->assertFalse(Route::has('admin.slide'));
+        $this->assertNotContains('Konten Beranda', $labels);
+        foreach ($groups as $group) {
+            $this->assertNotEmpty($group['items']);
+            foreach ($group['items'] as $item) {
+                $this->assertTrue(Route::has($item['route']));
+            }
+        }
     }
 
     public function test_other_roles_see_only_dasbor(): void
