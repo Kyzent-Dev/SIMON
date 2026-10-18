@@ -117,6 +117,13 @@ class PegawaiImpor extends Component
     #[Computed]
     public function rows(): array
     {
+        if (count($this->raw) > PegawaiImportParser::MAX_ROWS) { // raw is client state; enforce the cap again
+            $this->ulangi();
+            $this->addError('file', PegawaiImportParser::capMessage());
+
+            return [];
+        }
+
         return $this->raw === [] ? [] : app(PegawaiImportParser::class)->analyze($this->raw);
     }
 

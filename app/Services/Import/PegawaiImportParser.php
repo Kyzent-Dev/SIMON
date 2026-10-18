@@ -40,24 +40,47 @@ class PegawaiImportParser
         foreach ($grid as $i => $cells) {
             $row = ['baris' => $i + 2];
             foreach (self::HEADERS as $h) {
-                $v = $cells[array_search($h, $header, true)] ?? null;
-                // 18-digit NIP stored as a number loses precision; print it without exponent.
-                $row[$h] = trim(is_float($v) ? sprintf('%.0f', $v) : (is_bool($v) ? ($v ? 'true' : 'false') : (string) $v));
+                $col = array_search($h, $header, true);
+                $v = $col === false ? null : ($cells[$col] ?? null);
+                if ($h === 'nip' && (is_int($v) || is_float($v))) {
+                    // Excel keeps only ~15 significant digits of a numeric cell, so the NIP cannot be trusted.
+                    $row['nip_numerik'] = true;
+                    $v = '';
+                }
+                $row[$h] = trim(is_bool($v) ? ($v ? 'true' : 'false') : (string) $v);
             }
-            if (implode('', array_slice($row, 1)) === '') {
+            if (implode('', array_map(fn ($h) => $row[$h], self::HEADERS)) === '' && ! isset($row['nip_numerik'])) {
                 continue; // blank row
             }
             $raw[] = $row;
             if (count($raw) > self::MAX_ROWS) {
-                throw new InvalidArgumentException('Berkas terlalu besar: maksimal '.self::MAX_ROWS.' baris data per impor.');
+                throw new InvalidArgumentException(self::capMessage());
             }
         }
 
         return $raw;
     }
 
+    public static function capMessage(): string
+    {
+        return 'Berkas terlalu besar: maksimal '.self::MAX_ROWS.' baris data per impor.';
+    }
+
     public function analyze(array $raw): array
     {
+        if (count($raw) > self::MAX_ROWS) {
+            throw new InvalidArgumentException(self::capMessage());
+        }
+        // The raw rows can come from client-tampered Livewire state: normalize every row.
+        $raw = array_map(function ($r) {
+            $r = is_array($r) ? $r : [];
+            $n = ['baris' => (int) ($r['baris'] ?? 0), 'nip_numerik' => ! empty($r['nip_numerik'])];
+            foreach (self::HEADERS as $h) {
+                $n[$h] = isset($r[$h]) && is_scalar($r[$h]) ? trim((string) $r[$h]) : '';
+            }
+
+            return $n;
+        }, array_values($raw));
         $existing = Pegawai::whereIn('nip', array_column($raw, 'nip'))->pluck('nip')->flip();
         $rules = SavePegawai::rules();
         $rules['nip'] = ['required', 'digits:18']; // uniqueness is a warning here, not an error
@@ -76,7 +99,10 @@ class PegawaiImportParser
             if ($aktif === null) {
                 $errors[] = ['kolom' => 'aktif', 'pesan' => 'Isi aktif dengan ya/tidak, 1/0, atau true/false.'];
             }
-            if (! $v->errors()->has('nip')) {
+            if ($r['nip_numerik']) {
+                $errors = array_values(array_filter($errors, fn ($e) => $e['kolom'] !== 'nip'));
+                $errors[] = ['kolom' => 'nip', 'pesan' => 'NIP tersimpan sebagai angka; ubah kolom NIP menjadi teks.'];
+            } elseif (! $v->errors()->has('nip')) {
                 if (isset($seen[$r['nip']])) {
                     $errors[] = ['kolom' => 'nip', 'pesan' => "NIP ganda dengan baris {$seen[$r['nip']]}."];
                 } else {

@@ -10,6 +10,7 @@ use App\Services\Import\PegawaiImportParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use Tests\TestCase;
@@ -162,6 +163,52 @@ class PegawaiImporTest extends TestCase
             $admin->role = Role::Irban;
             $c->call($method)->assertForbidden();
         }
+        $this->assertSame(0, Pegawai::count());
+    }
+
+    public function test_numeric_nip_cell_is_an_error_and_not_imported(): void
+    {
+        $s = new Spreadsheet;
+        $sh = $s->getActiveSheet();
+        foreach (self::H as $c => $h) {
+            $sh->setCellValueExplicit([$c + 1, 1], $h, DataType::TYPE_STRING);
+        }
+        $sh->setCellValueExplicit([1, 2], 'Budi', DataType::TYPE_STRING);
+        $sh->setCellValueExplicit([2, 2], '198703121234567890', DataType::TYPE_NUMERIC);
+        $path = tempnam(sys_get_temp_dir(), 'imp').'.xlsx';
+        IOFactory::createWriter($s, 'Xlsx')->save($path);
+
+        $r = (new PegawaiImportParser)->parse($path);
+        $this->assertSame('error', $r[0]['status']);
+        $this->assertSame('NIP tersimpan sebagai angka; ubah kolom NIP menjadi teks.', $r[0]['errors'][0]['pesan']);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)
+            ->set('file', $this->upload($path))->call('impor')->assertSet('step', 2);
+        $this->assertSame(0, Pegawai::count());
+    }
+
+    public function test_missing_optional_headers_give_empty_values(): void
+    {
+        $r = (new PegawaiImportParser)->parse($this->xlsx([['Budi', $this->nip(1), 'Auditor']], ['nama_bergelar', 'nip', 'jabatan']));
+        $this->assertSame('valid', $r[0]['status']);
+        $this->assertSame(['nama' => 'Budi', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => 'Auditor', 'aktif' => true], $r[0]['data']);
+    }
+
+    public function test_malformed_raw_is_reported_as_errors(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $c = Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($this->xlsx([['Budi', $this->nip(1), '', '', '', '']])));
+        $c->set('raw', [['baris' => 2], 'bukan-array', ['baris' => 4, 'nama_bergelar' => ['x'], 'nip' => null, 'aktif' => 5]])
+            ->assertSet('step', 2)->assertSee('3 galat')->call('impor')->assertSet('step', 2);
+        $this->assertSame(0, Pegawai::count());
+    }
+
+    public function test_row_cap_is_enforced_on_tampered_raw(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $c = Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($this->xlsx([['Budi', $this->nip(1), '', '', '', '']])));
+        $big = array_fill(0, 2001, ['baris' => 2, 'nama_bergelar' => 'N', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => '', 'aktif' => '']);
+        $c->set('raw', $big)->call('impor')->assertSet('step', 1)->assertHasErrors('file');
         $this->assertSame(0, Pegawai::count());
     }
 }
