@@ -22,6 +22,7 @@
         "@alpinejs/intersect": "^3.17.4",
         "@alpinejs/sort": "^3.17.4",
         "alpinejs": "^3.17.4",
-        "chart.js": "^4.5.1"
+        "chart.js": "^4.5.1",
+        "motion": "^14.3.0"
     }
 }
