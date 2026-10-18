@@ -5,6 +5,8 @@ namespace App\Actions\MasterData;
 use App\Models\Irban;
 use App\Models\IrbanTahunan;
 use App\Models\Pegawai;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -13,7 +15,23 @@ class SaveIrbanTahunan
     /** @param list<int> $anggotaIds */
     public function handle(Irban $irban, int $tahun, ?int $ppjId, array $anggotaIds): IrbanTahunan
     {
+        foreach ($anggotaIds as $id) {
+            if (! is_int($id) && ! (is_string($id) && ctype_digit($id))) {
+                throw ValidationException::withMessages(['anggota' => 'Pilih pegawai aktif.']);
+            }
+        }
         $anggotaIds = array_values(array_unique(array_map('intval', $anggotaIds)));
+
+        // The one-irban-per-year rule is app-enforced, so serialise saves per year (check and write together).
+        try {
+            return Cache::lock("irban-tahunan-{$tahun}", 10)->block(5, fn () => DB::transaction(fn () => $this->save($irban, $tahun, $ppjId, $anggotaIds)));
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['anggota' => 'Data sedang diperbarui oleh pengguna lain. Coba lagi.']);
+        }
+    }
+
+    private function save(Irban $irban, int $tahun, ?int $ppjId, array $anggotaIds): IrbanTahunan
+    {
         $row = IrbanTahunan::where(['irban_id' => $irban->id, 'tahun' => $tahun])->first();
 
         // Pegawai must be active; people already in this composition may stay even if deactivated since.
@@ -32,11 +50,9 @@ class SaveIrbanTahunan
             throw ValidationException::withMessages(['anggota' => "Pegawai ini sudah menjadi anggota {$conflict->irban->nama} pada tahun {$tahun}."]);
         }
 
-        return DB::transaction(function () use ($irban, $tahun, $ppjId, $anggotaIds) {
-            $row = IrbanTahunan::updateOrCreate(['irban_id' => $irban->id, 'tahun' => $tahun], ['ppj_pegawai_id' => $ppjId]);
-            $row->anggota()->sync($anggotaIds);
+        $row = IrbanTahunan::updateOrCreate(['irban_id' => $irban->id, 'tahun' => $tahun], ['ppj_pegawai_id' => $ppjId]);
+        $row->anggota()->sync($anggotaIds);
 
-            return $row;
-        });
+        return $row;
     }
 }

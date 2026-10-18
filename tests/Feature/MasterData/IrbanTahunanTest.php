@@ -11,6 +11,7 @@ use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -105,6 +106,41 @@ class IrbanTahunanTest extends TestCase
         $this->assertSame(2, IrbanTahunan::count());
         $this->expectException(ValidationException::class);
         $action->handle($two, 2026, null, [$a->id]);
+    }
+
+    public function test_save_fails_without_writing_when_year_lock_is_held(): void
+    {
+        $irban = Irban::factory()->create();
+        $a = Pegawai::factory()->create();
+        $lock = Cache::lock('irban-tahunan-2026', 10);
+        $this->assertTrue($lock->get());
+        try {
+            app(SaveIrbanTahunan::class)->handle($irban, 2026, null, [$a->id]);
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertSame('Data sedang diperbarui oleh pengguna lain. Coba lagi.', $e->errors()['anggota'][0]);
+        } finally {
+            $lock->release();
+        }
+        $this->assertSame(0, IrbanTahunan::count());
+        app(SaveIrbanTahunan::class)->handle($irban, 2026, null, [$a->id]);
+        $this->assertSame(1, IrbanTahunan::count());
+    }
+
+    public function test_tampered_anggota_ids_are_rejected(): void
+    {
+        $irban = Irban::factory()->create();
+        $a = Pegawai::factory()->create();
+        foreach ([[[1]], ['abc'], [1.5], [null]] as $bad) {
+            try {
+                app(SaveIrbanTahunan::class)->handle($irban, 2026, null, $bad);
+                $this->fail('Expected ValidationException');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('anggota', $e->errors());
+            }
+        }
+        app(SaveIrbanTahunan::class)->handle($irban, 2026, null, [(string) $a->id]);
+        $this->assertSame([$a->id], IrbanTahunan::first()->anggota()->pluck('pegawai.id')->all());
     }
 
     public function test_inactive_or_unknown_pegawai_rejected(): void

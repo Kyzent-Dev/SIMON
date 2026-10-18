@@ -74,3 +74,4 @@
 - Hapus Irban diblokir bila dipakai pengguna atau irban_tahunan; pengecekan tim dan wilayah ditambahkan di Task 7/8 (`Irban::isReferenced`). `Pegawai::isReferenced` kini mengecek irban_anggota dan PPJ; tim_anggota menyusul di Task 7.
 - Komposisi Irban Tahunan: pegawai nonaktif yang sudah tersimpan tetap boleh dipertahankan saat menyimpan ulang, tetapi tidak dapat dipilih baru.
 - Migrasi FK `users.irban_id` mengosongkan nilai yatim sebelum menambah constraint. `DashboardShellTest` memakai `admin.tim` sebagai rute palsu dan `admin.slide` sebagai rute yang belum ada.
+- Aturan satu irban per pegawai per tahun ditegakkan di aplikasi (skema tetap sesuai PRD §8) dengan `Cache::lock("irban-tahunan-{tahun}")` di sekitar pengecekan dan penulisan; bila kunci tidak didapat dalam 5 detik, pesannya "Data sedang diperbarui oleh pengguna lain. Coba lagi.". Deploy multi-server membutuhkan cache store bersama (database atau redis).
