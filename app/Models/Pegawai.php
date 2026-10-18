@@ -6,6 +6,7 @@ use Database\Factories\PegawaiFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'aktif'])]
 class Pegawai extends Model
@@ -23,7 +24,8 @@ class Pegawai extends Model
     /** True when other records point at this pegawai, so it may only be deactivated. */
     public function isReferenced(): bool
     {
-        // shortcut: no references exist yet; Task 6/7 add irban_anggota/tim_anggota checks here.
-        return false;
+        // shortcut: tim_anggota check is added in Task 7 (table does not exist yet).
+        return DB::table('irban_anggota')->where('pegawai_id', $this->id)->exists()
+            || DB::table('irban_tahunan')->where('ppj_pegawai_id', $this->id)->exists();
     }
 }
