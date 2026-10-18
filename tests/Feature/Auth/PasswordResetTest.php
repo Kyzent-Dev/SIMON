@@ -90,4 +90,22 @@ class PasswordResetTest extends TestCase
 
         $this->assertTrue(Hash::check('password', $user->fresh()->password));
     }
+
+    public function test_failed_reset_does_not_reveal_whether_email_exists(): void
+    {
+        $user = User::factory()->create();
+        $payload = fn (string $email) => [
+            'token' => 'token-acak-'.$email, 'email' => $email,
+            'password' => 'BaruSekali1', 'password_confirmation' => 'BaruSekali1',
+        ];
+
+        $this->post('/atur-ulang-kata-sandi', $payload('tidak-ada@simon-spt.test'))->assertSessionHasErrors('email');
+        $unknownMessage = session('errors')->first('email');
+        $this->post('/atur-ulang-kata-sandi', $payload($user->email))->assertSessionHasErrors('email');
+        $knownMessage = session('errors')->first('email');
+
+        $this->assertSame($unknownMessage, $knownMessage);
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+        $this->assertSame(1, User::count());
+    }
 }

@@ -24,7 +24,7 @@
 - Logo (64px di panel merek, di band mobile) dihilangkan karena aset logo belum ada; panel hanya berisi teks "SIMON-SPT", subjudul dan garis accent-400. Motif Delapan Sungai digambar sebagai SVG inline dekoratif (8 garis bergelombang, mint-200, opacity 15%, `aria-hidden`).
 - `blade-ui-kit/blade-heroicons` 2.7 dipasang: Packagist menunjukkan `illuminate/support ^13.0` (blade-icons 1.10 juga mendukung 13). Ikon dirender lewat helper `svg()`; SVG Heroicons sudah membawa `aria-hidden="true"`.
 - Galat kredensial dan lockout disimpan di kunci error `login` (bukan `username`) agar tampil sebagai satu alert umum tanpa petunjuk per field (login.md §1). Galat validasi biasa (kolom kosong) tetap inline + ringkasan galat (DESIGN §10).
-- Kartu auth memakai `p-8` sesuai login.md §1 dan brief, meski DESIGN §5 menyebut padding kartu umum `p-5`/`p-4`. Kartu ini dianggap kasus khusus yang dirinci oleh login.md.
+- Kartu auth memakai padding dan elevasi DESIGN §5 (`p-4 lg:p-5`, elevasi 1: `border border-neutral-200 shadow-xs`), menggantikan `p-8`/`shadow-sm` dari login.md §1, karena DESIGN.md menang atas file halaman (CLAUDE.md); diputuskan controller pada review Task 2.
 - `x-ui.alert`: tidak ada token latar semantik (mis. danger-50) di §13, jadi alert memakai permukaan putih + tepi kiri 4px dan ikon berwarna (info-800, accent-700, danger-700, success-700); teks neutral-900 di atas putih. Makna ada di teks dan ikon, bukan warna.
 - Tombol nonaktif memakai neutral-100 + neutral-400 persis seperti DESIGN §8 (kontrol nonaktif dikecualikan dari WCAG 1.4.3).
 - Cincin fokus global `:focus-visible` (mint-600, 2px, offset 2px) ditambahkan di `app.css` (`@layer base`); input/checkbox memakai ring mint-600 milik utilitas Tailwind karena plugin forms menimpa outline.

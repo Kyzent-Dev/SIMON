@@ -27,7 +27,7 @@
         </header>
 
         <main id="konten" class="relative -mt-6 flex justify-center px-4 pb-10 lg:col-span-7 lg:mt-0 lg:items-center lg:p-8">
-            <div class="w-full max-w-[420px] rounded-lg bg-white p-8 shadow-sm">
+            <div class="w-full max-w-[420px] rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5">
                 {{ $slot }}
             </div>
         </main>

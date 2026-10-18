@@ -35,8 +35,9 @@ class NewPasswordController extends Controller
             },
         );
 
+        // Every failure gets the same message so unknown emails and bad tokens are indistinguishable.
         return $status === Password::PASSWORD_RESET
             ? redirect()->route('login')->with('status', __($status))
-            : back()->withInput($request->only('email'))->withErrors(['email' => __($status)]);
+            : back()->withInput($request->only('email'))->withErrors(['email' => __('passwords.token')]);
     }
 }
