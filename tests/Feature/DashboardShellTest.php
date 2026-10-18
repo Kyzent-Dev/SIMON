@@ -52,9 +52,11 @@ class DashboardShellTest extends TestCase
 
     public function test_empty_groups_are_dropped(): void
     {
-        $labels = array_column(Navigation::groups(Role::Admin), 'label');
-        $this->assertNotContains('Master Data', $labels);
-        $this->assertSame(['admin.dashboard'], array_column(array_merge(...array_column(Navigation::groups(Role::Admin), 'items')), 'route'));
+        // Only routes that exist show up; no Pegawai route yet, so no Pegawai item, but Master Data survives via Klasifikasi.
+        $routes = array_column(array_merge(...array_column(Navigation::groups(Role::Admin), 'items')), 'route');
+        $this->assertNotContains('admin.pegawai', $routes);
+        $this->assertSame([], array_filter($routes, fn ($r) => ! Route::has($r)));
+        $this->assertNotContains('Konten Beranda', array_column(Navigation::groups(Role::Admin), 'label'));
     }
 
     public function test_other_roles_see_only_dasbor(): void
@@ -78,7 +80,7 @@ class DashboardShellTest extends TestCase
     public function test_admin_dashboard_quick_links_come_from_navigation(): void
     {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->get('/admin')->assertOk()->assertDontSee('Akses cepat');
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee('Pegawai');
 
         $this->fakeMasterDataRoutes();
         $this->actingAs($admin)->get('/admin')->assertOk()

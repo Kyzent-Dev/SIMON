@@ -4,6 +4,8 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Livewire\Admin\Klasifikasi;
+use App\Livewire\Admin\Pengaturan;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'placeholder.public');
@@ -25,6 +27,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');
 
     Route::view('/admin', 'dashboard.admin')->name('admin.dashboard')->middleware('role:admin');
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
+        Route::get('/pengaturan', Pengaturan::class)->name('admin.pengaturan');
+        Route::get('/klasifikasi', Klasifikasi::class)->name('admin.klasifikasi');
+    });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');
     Route::view('/bagian-umum', 'dashboard.bagian-umum')->name('bagian-umum.dashboard')->middleware('role:bagian_umum');
