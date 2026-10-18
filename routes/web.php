@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
+use App\Livewire\Admin\JenisPenugasan;
 use App\Livewire\Admin\Klasifikasi;
 use App\Livewire\Admin\Objek;
 use App\Livewire\Admin\WilayahIrban;
@@ -44,6 +45,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tim', Tim::class)->name('admin.tim');
         Route::get('/objek', Objek::class)->name('admin.objek');
         Route::get('/wilayah-irban', WilayahIrban::class)->name('admin.wilayah-irban');
+        Route::get('/jenis-penugasan', JenisPenugasan::class)->name('admin.jenis-penugasan');
     });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');

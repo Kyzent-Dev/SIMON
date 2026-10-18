@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call(TimSeeder::class);
         $this->call(ObjekSeeder::class);
         $this->call(IrbanWilayahSeeder::class);
+        $this->call(JenisPenugasanSeeder::class);
 
         if (! app()->isProduction()) {
             // irban_id is not mass-assignable.
