@@ -152,14 +152,22 @@ class Pegawai extends Component
 
     public function render()
     {
-        $term = trim($this->search);
-        $rows = Model::query()
+        // Escape LIKE wildcards so "_" and "%" are searched literally.
+        $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], trim($this->search));
+        $perPage = in_array($this->perPage, [25, 50, 100], true) ? $this->perPage : 25;
+        $query = fn () => Model::query()
             ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->where('nama_bergelar', 'like', "%{$term}%")->orWhere('nip', 'like', "%{$term}%")))
+                ->whereRaw("nama_bergelar like ? escape '!'", ["%{$term}%"])->orWhereRaw("nip like ? escape '!'", ["%{$term}%"])))
             ->when($this->filter === 'aktif', fn ($q) => $q->where('aktif', true))
             ->when($this->filter === 'nonaktif', fn ($q) => $q->where('aktif', false))
             ->orderBy($this->sortBy === 'nip' ? 'nip' : 'nama_bergelar', $this->sortDir === 'desc' ? 'desc' : 'asc')
-            ->paginate($this->perPage);
+            ->paginate($perPage);
+
+        $rows = $query();
+        if ($rows->isEmpty() && $rows->currentPage() > 1) { // e.g. the last row of the last page was deleted
+            $this->setPage($rows->lastPage());
+            $rows = $query();
+        }
 
         return view('livewire.admin.pegawai', [
             'rows' => $rows,

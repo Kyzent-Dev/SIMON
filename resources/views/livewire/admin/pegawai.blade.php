@@ -57,10 +57,12 @@
                         @endif
                     </td>
                     <td class="whitespace-nowrap text-right">
-                        <div class="flex justify-end gap-2">
-                            <x-ui.button type="button" size="sm" variant="secondary" icon="pencil-square" wire:click="edit({{ $row->id }})" aria-label="Ubah {{ $row->nama_bergelar }}" title="Ubah" class="max-lg:h-11" />
-                            <x-ui.button type="button" size="sm" variant="secondary" icon="power" wire:click="toggleAktif({{ $row->id }})" aria-label="{{ $row->aktif ? 'Nonaktifkan' : 'Aktifkan' }} {{ $row->nama_bergelar }}" title="{{ $row->aktif ? 'Nonaktifkan' : 'Aktifkan' }}" class="max-lg:h-11" />
-                            <x-ui.button type="button" size="sm" variant="secondary" icon="trash" wire:click="confirmDelete({{ $row->id }})" aria-label="Hapus {{ $row->nama_bergelar }}" title="Hapus" class="max-lg:h-11" />
+                        <div class="flex items-center justify-end gap-2">
+                            <x-ui.button type="button" size="sm" variant="secondary" wire:click="edit({{ $row->id }})" aria-label="Ubah {{ $row->nama_bergelar }}" class="max-lg:h-11">Ubah</x-ui.button>
+                            <x-ui.dropdown label="Aksi untuk {{ $row->nama_bergelar }}">
+                                <button type="button" role="menuitem" wire:click="toggleAktif({{ $row->id }})">{{ svg('heroicon-m-power', 'size-5 text-neutral-600') }}{{ $row->aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                                <button type="button" role="menuitem" wire:click="confirmDelete({{ $row->id }})" class="!text-danger-700">{{ svg('heroicon-m-trash', 'size-5') }}Hapus</button>
+                            </x-ui.dropdown>
                         </div>
                     </td>
                 </tr>

@@ -160,4 +160,43 @@ class PegawaiTest extends TestCase
     {
         Livewire::actingAs(User::factory()->irban()->create())->test(Page::class)->assertForbidden();
     }
+
+    public function test_invalid_per_page_from_url_falls_back_to_25(): void
+    {
+        Pegawai::factory()->count(30)->create();
+        foreach ([100000, 0, -5] as $bad) {
+            Livewire::withQueryParams(['perPage' => $bad])->actingAs($this->admin())->test(Page::class)
+                ->assertSee('Menampilkan 1–25 dari 30');
+        }
+    }
+
+    public function test_search_treats_wildcards_literally(): void
+    {
+        Pegawai::factory()->create(['nama_bergelar' => 'Agus 100%', 'nip' => '111111111111111111']);
+        Pegawai::factory()->create(['nama_bergelar' => 'Budi_Utama', 'nip' => '222222222222222222']);
+        Pegawai::factory()->create(['nama_bergelar' => 'Citra', 'nip' => '333333333333333333']);
+        $this->page()->set('search', '_')->assertSee('Budi_Utama')->assertDontSee('Citra')->assertDontSee('Agus')
+            ->set('search', '%')->assertSee('Agus 100%')->assertDontSee('Citra')->assertDontSee('Budi_Utama');
+    }
+
+    public function test_deleting_last_row_of_last_page_moves_to_previous_page(): void
+    {
+        Pegawai::factory()->count(26)->create();
+        $last = Pegawai::orderByDesc('nama_bergelar')->first();
+        $this->page()->call('gotoPage', 2)->call('confirmDelete', $last->id)->call('delete')
+            ->assertDontSee('Tidak ada pegawai yang cocok')->assertSee('Menampilkan 1–25 dari 25');
+    }
+
+    public function test_row_actions_menu_has_a11y_attributes_and_primary_action_inline(): void
+    {
+        $p = Pegawai::factory()->create(['nama_bergelar' => 'Rina Sari']);
+        $html = $this->page()->html();
+        $this->assertStringContainsString('aria-label="Aksi untuk Rina Sari"', $html);
+        $this->assertStringContainsString('aria-haspopup="menu"', $html);
+        $this->assertStringContainsString('aria-expanded', $html);
+        $this->assertStringContainsString('role="menu"', $html);
+        $this->assertStringContainsString('wire:click="edit('.$p->id.')"', $html);
+        $this->assertStringContainsString('wire:click="confirmDelete('.$p->id.')"', $html);
+        $this->assertStringContainsString('wire:key="pegawai-'.$p->id.'"', $html);
+    }
 }
