@@ -20,7 +20,7 @@ class ValidateTimComposition
         if (count($ids) !== count(array_unique($ids))) {
             $errors[] = 'Pegawai tidak boleh dipilih dua kali dalam satu tim.';
         }
-        $count = array_count_values(array_map(fn ($p) => $p?->value ?? "", $perans));
+        $count = array_count_values(array_map(fn ($p) => $p?->value ?? '', $perans));
         if (($count[PeranTim::SupervisorDalnis->value] ?? 0) !== 1) {
             $errors[] = 'Setiap tim wajib punya tepat satu Supervisor/Dalnis.';
         }

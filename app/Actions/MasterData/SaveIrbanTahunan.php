@@ -15,6 +15,10 @@ class SaveIrbanTahunan
     /** @param list<int> $anggotaIds */
     public function handle(Irban $irban, int $tahun, ?int $ppjId, array $anggotaIds): IrbanTahunan
     {
+        $y = (int) now('Asia/Jakarta')->year;
+        if ($tahun < $y - 2 || $tahun > $y + 1) {
+            throw ValidationException::withMessages(['tahun' => 'Tahun tidak valid.']);
+        }
         foreach ($anggotaIds as $id) {
             if (! is_int($id) && ! (is_string($id) && ctype_digit($id))) {
                 throw ValidationException::withMessages(['anggota' => 'Pilih pegawai aktif.']);

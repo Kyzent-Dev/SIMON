@@ -10,7 +10,7 @@
             @class([
                 'inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors duration-[var(--dur-fast)] -mb-px lg:min-h-10',
                 'border-mint-700 text-mint-700' => $key === $active,
-                'border-transparent text-neutral-700 hover:text-neutral-900' => $key !== $active,
+                'border-transparent text-neutral-600 hover:text-neutral-900' => $key !== $active,
             ])>{{ $text }}</button>
     @endforeach
 </div>

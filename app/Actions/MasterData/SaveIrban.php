@@ -3,7 +3,10 @@
 namespace App\Actions\MasterData;
 
 use App\Models\Irban;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SaveIrban
 {
@@ -32,12 +35,18 @@ class SaveIrban
     public function handle(?Irban $irban, array $data): Irban
     {
         $irban ??= new Irban;
-        $irban->fill([
-            'nama' => $data['nama'], 'kode_nomor' => $data['kodeNomor'],
-            'email_notifikasi' => $data['emailNotifikasi'] ?: null,
-            // An empty list is stored as null.
-            'email_tembusan' => $data['tembusan'] ? array_values($data['tembusan']) : null,
-        ])->save();
+        try {
+            $irban->fill([
+                'nama' => $data['nama'], 'kode_nomor' => $data['kodeNomor'],
+                'email_notifikasi' => $data['emailNotifikasi'] ?: null,
+                // An empty list is stored as null.
+                'email_tembusan' => $data['tembusan'] ? array_values($data['tembusan']) : null,
+            ])->save();
+        } catch (UniqueConstraintViolationException $e) {
+            // The driver message names the violated column.
+            $field = str_contains(Str::before($e->getMessage(), 'SQL:'), 'kode_nomor') ? 'kodeNomor' : 'nama';
+            throw ValidationException::withMessages([$field => self::messages()["$field.unique"]]);
+        }
 
         return $irban;
     }

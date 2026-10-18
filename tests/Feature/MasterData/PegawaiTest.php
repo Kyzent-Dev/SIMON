@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\MasterData;
 
+use App\Actions\MasterData\DeletePegawai;
 use App\Enums\Role;
 use App\Livewire\Admin\Pegawai as Page;
 use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -129,8 +131,8 @@ class PegawaiTest extends TestCase
         };
         $this->assertTrue($p->isReferenced());
         $this->assertFalse((new Pegawai)->isReferenced());
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(\App\Actions\MasterData\DeletePegawai::class)->handle($p);
+        $this->expectException(ValidationException::class);
+        app(DeletePegawai::class)->handle($p);
     }
 
     public function test_pagination_per_page(): void

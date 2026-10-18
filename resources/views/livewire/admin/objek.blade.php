@@ -68,7 +68,7 @@
                                                     aria-controls="{{ $row->children->map(fn ($c) => 'anak-'.$c->id)->implode(' ') }}"
                                                     x-bind:aria-expanded="(!! open[{{ $row->id }}]).toString()" aria-expanded="false"
                                                     aria-label="Tampilkan anak {{ $row->nama }}"
-                                                    class="-ml-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100 lg:size-8">
+                                                    class="-ml-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-100 lg:size-8">
                                                     <span x-show="! open[{{ $row->id }}]">{{ svg('heroicon-m-chevron-right', 'size-5') }}</span>
                                                     <span x-show="open[{{ $row->id }}]" x-cloak>{{ svg('heroicon-m-chevron-down', 'size-5') }}</span>
                                                 </button>

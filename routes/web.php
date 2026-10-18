@@ -9,11 +9,11 @@ use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\JenisPenugasan;
 use App\Livewire\Admin\Klasifikasi;
 use App\Livewire\Admin\Objek;
-use App\Livewire\Admin\WilayahIrban;
 use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\PegawaiImpor;
-use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\Pengaturan;
+use App\Livewire\Admin\Tim;
+use App\Livewire\Admin\WilayahIrban;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'placeholder.public');

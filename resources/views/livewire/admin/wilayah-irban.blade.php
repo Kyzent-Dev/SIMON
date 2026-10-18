@@ -19,7 +19,7 @@
                     <h2 class="mb-3 font-display text-lg font-bold text-neutral-900">{{ $irban->nama }}</h2>
                     <x-ui.combobox :name="'wilayah-'.$irban->id" label="Objek yang diperiksa" multiple :options="$options[$irban->id]" wire:model="selected.{{ $irban->id }}" placeholder="Cari objek…" :error="$errors->first('selected.'.$irban->id)" />
                     @if ($taken[$irban->id])
-                        <details class="mt-3 text-sm text-neutral-700">
+                        <details class="mt-3 text-sm text-neutral-600">
                             <summary class="min-h-11 cursor-pointer py-2 lg:min-h-0">{{ count($taken[$irban->id]) }} objek tidak tersedia (sudah dipegang Irban lain)</summary>
                             <ul class="mt-1 list-disc space-y-0.5 pl-5">
                                 @foreach ($taken[$irban->id] as $label)

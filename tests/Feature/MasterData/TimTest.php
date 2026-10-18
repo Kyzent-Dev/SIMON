@@ -11,6 +11,7 @@ use App\Models\Irban;
 use App\Models\Pegawai;
 use App\Models\Tim;
 use App\Models\User;
+use Database\Seeders\IrbanSeeder;
 use Database\Seeders\TimSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -245,7 +246,7 @@ class TimTest extends TestCase
 
     public function test_seeder_creates_tim_one_for_irban_i(): void
     {
-        $this->seed(\Database\Seeders\IrbanSeeder::class);
+        $this->seed(IrbanSeeder::class);
         $this->seed(TimSeeder::class);
         $this->seed(TimSeeder::class);
         $tim = Tim::firstOrFail();

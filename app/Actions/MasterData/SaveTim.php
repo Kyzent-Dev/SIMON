@@ -5,7 +5,9 @@ namespace App\Actions\MasterData;
 use App\Models\Irban;
 use App\Models\Pegawai;
 use App\Models\Tim;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SaveTim
@@ -36,16 +38,22 @@ class SaveTim
             throw ValidationException::withMessages(['members' => 'Pilih pegawai aktif.']);
         }
 
-        return DB::transaction(function () use ($irban, $tahun, $tim, $nama, $members) {
-            $tim = $tim ?? new Tim(['irban_id' => $irban->id, 'tahun' => $tahun]);
-            $tim->nama = $nama;
-            $tim->save();
-            $tim->anggota()->delete();
-            foreach ($members as $i => $m) {
-                $tim->anggota()->create([...$m, 'urutan' => $i + 1]);
-            }
+        try {
+            return DB::transaction(function () use ($irban, $tahun, $tim, $nama, $members) {
+                $tim = $tim ?? new Tim(['irban_id' => $irban->id, 'tahun' => $tahun]);
+                $tim->nama = $nama;
+                $tim->save();
+                $tim->anggota()->delete();
+                foreach ($members as $i => $m) {
+                    $tim->anggota()->create([...$m, 'urutan' => $i + 1]);
+                }
 
-            return $tim;
-        });
+                return $tim;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            throw ValidationException::withMessages(str_contains(Str::before($e->getMessage(), 'SQL:'), 'tim_anggota')
+                ? ['members' => 'Anggota tim berubah oleh pengguna lain. Muat ulang dan coba lagi.']
+                : ['nama' => 'Nama tim sudah dipakai pada Irban dan tahun ini.']);
+        }
     }
 }

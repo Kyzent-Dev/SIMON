@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\SyaratSelesai;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -23,15 +22,15 @@ return new class extends Migration
         // Fixed reference data (PRD §9.4): the five rows exist in every environment, so they are inserted here, not by a dev-only seeder.
         $now = now();
         $rows = [
-            ['REGULER', 'REGULER', true, SyaratSelesai::LhpLengkap, true],
-            ['KHUSUS', 'KHUSUS', false, SyaratSelesai::LhpLengkap, false],
-            ['DIKLAT', 'DIKLAT', false, SyaratSelesai::Konfirmasi, false],
-            ['LUAR_DAERAH', 'LUAR DAERAH', false, SyaratSelesai::LaporanOpsional, false],
-            ['LAIN_LAIN', 'LAIN-LAIN', false, SyaratSelesai::DokumenOpsional, false],
+            ['REGULER', 'REGULER', true, 'lhp_lengkap', true],
+            ['KHUSUS', 'KHUSUS', false, 'lhp_lengkap', false],
+            ['DIKLAT', 'DIKLAT', false, 'konfirmasi', false],
+            ['LUAR_DAERAH', 'LUAR DAERAH', false, 'laporan_opsional', false],
+            ['LAIN_LAIN', 'LAIN-LAIN', false, 'dokumen_opsional', false],
         ];
         foreach ($rows as [$kode, $nama, $wajib, $syarat, $publik]) {
             DB::table('klasifikasi')->insert([
-                'kode' => $kode, 'nama' => $nama, 'wajib_item_pkpt' => $wajib, 'syarat_selesai' => $syarat->value,
+                'kode' => $kode, 'nama' => $nama, 'wajib_item_pkpt' => $wajib, 'syarat_selesai' => $syarat,
                 'tampil_publik' => $publik, 'created_at' => $now, 'updated_at' => $now,
             ]);
         }

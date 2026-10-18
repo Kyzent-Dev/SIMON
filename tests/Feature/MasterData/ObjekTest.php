@@ -7,7 +7,9 @@ use App\Actions\MasterData\SaveObjek;
 use App\Actions\MasterData\SaveWilayahIrban;
 use App\Enums\JenisObjek;
 use App\Enums\Role;
+use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\Objek as ObjekPage;
+use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\WilayahIrban as WilayahPage;
 use App\Models\Irban;
 use App\Models\IrbanWilayah;
@@ -246,8 +248,8 @@ class ObjekTest extends TestCase
         $admin = $this->admin();
         Irban::factory()->create();
         Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc'])->test(WilayahPage::class)->assertSet('tahun', $this->tahun());
-        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc', 'irbanId' => 'xyz'])->test(\App\Livewire\Admin\Tim::class)->assertSet('tahun', $this->tahun())->assertOk();
-        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc'])->test(\App\Livewire\Admin\IrbanTahunan::class)->assertSet('tahun', $this->tahun());
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc', 'irbanId' => 'xyz'])->test(Tim::class)->assertSet('tahun', $this->tahun())->assertOk();
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc'])->test(IrbanTahunan::class)->assertSet('tahun', $this->tahun());
         Livewire::actingAs($admin)->withQueryParams(['tahun' => (string) $this->tahun()])->test(WilayahPage::class)->assertSet('tahun', $this->tahun());
     }
 }
