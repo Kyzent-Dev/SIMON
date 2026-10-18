@@ -1,0 +1,116 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\Role;
+use App\Models\User;
+use App\Support\Navigation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+class DashboardShellTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
+    private function fakeMasterDataRoutes(): void
+    {
+        Route::middleware(['web', 'auth', 'role:admin'])->group(function () {
+            Route::get('/admin/pegawai', fn () => 'ok')->name('admin.pegawai');
+            Route::get('/admin/pengaturan', fn () => 'ok')->name('admin.pengaturan');
+        });
+        Route::getRoutes()->refreshNameLookups();
+    }
+
+    public function test_admin_sidebar_marks_active_item_and_shows_existing_master_data_routes(): void
+    {
+        $this->fakeMasterDataRoutes();
+        $admin = User::factory()->admin()->create();
+
+        $html = $this->actingAs($admin)->get('/admin')->assertOk()
+            ->assertSee('aria-label="Navigasi utama"', false)
+            ->assertSee('Master Data')
+            ->assertSee('href="'.route('admin.pegawai').'"', false)
+            ->assertSee('Pengaturan Sistem')
+            ->assertSee('Ciutkan menu')
+            ->assertSee('aria-label="Buka menu"', false)
+            ->getContent();
+
+        // aria-current only on the Dasbor link.
+        $this->assertSame(1, substr_count($html, 'aria-current="page"'));
+        $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('admin.dashboard'), '#').'"[^>]*aria-current="page"#', $html);
+        // Items without a route never render, and neither does their group label.
+        $this->assertStringNotContainsString('Konten Beranda', $html);
+        $this->assertStringNotContainsString('Log Aktivitas', $html);
+    }
+
+    public function test_empty_groups_are_dropped(): void
+    {
+        $labels = array_column(Navigation::groups(Role::Admin), 'label');
+        $this->assertNotContains('Master Data', $labels);
+        $this->assertSame(['admin.dashboard'], array_column(array_merge(...array_column(Navigation::groups(Role::Admin), 'items')), 'route'));
+    }
+
+    public function test_other_roles_see_only_dasbor(): void
+    {
+        $this->fakeMasterDataRoutes();
+        $paths = ['pimpinan' => '/pimpinan', 'irban' => '/irban', 'bagianUmum' => '/bagian-umum'];
+
+        foreach ($paths as $state => $path) {
+            $user = User::factory()->{$state}()->create();
+            $this->actingAs($user)->get($path)->assertOk()
+                ->assertSee('Dasbor')
+                ->assertDontSee('Master Data')
+                ->assertDontSee(route('admin.pegawai'));
+        }
+        foreach ([Role::Pimpinan, Role::Irban, Role::BagianUmum] as $role) {
+            $this->assertSame(['Dasbor'], array_column(Navigation::groups($role)[0]['items'], 'label'));
+            $this->assertCount(1, Navigation::groups($role));
+        }
+    }
+
+    public function test_admin_dashboard_quick_links_come_from_navigation(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertDontSee('Akses cepat');
+
+        $this->fakeMasterDataRoutes();
+        $this->actingAs($admin)->get('/admin')->assertOk()
+            ->assertSee('<h1', false)
+            ->assertSee('Akses cepat')
+            ->assertSeeInOrder(['Akses cepat', 'Pegawai', 'Pengaturan Sistem']);
+    }
+
+    public function test_breadcrumbs_render_when_passed(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+        $html = (string) $this->blade(
+            '<x-layouts::app title="X" :breadcrumbs="[\'Dasbor\' => \'/admin\', \'Master Data\' => null, \'Pegawai\' => null]">isi</x-layouts::app>'
+        );
+        $this->assertStringContainsString('aria-label="Breadcrumb"', $html);
+        $this->assertSame(1, substr_count($html, 'aria-current="page"')); // only the last crumb (no nav item is active here)
+        $this->assertMatchesRegularExpression('#<span[^>]*aria-current="page"[^>]*>Pegawai</span>#', $html);
+    }
+
+    public function test_layout_renders_toast_stack(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())->get('/admin')->assertOk()
+            ->assertSee('x-on:toast.window', false);
+    }
+
+    public function test_flagged_user_cannot_use_livewire_update_endpoint(): void
+    {
+        $user = User::factory()->admin()->create(['wajib_ganti_password' => true]);
+
+        $this->actingAs($user)
+            ->postJson(route('default-livewire.update'), ['components' => []], ['X-Livewire' => 'true'])
+            ->assertRedirect('/perbarui-kata-sandi');
+    }
+}

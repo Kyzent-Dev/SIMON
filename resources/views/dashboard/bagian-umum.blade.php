@@ -1,3 +1,3 @@
 <x-layouts::app title="Dasbor Bagian Umum">
-    <h1>Dasbor Bagian Umum</h1>
+    <x-ui.page-header title="Dasbor Bagian Umum" />
 </x-layouts::app>

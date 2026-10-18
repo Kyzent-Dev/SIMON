@@ -27,6 +27,7 @@
   --shadow-sm:0 1px 3px rgb(8 43 35 / .08),0 1px 2px rgb(8 43 35 / .04);
   --shadow-md:0 6px 16px -4px rgb(8 43 35 / .12);
   --shadow-lg:0 16px 40px -8px rgb(8 43 35 / .18);
+  --color-scrim: rgb(8 43 35 / .55); /* DESIGN §5 elevation 3 scrim */
   --ease-standard:cubic-bezier(.2,0,0,1); --ease-enter:cubic-bezier(0,0,.2,1);
   --ease-exit:cubic-bezier(.4,0,1,1);
   --animate-shimmer: shimmer 1.4s linear infinite;

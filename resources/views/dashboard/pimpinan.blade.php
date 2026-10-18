@@ -1,3 +1,3 @@
 <x-layouts::app title="Dasbor Pimpinan">
-    <h1>Dasbor Pimpinan</h1>
+    <x-ui.page-header title="Dasbor Pimpinan" />
 </x-layouts::app>
