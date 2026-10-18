@@ -28,7 +28,7 @@ class Irban extends Model
     /** True when users, irban_tahunan or tim point at this irban, so it cannot be deleted. */
     public function isReferenced(): bool
     {
-        // shortcut: irban_wilayah check is added with Task 8 (table does not exist yet).
-        return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists() || Tim::where('irban_id', $this->id)->exists();
+        return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists() || Tim::where('irban_id', $this->id)->exists()
+            || IrbanWilayah::where('irban_id', $this->id)->exists();
     }
 }
