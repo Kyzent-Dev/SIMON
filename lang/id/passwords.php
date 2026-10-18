@@ -6,4 +6,5 @@ return [
     'throttled' => 'Mohon tunggu sebelum mencoba lagi.',
     'token' => 'Tautan atur ulang kata sandi tidak valid atau sudah kedaluwarsa.',
     'user' => 'Jika email terdaftar, tautan reset telah dikirim. Periksa kotak masuk Anda.',
+    'different' => 'Kata sandi baru harus berbeda dari kata sandi lama.',
 ];

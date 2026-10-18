@@ -61,3 +61,8 @@ html.motion-ready [data-motion="bars"]:not([data-motion-done]) [data-bar] { tran
 @media (prefers-reduced-motion: reduce) {
   html.motion-ready [data-motion] *, html.motion-ready [data-motion] { opacity: 1 !important; transform: none !important; }
 }
+
+/* DESIGN §6: focus ring for every interactive element; inputs override it with their own ring utilities. */
+@layer base {
+  :focus-visible { outline: 2px solid var(--color-mint-600); outline-offset: 2px; }
+}

@@ -1,13 +1,28 @@
 <?php
 
+use App\Http\Controllers\Auth\ForcedPasswordController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'placeholder.public');
 
-// Stub: Task 2 of Fase 1 replaces this with the real login.
-Route::view('/masuk', 'auth.login')->name('login')->middleware('guest');
+Route::middleware('guest')->group(function () {
+    Route::get('/masuk', [LoginController::class, 'create'])->name('login');
+    Route::post('/masuk', [LoginController::class, 'store']);
+    Route::get('/lupa-kata-sandi', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/lupa-kata-sandi', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('/atur-ulang-kata-sandi/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/atur-ulang-kata-sandi', [NewPasswordController::class, 'store'])->name('password.update');
+});
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
+    Route::post('/keluar', [LoginController::class, 'destroy'])->name('logout');
+    Route::get('/perbarui-kata-sandi', [ForcedPasswordController::class, 'edit'])->name('password.force.edit');
+    Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');
+
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');
 
     Route::view('/admin', 'dashboard.admin')->name('admin.dashboard')->middleware('role:admin');

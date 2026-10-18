@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,10 +14,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['role' => \App\Http\Middleware\EnsureRole::class]);
+        $middleware->alias(['role' => EnsureRole::class]);
+        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectUsersTo(fn () => route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // 419: expired session or CSRF token.
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($e->getStatusCode() === 419 && ! $request->expectsJson()) {
+                return redirect()->route('login')->with('expired', __('auth.expired'));
+            }
+        });
     })->create();
