@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'placeholder.public');
@@ -18,7 +17,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/atur-ulang-kata-sandi', [NewPasswordController::class, 'store'])->name('password.update')->middleware('throttle:6,1');
 });
 
-Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::post('/keluar', [LoginController::class, 'destroy'])->name('logout');
     Route::get('/perbarui-kata-sandi', [ForcedPasswordController::class, 'edit'])->name('password.force.edit');
     Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');

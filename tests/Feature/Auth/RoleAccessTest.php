@@ -77,7 +77,7 @@ class RoleAccessTest extends TestCase
             $user = User::factory()->{$state}()->create(['name' => 'Tuan Uji']);
             $this->withoutVite()->actingAs($user)->get($path)->assertOk()
                 ->assertSee('Tuan Uji')
-                ->assertSee($labels[$state])
+                ->assertSee('<p class="text-xs text-neutral-600">'.$labels[$state].'</p>', false)
                 ->assertSee('<form method="POST" action="'.route('logout').'"', false)
                 ->assertSee('Keluar')
                 ->assertSee('href="#konten"', false)

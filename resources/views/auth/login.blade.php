@@ -1,6 +1,4 @@
 {{-- design/auth/login.md §1, §4 --}}
-@php $lockout = (int) session('lockout_seconds', 0); @endphp
-
 <x-layouts::auth title="Masuk">
     <div x-data="{
             busy: false,

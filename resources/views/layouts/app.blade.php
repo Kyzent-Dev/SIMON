@@ -1,7 +1,4 @@
-@php
-    $user = auth()->user();
-    $initials = collect(preg_split('/\s+/', trim($user->name)))->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
-@endphp
+@php $user = auth()->user(); @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -18,7 +15,7 @@
     <header class="flex h-16 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
         <p class="shrink-0 whitespace-nowrap font-display text-lg font-bold text-mint-700">SIMON-SPT</p>
         <div class="flex min-w-0 items-center gap-3">
-            <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $initials }}</span>
+            <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $user->initials() }}</span>
             <div class="min-w-0 leading-tight">
                 <p title="{{ $user->name }}" class="max-w-[6.5rem] truncate text-sm font-medium text-neutral-900 sm:max-w-xs">{{ $user->name }}</p>
                 <p class="text-xs text-neutral-600">{{ $user->role->label() }}</p>

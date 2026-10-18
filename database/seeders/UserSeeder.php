@@ -23,12 +23,12 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($accounts as [$username, $name, $role]) {
-            User::updateOrCreate(['username' => $username], [
+            User::firstOrNew(['username' => $username])->forceFill([
                 'name' => $name,
                 'email' => "{$username}@simon-spt.test",
                 'password' => 'password',
                 'role' => $role,
-            ]);
+            ])->save();
         }
     }
 }

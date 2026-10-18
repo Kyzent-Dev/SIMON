@@ -13,6 +13,11 @@ class AttemptLogin
 
     public const DECAY_SECONDS = 60;
 
+    public static function key(string $username, string $ip): string
+    {
+        return Str::lower($username).'|'.$ip;
+    }
+
     /**
      * Credential errors go under the `login` key so the view shows one generic alert, never a field hint.
      *
@@ -20,7 +25,7 @@ class AttemptLogin
      */
     public function __invoke(string $username, string $password, bool $remember, string $ip): void
     {
-        $key = Str::lower($username).'|'.$ip;
+        $key = self::key($username, $ip);
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             $seconds = RateLimiter::availableIn($key);

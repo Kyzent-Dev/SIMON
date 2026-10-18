@@ -7,13 +7,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class LoginController extends Controller
 {
     public function create(): View
     {
-        return view('auth.login');
+        // Survives a reload after a throttled attempt: old input means we were redirected back.
+        $old = old('username');
+        $key = $old ? AttemptLogin::key($old, (string) request()->ip()) : null;
+        $lockout = $key && RateLimiter::tooManyAttempts($key, AttemptLogin::MAX_ATTEMPTS) ? RateLimiter::availableIn($key) : 0;
+
+        return view('auth.login', ['lockout' => max($lockout, (int) session('lockout_seconds', 0))]);
     }
 
     public function store(Request $request, AttemptLogin $attempt): RedirectResponse
