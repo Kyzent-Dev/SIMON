@@ -13,3 +13,9 @@
 - DB left at the skeleton default until a phase needs it.
 - Removed `welcome.blade.php` and the stock `ExampleTest` (covered by `LayoutPlaceholderTest`); `/` is the public placeholder, `/dashboard` the app placeholder, no auth.
 - The skeleton's CLAUDE.md (Laravel Boost guidelines) was discarded to keep the project's own CLAUDE.md, and AGENTS.md was removed for the same reason; Boost can be installed later if wanted.
+
+## Fase 1, Task 1
+- Kolom baru `users` (`username`, `role`, `irban_id`, `wajib_ganti_password`) ditambahkan lewat migrasi baru; kolom bawaan `name`/`email`/`password` dipertahankan. `irban_id` tanpa foreign key (tabel `irban` datang di Fase 2). `role` punya default `irban` di DB.
+- `/masuk` (route `login`) di Task 1 hanya stub berisi heading "Masuk" agar redirect tamu bisa dites; Task 2 menggantinya dengan login nyata.
+- Route `/dashboard` Fase 0 (placeholder) diganti redirect ke dasbor per role; view `placeholder/app` dihapus. Guard ganti-kata-sandi-wajib belum ada (Task 2).
+- `lang/id/` hanya berisi kunci yang dipakai Fase 1 (`auth`, `passwords`, `validation`: required, email, confirmed, min.string, unique, password.*, attributes). Kunci lain jatuh ke `en` (fallback_locale). Pesan `passwords.user` sengaja sama dengan `passwords.sent` agar tidak membocorkan keberadaan email.

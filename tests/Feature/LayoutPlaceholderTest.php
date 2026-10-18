@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class LayoutPlaceholderTest extends TestCase
 {
+    use RefreshDatabase;
+
     private function src(string $path): string
     {
         return file_get_contents(base_path($path));
@@ -23,9 +27,11 @@ class LayoutPlaceholderTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/opacity:\s*0/', $html);
     }
 
-    public function test_dashboard_placeholder_renders(): void
+    public function test_dashboard_requires_auth_and_renders_app_layout(): void
     {
-        $this->withoutVite()->get('/dashboard')->assertOk()->assertSee('Dashboard (placeholder)');
+        $this->get('/dashboard')->assertRedirect('/masuk');
+        $this->withoutVite()->actingAs(User::factory()->admin()->create())->followingRedirects()
+            ->get('/dashboard')->assertOk()->assertSee('Dasbor Admin');
     }
 
     public function test_entries_are_split(): void
