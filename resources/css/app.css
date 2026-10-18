@@ -28,6 +28,7 @@
   --shadow-md:0 6px 16px -4px rgb(8 43 35 / .12);
   --shadow-lg:0 16px 40px -8px rgb(8 43 35 / .18);
   --color-scrim: rgb(8 43 35 / .55); /* DESIGN §5 elevation 3 scrim */
+  --color-row-warning:#FFFBEB; --color-row-error:#FEF2F2; /* admin.md import preview row tints; text on them is always neutral-900 + icon */
   --ease-standard:cubic-bezier(.2,0,0,1); --ease-enter:cubic-bezier(0,0,.2,1);
   --ease-exit:cubic-bezier(.4,0,1,1);
   --animate-shimmer: shimmer 1.4s linear infinite;

@@ -1,0 +1,167 @@
+<?php
+
+namespace Tests\Feature\MasterData;
+
+use App\Enums\Role;
+use App\Livewire\Admin\PegawaiImpor as Page;
+use App\Models\Pegawai;
+use App\Models\User;
+use App\Services\Import\PegawaiImportParser;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use Tests\TestCase;
+
+class PegawaiImporTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const H = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'aktif'];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
+    /** @param list<list<mixed>> $rows */
+    private function xlsx(array $rows, array $header = self::H): string
+    {
+        $s = new Spreadsheet;
+        $sheet = $s->getActiveSheet();
+        foreach ([$header, ...$rows] as $r => $row) {
+            foreach (array_values($row) as $c => $v) {
+                $sheet->setCellValueExplicit([$c + 1, $r + 1], (string) $v, 's');
+            }
+        }
+        $path = tempnam(sys_get_temp_dir(), 'imp').'.xlsx';
+        IOFactory::createWriter($s, 'Xlsx')->save($path);
+
+        return $path;
+    }
+
+    private function upload(string $path): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent('pegawai.xlsx', file_get_contents($path));
+    }
+
+    private function parse(array $rows): array
+    {
+        return (new PegawaiImportParser)->parse($this->xlsx($rows));
+    }
+
+    private function nip(int $n = 1): string
+    {
+        return str_pad((string) $n, 18, '1');
+    }
+
+    public function test_parser_rules(): void
+    {
+        Pegawai::factory()->create(['nip' => $this->nip(3)]);
+        $r = $this->parse([
+            ['Budi, S.H.', $this->nip(1), '', '', '', ''],
+            ['Ani', '19870312', '', '', '', 'ya'],
+            ['', $this->nip(2), '', '', '', ''],
+            ['Cici', $this->nip(3), '', '', '', 'Tidak'],
+            ['Dedi', $this->nip(1), '', '', '', ''],
+            ['Eka', $this->nip(5), '', '', '', 'mungkin'],
+        ]);
+        $this->assertSame(['valid', 'error', 'error', 'warning', 'error', 'error'], array_column($r, 'status'));
+        $this->assertSame([2, 3, 4, 5, 6, 7], array_column($r, 'baris'));
+        $this->assertTrue($r[0]['data']['aktif']);
+        $this->assertFalse($r[3]['data']['aktif']);
+        $this->assertSame('NIP harus 18 digit angka.', $r[1]['errors'][0]['pesan']);
+        $this->assertSame('nip', $r[1]['errors'][0]['kolom']);
+        $this->assertSame('nama_bergelar', $r[2]['errors'][0]['kolom']);
+        $this->assertStringContainsString('akan diperbarui', $r[3]['warning']);
+        $this->assertStringContainsString('baris 2', $r[4]['errors'][0]['pesan']);
+        $this->assertSame('aktif', $r[5]['errors'][0]['kolom']);
+    }
+
+    public function test_aktif_values(): void
+    {
+        $r = $this->parse(array_map(fn ($v, $i) => ['N', $this->nip($i + 1), '', '', '', $v],
+            ['1', '0', 'YA', 'tidak', 'True', 'false'], range(0, 5)));
+        $this->assertSame([true, false, true, false, true, false], array_map(fn ($x) => $x['data']['aktif'], $r));
+    }
+
+    public function test_missing_header_is_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('nama_bergelar');
+        (new PegawaiImportParser)->parse($this->xlsx([['x']], ['foo']));
+    }
+
+    public function test_row_cap(): void
+    {
+        $rows = array_fill(0, 2001, ['N', $this->nip(1), '', '', '', '']);
+        $this->expectExceptionMessage('maksimal 2000 baris');
+        (new PegawaiImportParser)->parse($this->xlsx($rows));
+    }
+
+    public function test_happy_path_upserts(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Pegawai::factory()->create(['nip' => $this->nip(3), 'nama_bergelar' => 'Lama']);
+        $path = $this->xlsx([['Budi', $this->nip(1), 'Penata', 'III/c', 'Auditor', 'ya'], ['Baru', $this->nip(3), '', '', '', '0']]);
+
+        Livewire::actingAs($admin)->test(Page::class)
+            ->set('file', $this->upload($path))
+            ->assertSet('step', 2)
+            ->assertSee('1 valid')->assertSee('1 peringatan')->assertSee('0 galat')
+            ->call('impor')
+            ->assertSet('step', 3)->assertSet('diimpor', 2);
+
+        $this->assertSame('Budi', Pegawai::where('nip', $this->nip(1))->value('nama_bergelar'));
+        $this->assertSame('Baru', Pegawai::where('nip', $this->nip(3))->first()->nama_bergelar);
+        $this->assertFalse(Pegawai::where('nip', $this->nip(3))->first()->aktif);
+        $this->assertSame(2, Pegawai::count());
+    }
+
+    public function test_errors_block_unless_skipped(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $path = $this->xlsx([['Budi', $this->nip(1), '', '', '', ''], ['Bad', '123', '', '', '', '']]);
+        $c = Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($path))
+            ->assertSee('1 galat')->assertSee('Baris 3');
+        $c->call('impor')->assertSet('step', 2);
+        $this->assertSame(0, Pegawai::count());
+        $c->set('lewati', true)->call('impor')->assertSet('step', 3)->assertSet('diimpor', 1);
+        $this->assertSame(1, Pegawai::count());
+    }
+
+    public function test_invalid_upload_stays_on_step_1(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Livewire::actingAs($admin)->test(Page::class)
+            ->set('file', UploadedFile::fake()->create('x.pdf', 10, 'application/pdf'))
+            ->assertHasErrors('file')->assertSet('step', 1);
+    }
+
+    public function test_downloads(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Livewire::actingAs($admin)->test(Page::class)->call('unduhTemplat')->assertFileDownloaded('templat-pegawai.xlsx');
+        $path = $this->xlsx([['Bad', '1', '', '', '', '']]);
+        Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($path))
+            ->call('unduhGalat')->assertFileDownloaded('galat-impor-pegawai.xlsx');
+    }
+
+    public function test_non_admin_forbidden(): void
+    {
+        $this->actingAs(User::factory()->irban()->create())->get('/admin/pegawai/impor')->assertForbidden();
+        Livewire::actingAs(User::factory()->irban()->create())->test(Page::class)->assertForbidden();
+
+        $admin = User::factory()->admin()->create();
+        $path = $this->xlsx([['Budi', $this->nip(1), '', '', '', '']]);
+        foreach (['impor', 'unduhTemplat', 'unduhGalat', 'ulangi'] as $method) {
+            $admin->role = Role::Admin;
+            $c = Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($path));
+            $admin->role = Role::Irban;
+            $c->call($method)->assertForbidden();
+        }
+        $this->assertSame(0, Pegawai::count());
+    }
+}

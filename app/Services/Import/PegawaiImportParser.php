@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Services\Import;
+
+use App\Actions\MasterData\SavePegawai;
+use App\Models\Pegawai;
+use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
+class PegawaiImportParser
+{
+    public const HEADERS = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'aktif'];
+
+    public const MAX_ROWS = 2000;
+
+    private const AKTIF = ['1' => true, 'ya' => true, 'true' => true, '0' => false, 'tidak' => false, 'false' => false];
+
+    /** @return list<array{baris:int,data:array,status:string,errors:list<array{kolom:string,pesan:string}>,warning:?string}> */
+    public function parse(string $path): array
+    {
+        return $this->analyze($this->read($path));
+    }
+
+    /** Raw rows only: strings keyed by header plus the sheet row number `baris`. */
+    public function read(string $path): array
+    {
+        $reader = IOFactory::createReader('Xlsx');
+        $reader->setReadDataOnly(true);
+        $sheet = $reader->load($path)->getActiveSheet();
+        $grid = $sheet->toArray(null, false, false, false);
+
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), array_shift($grid) ?? []);
+        $missing = array_diff(['nama_bergelar', 'nip'], $header);
+        if ($missing) {
+            throw new InvalidArgumentException('Kolom wajib tidak ditemukan: '.implode(', ', $missing).'. Gunakan templat.');
+        }
+
+        $raw = [];
+        foreach ($grid as $i => $cells) {
+            $row = ['baris' => $i + 2];
+            foreach (self::HEADERS as $h) {
+                $v = $cells[array_search($h, $header, true)] ?? null;
+                // 18-digit NIP stored as a number loses precision; print it without exponent.
+                $row[$h] = trim(is_float($v) ? sprintf('%.0f', $v) : (is_bool($v) ? ($v ? 'true' : 'false') : (string) $v));
+            }
+            if (implode('', array_slice($row, 1)) === '') {
+                continue; // blank row
+            }
+            $raw[] = $row;
+            if (count($raw) > self::MAX_ROWS) {
+                throw new InvalidArgumentException('Berkas terlalu besar: maksimal '.self::MAX_ROWS.' baris data per impor.');
+            }
+        }
+
+        return $raw;
+    }
+
+    public function analyze(array $raw): array
+    {
+        $existing = Pegawai::whereIn('nip', array_column($raw, 'nip'))->pluck('nip')->flip();
+        $rules = SavePegawai::rules();
+        $rules['nip'] = ['required', 'digits:18']; // uniqueness is a warning here, not an error
+        $seen = [];
+        $out = [];
+
+        foreach ($raw as $r) {
+            $errors = [];
+            $aktif = self::AKTIF[strtolower($r['aktif'])] ?? ($r['aktif'] === '' ? true : null);
+            $data = ['nama' => $r['nama_bergelar'], 'nip' => $r['nip'], 'pangkat' => $r['pangkat'], 'golongan' => $r['golongan'], 'jabatan' => $r['jabatan'], 'aktif' => $aktif ?? true];
+
+            $v = Validator::make($data, $rules, SavePegawai::messages(), ['nama' => 'Nama bergelar', 'pangkat' => 'Pangkat', 'golongan' => 'Golongan', 'jabatan' => 'Jabatan']);
+            foreach ($v->errors()->messages() as $field => $msgs) {
+                $errors[] = ['kolom' => $field === 'nama' ? 'nama_bergelar' : $field, 'pesan' => $msgs[0]];
+            }
+            if ($aktif === null) {
+                $errors[] = ['kolom' => 'aktif', 'pesan' => 'Isi aktif dengan ya/tidak, 1/0, atau true/false.'];
+            }
+            if (! $v->errors()->has('nip')) {
+                if (isset($seen[$r['nip']])) {
+                    $errors[] = ['kolom' => 'nip', 'pesan' => "NIP ganda dengan baris {$seen[$r['nip']]}."];
+                } else {
+                    $seen[$r['nip']] = $r['baris'];
+                }
+            }
+
+            $warning = ! $errors && isset($existing[$r['nip']]) ? 'NIP sudah terdaftar, data akan diperbarui.' : null;
+            $out[] = ['baris' => $r['baris'], 'data' => $data, 'errors' => $errors, 'warning' => $warning,
+                'status' => $errors ? 'error' : ($warning ? 'warning' : 'valid')];
+        }
+
+        return $out;
+    }
+}
