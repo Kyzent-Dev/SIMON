@@ -25,10 +25,10 @@ class Irban extends Model
         return $this->hasMany(IrbanTahunan::class);
     }
 
-    /** True when users or irban_tahunan point at this irban, so it cannot be deleted. */
+    /** True when users, irban_tahunan or tim point at this irban, so it cannot be deleted. */
     public function isReferenced(): bool
     {
-        // shortcut: tim and irban_wilayah checks are added with Tasks 7/8 (those tables do not exist yet).
-        return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists();
+        // shortcut: irban_wilayah check is added with Task 8 (table does not exist yet).
+        return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists() || Tim::where('irban_id', $this->id)->exists();
     }
 }

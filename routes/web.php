@@ -9,6 +9,7 @@ use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\Klasifikasi;
 use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\PegawaiImpor;
+use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\Pengaturan;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +39,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pegawai/impor', PegawaiImpor::class)->name('admin.pegawai.impor');
         Route::get('/irban', Irban::class)->name('admin.irban');
         Route::get('/irban-tahunan', IrbanTahunan::class)->name('admin.irban-tahunan');
+        Route::get('/tim', Tim::class)->name('admin.tim');
     });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');

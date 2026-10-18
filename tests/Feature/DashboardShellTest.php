@@ -22,7 +22,7 @@ class DashboardShellTest extends TestCase
     private function fakeMasterDataRoutes(): void
     {
         Route::middleware(['web', 'auth', 'role:admin'])->group(function () {
-            Route::get('/admin/tim', fn () => 'ok')->name('admin.tim');
+            Route::get('/admin/slide', fn () => 'ok')->name('admin.slide');
             Route::get('/admin/pengaturan', fn () => 'ok')->name('admin.pengaturan');
         });
         Route::getRoutes()->refreshNameLookups();
@@ -36,7 +36,7 @@ class DashboardShellTest extends TestCase
         $html = $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertSee('aria-label="Navigasi utama"', false)
             ->assertSee('Master Data')
-            ->assertSee('href="'.route('admin.tim').'"', false)
+            ->assertSee('href="'.route('admin.slide').'"', false)
             ->assertSee('Pengaturan Sistem')
             ->assertSee('Ciutkan menu')
             ->assertSee('aria-label="Buka menu"', false)
@@ -46,7 +46,7 @@ class DashboardShellTest extends TestCase
         $this->assertSame(1, substr_count($html, 'aria-current="page"'));
         $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('admin.dashboard'), '#').'"[^>]*aria-current="page"#', $html);
         // Items without a route never render, and neither does their group label.
-        $this->assertStringNotContainsString('Konten Beranda', $html);
+        $this->assertStringNotContainsString('Kontak & Footer', $html);
         $this->assertStringNotContainsString('Log Aktivitas', $html);
     }
 
@@ -80,7 +80,7 @@ class DashboardShellTest extends TestCase
             $this->actingAs($user)->get($path)->assertOk()
                 ->assertSee('Dasbor')
                 ->assertDontSee('Master Data')
-                ->assertDontSee(route('admin.tim'));
+                ->assertDontSee(route('admin.slide'));
         }
         foreach ([Role::Pimpinan, Role::Irban, Role::BagianUmum] as $role) {
             $this->assertSame(['Dasbor'], array_column(Navigation::groups($role)[0]['items'], 'label'));
@@ -91,13 +91,13 @@ class DashboardShellTest extends TestCase
     public function test_admin_dashboard_quick_links_come_from_navigation(): void
     {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/tim'));
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/slide'));
 
         $this->fakeMasterDataRoutes();
         $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertSee('<h1', false)
             ->assertSee('Akses cepat')
-            ->assertSeeInOrder(['Akses cepat', url('/admin/tim'), 'Pengaturan Sistem'], false);
+            ->assertSeeInOrder(['Akses cepat', url('/admin/slide'), 'Pengaturan Sistem'], false);
     }
 
     public function test_breadcrumbs_render_when_passed(): void
