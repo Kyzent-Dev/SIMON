@@ -16,12 +16,12 @@
 
     {{-- _shared.md §1 top header, minimal: no sidebar/bell/breadcrumbs/year switcher yet (DECISIONS.md). --}}
     <header class="flex h-16 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
-        <p class="shrink-0 whitespace-nowrap font-display text-lg font-bold text-mint-800">SIMON-SPT</p>
+        <p class="shrink-0 whitespace-nowrap font-display text-lg font-bold text-mint-700">SIMON-SPT</p>
         <div class="flex min-w-0 items-center gap-3">
             <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $initials }}</span>
             <div class="min-w-0 leading-tight">
                 <p title="{{ $user->name }}" class="max-w-[6.5rem] truncate text-sm font-medium text-neutral-900 sm:max-w-xs">{{ $user->name }}</p>
-                <p class="text-xs text-neutral-700">{{ $user->role->label() }}</p>
+                <p class="text-xs text-neutral-600">{{ $user->role->label() }}</p>
             </div>
             <form method="POST" action="{{ route('logout') }}" class="shrink-0">
                 @csrf

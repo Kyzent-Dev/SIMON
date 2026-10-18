@@ -11,6 +11,10 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->isProduction()) {
+            return;
+        }
+
         $accounts = [
             ['admin', 'Administrator', Role::Admin],
             ['pimpinan', 'Inspektur', Role::Pimpinan],

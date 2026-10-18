@@ -39,3 +39,6 @@
 - Header dasbor minimal (`layouts/app.blade.php`): 64px, putih, border-b; kanan berisi avatar inisial (mint-100/mint-800), nama akun, caption role, dan tombol "Keluar" (POST `logout`). Sidebar, lonceng notifikasi, breadcrumbs, pengganti tahun, menu pengguna ("Profil", "Ubah kata sandi") dan hamburger ditunda ke fase yang membutuhkannya.
 - Akun seeder hanya untuk pengembangan: kata sandi `password` untuk `admin`, `pimpinan`, `irban1`, `bagianumum`; jangan dijalankan di produksi.
 - 419 (sesi/CSRF berakhir) sudah ditangani di `bootstrap/app.php` dan dites di `LoginTest::test_expired_csrf_redirects_to_login_with_message`; tidak diduplikasi.
+- Setelah wajib ganti kata sandi berhasil, `remember_token` diganti baru; saat Admin menandai semua Irban (`RequireIrbanPasswordChange`), `remember_token` mereka dikosongkan, sehingga sesi "ingat saya" lama tidak lolos. Middleware `auth.session` sengaja tidak dipasang.
+- Email reset kata sandi diterjemahkan lewat `lang/id.json` (kunci JSON bawaan Laravel: subjek, isi, tombol, salam, penutup, subcopy, hak cipta); kunci bahasa Inggris dipertahankan persis agar terjemahan terpakai.
+- `UserSeeder` (akun dev berkata sandi `password`) langsung berhenti bila `app()->isProduction()`.

@@ -21,6 +21,10 @@ class ForcedPasswordController extends Controller
 
     public function update(Request $request, ChangeForcedPassword $change): RedirectResponse
     {
+        if (! $request->user()->wajib_ganti_password) {
+            return redirect()->route('dashboard');
+        }
+
         $change($request->user(), $request->only('password', 'password_confirmation'));
 
         return redirect()->route($request->user()->role->dashboardRoute());

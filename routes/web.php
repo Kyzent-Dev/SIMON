@@ -13,9 +13,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/masuk', [LoginController::class, 'create'])->name('login');
     Route::post('/masuk', [LoginController::class, 'store']);
     Route::get('/lupa-kata-sandi', [PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('/lupa-kata-sandi', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::post('/lupa-kata-sandi', [PasswordResetLinkController::class, 'store'])->name('password.email')->middleware('throttle:6,1');
     Route::get('/atur-ulang-kata-sandi/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
-    Route::post('/atur-ulang-kata-sandi', [NewPasswordController::class, 'store'])->name('password.update');
+    Route::post('/atur-ulang-kata-sandi', [NewPasswordController::class, 'store'])->name('password.update')->middleware('throttle:6,1');
 });
 
 Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {

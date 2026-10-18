@@ -6,6 +6,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -29,6 +30,6 @@ class ChangeForcedPassword
             ],
         ])->validate();
 
-        $user->forceFill(['password' => $validated['password'], 'wajib_ganti_password' => false])->save();
+        $user->forceFill(['password' => $validated['password'], 'wajib_ganti_password' => false, 'remember_token' => Str::random(60)])->save();
     }
 }
