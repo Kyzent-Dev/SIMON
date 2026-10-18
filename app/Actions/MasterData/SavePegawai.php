@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Actions\MasterData;
+
+use App\Models\Pegawai;
+use Illuminate\Validation\Rule;
+
+class SavePegawai
+{
+    public static function rules(?int $ignoreId = null): array
+    {
+        return [
+            'nama' => ['required', 'string', 'max:255'],
+            'nip' => ['required', 'digits:18', Rule::unique('pegawai', 'nip')->ignore($ignoreId)],
+            'pangkat' => ['nullable', 'string', 'max:100'],
+            'golongan' => ['nullable', 'string', 'max:50'],
+            'jabatan' => ['nullable', 'string', 'max:255'],
+            'aktif' => ['boolean'],
+        ];
+    }
+
+    public static function messages(): array
+    {
+        return ['nip.required' => 'NIP harus 18 digit angka.', 'nip.digits' => 'NIP harus 18 digit angka.', 'nip.unique' => 'NIP sudah terdaftar.'];
+    }
+
+    public function handle(?Pegawai $pegawai, array $data): Pegawai
+    {
+        $pegawai ??= new Pegawai;
+        $pegawai->fill([
+            'nama_bergelar' => $data['nama'], 'nip' => $data['nip'],
+            'pangkat' => $data['pangkat'] ?: null, 'golongan' => $data['golongan'] ?: null,
+            'jabatan' => $data['jabatan'] ?: null, 'aktif' => $data['aktif'],
+        ])->save();
+
+        return $pegawai;
+    }
+}

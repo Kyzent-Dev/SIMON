@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Livewire\Admin\Klasifikasi;
+use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\Pengaturan;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/pengaturan', Pengaturan::class)->name('admin.pengaturan');
         Route::get('/klasifikasi', Klasifikasi::class)->name('admin.klasifikasi');
+        Route::get('/pegawai', Pegawai::class)->name('admin.pegawai');
+        Route::view('/pegawai/impor', 'admin.pegawai-impor')->name('admin.pegawai.impor'); // placeholder until Task 5
     });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');
