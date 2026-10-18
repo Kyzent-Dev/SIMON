@@ -33,3 +33,9 @@
 - Atur ulang kata sandi lewat email tidak menghapus `wajib_ganti_password`; pengguna yang ditandai tetap harus melewati halaman wajib ganti.
 - Aturan kata sandi didefinisikan sekali lewat `Password::defaults()` di `AppServiceProvider` dan dipakai oleh reset dan wajib ganti.
 - Font belum di-self-host (tetap stack token §13).
+
+## Fase 1, Task 3
+- Login memakai `username` (design/auth/login.md), bukan kolom `email` seperti PRD §8; `email` tetap ada untuk reset kata sandi. Kolom bawaan `name` dipertahankan (tidak diganti nama Indonesia).
+- Header dasbor minimal (`layouts/app.blade.php`): 64px, putih, border-b; kanan berisi avatar inisial (mint-100/mint-800), nama akun, caption role, dan tombol "Keluar" (POST `logout`). Sidebar, lonceng notifikasi, breadcrumbs, pengganti tahun, menu pengguna ("Profil", "Ubah kata sandi") dan hamburger ditunda ke fase yang membutuhkannya.
+- Akun seeder hanya untuk pengembangan: kata sandi `password` untuk `admin`, `pimpinan`, `irban1`, `bagianumum`; jangan dijalankan di produksi.
+- 419 (sesi/CSRF berakhir) sudah ditangani di `bootstrap/app.php` dan dites di `LoginTest::test_expired_csrf_redirects_to_login_with_message`; tidak diduplikasi.

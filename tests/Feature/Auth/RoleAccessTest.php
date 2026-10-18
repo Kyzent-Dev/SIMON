@@ -69,4 +69,19 @@ class RoleAccessTest extends TestCase
             $this->assertTrue(Hash::check('password', $u->password));
         }
     }
+
+    public function test_every_dashboard_has_header_with_account_role_logout_and_skip_link(): void
+    {
+        $labels = ['admin' => 'Admin', 'pimpinan' => 'Pimpinan', 'irban' => 'Irban', 'bagianUmum' => 'Bagian Umum'];
+        foreach (self::PATHS as $state => [$path]) {
+            $user = User::factory()->{$state}()->create(['name' => 'Tuan Uji']);
+            $this->withoutVite()->actingAs($user)->get($path)->assertOk()
+                ->assertSee('Tuan Uji')
+                ->assertSee($labels[$state])
+                ->assertSee('<form method="POST" action="'.route('logout').'"', false)
+                ->assertSee('Keluar')
+                ->assertSee('href="#konten"', false)
+                ->assertSee('<main id="konten"', false);
+        }
+    }
 }
