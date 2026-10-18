@@ -1,12 +1,15 @@
-{{-- DESIGN §8 x-ui.card: default, interactive (pass `href`, renders a link), mint (mint-50 bg). Radius-lg, border neutral-200, shadow-xs. --}}
-@props(['variant' => 'default', 'href' => null])
+{{-- DESIGN §8 x-ui.card: default, interactive (pass `href`, renders a link with a static hover color), mint (mint-50 bg). Radius-lg, border neutral-200.
+     `lift` opts into card-lift (DESIGN §7.2) for public link cards only; never on dashboards (admin.md Motion). --}}
+@props(['variant' => 'default', 'href' => null, 'lift' => false])
 
 @php
     $classes = [
-        'block rounded-lg border border-neutral-200 p-4 shadow-xs lg:p-5',
+        'block rounded-lg border border-neutral-200 p-4 lg:p-5',
         $variant === 'mint' ? 'bg-mint-50' : 'bg-white',
-        // card-lift (DESIGN §7.2) for link cards only.
-        'transition duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-md' => $href,
+        'hover:border-mint-700' => $href && $variant === 'mint',
+        'hover:bg-mint-50' => $href && $variant !== 'mint',
+        'shadow-xs' => ! $lift,
+        'shadow-sm hover:shadow-md transition duration-[var(--dur-fast)] hover:-translate-y-0.5' => $lift,
     ];
 @endphp
 

@@ -13,7 +13,7 @@
             <div x-show="open" x-on:click="open = false" aria-hidden="true" class="absolute inset-0 bg-scrim"
                 x-transition:enter="transition-opacity duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="opacity-0"
                 x-transition:leave="transition-opacity duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="opacity-0"></div>
-            <div x-show="open" x-trap.noscroll.inert="open" role="dialog" aria-modal="true" aria-labelledby="{{ $name }}-title"
+            <div x-show="open" x-trap.noscroll="open" role="dialog" aria-modal="true" aria-labelledby="{{ $name }}-title"
                 x-transition:enter="transition duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="translate-x-full"
                 x-transition:leave="transition duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="translate-x-full"
                 {{ $attributes->whereDoesntStartWith('wire:model')->class(['absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-lg', $width]) }}>

@@ -11,7 +11,9 @@ class UiComponentsTest extends TestCase
     {
         $this->blade('<x-ui.card>Isi</x-ui.card>')->assertSee('rounded-lg', false)->assertSee('shadow-xs', false);
         $this->blade('<x-ui.card variant="mint">Isi</x-ui.card>')->assertSee('bg-mint-50', false);
-        $this->blade('<x-ui.card href="/admin/pegawai">Pegawai</x-ui.card>')->assertSee('<a href="/admin/pegawai"', false);
+        $this->blade('<x-ui.card href="/admin/pegawai">Pegawai</x-ui.card>')->assertSee('<a href="/admin/pegawai"', false)
+            ->assertSee('hover:bg-mint-50', false)->assertDontSee('translate', false)->assertDontSee('transition', false);
+        $this->blade('<x-ui.card href="/x" lift>X</x-ui.card>')->assertSee('hover:-translate-y-0.5', false)->assertSee('shadow-sm hover:shadow-md', false);
     }
 
     public function test_table_has_caption_scroll_region_and_density(): void
@@ -28,7 +30,8 @@ class UiComponentsTest extends TestCase
     {
         $this->blade('<x-ui.th sortable direction="asc" wire:click="sortBy(\'nama\')">Nama</x-ui.th>')
             ->assertSee('aria-sort="ascending"', false)
-            ->assertSee('<button type="button" wire:click="sortBy(\'nama\')"', false);
+            ->assertSee('<button type="button" wire:click="sortBy(\'nama\')"', false)
+            ->assertSee('min-h-11 lg:min-h-0', false);
         $this->blade('<x-ui.th sortable>Nama</x-ui.th>')->assertSee('aria-sort="none"', false);
         $this->blade('<x-ui.th>Nama</x-ui.th>')->assertDontSee('aria-sort', false);
     }
@@ -62,11 +65,12 @@ class UiComponentsTest extends TestCase
             $this->blade("<x-ui.$c name=\"hapus\" title=\"Hapus pegawai\" size=\"sm\">Isi</x-ui.$c>")
                 ->assertSee('role="dialog"', false)->assertSee('aria-modal="true"', false)
                 ->assertSee('aria-labelledby="hapus-title"', false)->assertSee('id="hapus-title"', false)
-                ->assertSee('x-trap.noscroll', false)->assertSee('x-on:keydown.escape', false)
+                ->assertSee('x-trap.noscroll="open"', false)->assertDontSee('.inert', false)->assertSee('x-on:keydown.escape', false)
+                ->assertSee('inline-flex size-11', false)
                 ->assertSee('x-modelable="open"', false)->assertSee('x-on:open-modal.window', false)
                 ->assertSee('aria-label="Tutup"', false)->assertSee('duration-[var(--dur-base)]', false);
         }
-        $this->blade('<x-ui.modal name="m" title="T" size="sm">x</x-ui.modal>')->assertSee('max-w-[400px]', false);
+        $this->blade('<x-ui.modal name="m" title="T" size="sm">x</x-ui.modal>')->assertSee('max-w-[400px]', false)->assertSee('size-11 lg:size-10', false);
         $this->blade('<x-ui.drawer name="d" title="T">x</x-ui.drawer>')->assertSee('max-w-[720px]', false);
     }
 
@@ -74,7 +78,8 @@ class UiComponentsTest extends TestCase
     {
         $this->blade('<x-ui.toast />')
             ->assertSee('x-on:toast.window', false)
-            ->assertSee("'alert' : 'status'", false)
+            ->assertSee("'alert' : null", false)->assertDontSee("'alert' : 'status'", false)
+            ->assertSee('aria-live="polite"', false)
             ->assertSee('5000', false)
             ->assertSee('aria-label="Tutup notifikasi"', false);
     }

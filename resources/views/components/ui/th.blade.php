@@ -13,7 +13,7 @@
         'text-right' => $numeric,
     ]) }}>
     @if ($sortable)
-        <button type="button" {{ $buttonAttrs }} @class(['-mx-1 inline-flex items-center gap-1 rounded-sm px-1 py-1 hover:text-mint-700', 'flex-row-reverse' => $numeric])>
+        <button type="button" {{ $buttonAttrs }} @class(['-mx-1 inline-flex min-h-11 lg:min-h-0 items-center gap-1 rounded-sm px-1 py-1 hover:text-mint-700', 'flex-row-reverse' => $numeric])>
             {{ $slot }}
             {{ svg('heroicon-m-'.$icon, $direction ? 'size-4' : 'size-4 text-neutral-500') }}
         </button>

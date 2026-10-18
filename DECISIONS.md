@@ -59,3 +59,5 @@
 - `x-ui.switch` memakai checkbox native dengan `role="switch"` (kompatibel dengan `wire:model` dan form biasa); jempol tidak dianimasikan (form, DESIGN §7.5).
 - `x-ui.modal`/`x-ui.drawer` dibuka lewat `wire:model` (x-modelable) atau event window `open-modal`/`close-modal` dengan `{name}`; panel di-teleport ke `<body>`.
 - Tes endpoint update Livewire untuk pengguna wajib-ganti-kata-sandi (`default-livewire.update`) langsung hijau: middleware di grup `web` (Task 1) sudah menanganinya; tes ini mengunci perilaku itu.
+- Review tugas 2: `x-ui.modal`/`x-ui.drawer` memakai `x-trap.noscroll` tanpa `.inert` agar tumpukan toast di `<body>` tetap terbaca dan bisa dijangkau saat dialog terbuka (`aria-modal="true"` tetap). Toast non-galat diumumkan lewat region `aria-live="polite"` yang selalu ada; galat tetap `role="alert"`.
+- Review tugas 2: kartu tautan di dasbor tidak beranimasi (admin.md Motion); `x-ui.card` interaktif hanya berganti warna saat hover. Card-lift (shadow-sm→shadow-md + translate) hanya lewat prop `lift`, untuk halaman publik.

@@ -5,9 +5,11 @@
     $icons = ['success' => 'check-circle', 'error' => 'x-circle', 'info' => 'information-circle', 'warning' => 'exclamation-triangle'];
 @endphp
 <div x-data="{
-        toasts: [], next: 0,
+        toasts: [], next: 0, said: '',
         add(t) {
             const id = this.next++;
+            // Non-errors are announced by writing into the always-present polite region below (reliable); errors use role=alert.
+            if ((t.type ?? 'info') !== 'error') { this.said = ''; this.$nextTick(() => this.said = t.message) }
             this.toasts = [...this.toasts, { id, type: t.type ?? 'info', message: t.message }].slice(-3);
             if (['success', 'info'].includes(t.type ?? 'info')) setTimeout(() => this.remove(id), 5000);
         },
@@ -16,8 +18,9 @@
     x-init="@if (session('toast')) add(@js(session('toast'))) @endif"
     x-on:toast.window="add($event.detail)"
     class="pointer-events-none fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[80] flex flex-col items-center gap-2 lg:inset-x-auto lg:top-4 lg:right-4 lg:bottom-auto lg:items-end">
+    <div class="sr-only" aria-live="polite" aria-atomic="true" x-text="said"></div>
     <template x-for="t in toasts" :key="t.id">
-        <div x-bind:role="t.type === 'error' ? 'alert' : 'status'"
+        <div x-bind:role="t.type === 'error' ? 'alert' : null"
             x-transition:enter="transition duration-[var(--dur-base)] ease-[var(--ease-enter)]"
             x-transition:enter-start="opacity-0 translate-y-4 lg:translate-y-0 lg:translate-x-4"
             x-transition:leave="transition duration-[var(--dur-fast)] ease-[var(--ease-exit)]"
