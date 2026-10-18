@@ -193,4 +193,61 @@ class ObjekTest extends TestCase
         $this->assertDatabaseHas('irban_wilayah', ['irban_id' => $a->id, 'objek_id' => $kec->id]);
         $p->set("selected.{$b->id}", [$kec->id])->call('save', $b->id)->assertHasErrors("selected.{$b->id}");
     }
+
+    public function test_jenis_cannot_leave_wilayah_types_while_assigned_to_an_irban(): void
+    {
+        $dinas = Objek::create(['nama' => 'Dinas A', 'jenis' => 'dinas_badan']);
+        $kec = $this->kec();
+        IrbanWilayah::create(['irban_id' => Irban::factory()->create()->id, 'tahun' => $this->tahun(), 'objek_id' => $dinas->id]);
+        $msgs = $this->msgs(fn () => app(SaveObjek::class)->handle($dinas, 'Dinas A', 'desa', $kec->id));
+        $this->assertContains('Objek yang sudah ditugaskan ke Irban tidak dapat diubah ke jenis yang tidak bisa ditugaskan.', $msgs);
+        $this->assertSame('dinas_badan', $dinas->fresh()->jenis->value);
+        // Moving between eligible jenis stays allowed.
+        $this->assertSame('bumd', app(SaveObjek::class)->handle($dinas, 'Dinas A', 'bumd', null)->jenis->value);
+    }
+
+    public function test_tree_markup_has_treegrid_attributes(): void
+    {
+        $kec = $this->kec();
+        $kids = [app(SaveObjek::class)->handle(null, 'Desa 1', 'desa', $kec->id), app(SaveObjek::class)->handle(null, 'Desa 2', 'desa', $kec->id)];
+        $this->kec('Ujan Mas');
+        $html = Livewire::actingAs($this->admin())->test(ObjekPage::class)->html();
+        $this->assertSame(2, preg_match_all('/role="row"[^>]*aria-level="1"/', $html));
+        $this->assertSame(2, preg_match_all('/role="row"[^>]*aria-level="2"/', $html));
+        $this->assertSame(1, preg_match_all('/tabindex="0"[^>]*data-tree-row|data-tree-row[^>]*tabindex="0"/', $html));
+        $this->assertStringContainsString('aria-controls="anak-'.$kids[0]->id.' anak-'.$kids[1]->id.'"', $html);
+        $this->assertSame(1, substr_count($html, 'id="anak-'.$kids[1]->id.'"'));
+        $this->assertStringNotContainsString('id=""', $html);
+    }
+
+    public function test_search_loads_all_children_when_kecamatan_matches_else_only_matching_children(): void
+    {
+        $kec = $this->kec('Muara Enim');
+        foreach (['Desa Aman', 'Desa Baru', 'Sekolah Cerah'] as $i => $n) {
+            app(SaveObjek::class)->handle(null, $n, $i < 2 ? 'desa' : 'sekolah', $kec->id);
+        }
+        $other = $this->kec('Ujan Mas');
+        app(SaveObjek::class)->handle(null, 'Desa Baru Dua', 'desa', $other->id);
+        $this->kec('Benakat');
+
+        $c = Livewire::actingAs($this->admin())->test(ObjekPage::class)->set('search', 'Muara');
+        $this->assertSame(['Muara Enim'], $c->viewData('rows')->pluck('nama')->all());
+        $this->assertCount(3, $c->viewData('rows')[0]->children);
+
+        $c->set('search', 'Baru');
+        $rows = $c->viewData('rows');
+        $this->assertSame(['Muara Enim', 'Ujan Mas'], $rows->pluck('nama')->all());
+        $this->assertSame(['Desa Baru'], $rows[0]->children->pluck('nama')->all());
+        $this->assertSame(['Desa Baru Dua'], $rows[1]->children->pluck('nama')->all());
+    }
+
+    public function test_garbage_int_query_params_fall_back_without_error(): void
+    {
+        $admin = $this->admin();
+        Irban::factory()->create();
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc'])->test(WilayahPage::class)->assertSet('tahun', $this->tahun());
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc', 'irbanId' => 'xyz'])->test(\App\Livewire\Admin\Tim::class)->assertSet('tahun', $this->tahun())->assertOk();
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => 'abc'])->test(\App\Livewire\Admin\IrbanTahunan::class)->assertSet('tahun', $this->tahun());
+        Livewire::actingAs($admin)->withQueryParams(['tahun' => (string) $this->tahun()])->test(WilayahPage::class)->assertSet('tahun', $this->tahun());
+    }
 }

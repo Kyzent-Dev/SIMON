@@ -137,8 +137,12 @@ class Objek extends Component
         if ($this->tab === 'kecamatan') {
             $rows = Model::where('jenis', 'kecamatan')
                 ->when($term !== '', fn ($q) => $q->where(fn ($q) => $like($q)->orWhereHas('children', $like)))
-                ->with(['children' => fn ($q) => $term !== '' ? $like($q) : $q])
-                ->orderBy('nama')->get();
+                ->with('children')->orderBy('nama')->get();
+            if ($term !== '') {
+                // A matching kecamatan keeps all its children; otherwise only the matching children are shown.
+                $rows->each(fn ($r) => mb_stripos($r->nama, $term) !== false
+                    || $r->setRelation('children', $r->children->filter(fn ($c) => mb_stripos($c->nama, $term) !== false)->values()));
+            }
         } else {
             $rows = Model::where('jenis', $this->tab)->when($term !== '', $like)->orderBy('nama')->get();
         }
