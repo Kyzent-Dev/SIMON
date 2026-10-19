@@ -52,11 +52,16 @@
                             @php
                                 // A parent route with its own child item (irban.spt vs irban.spt.ajukan) matches exactly, so only one item is current.
                                 $exact = collect($groups)->pluck('items')->flatten(1)->contains(fn ($o) => str_starts_with($o['route'], $item['route'].'.'));
-                                $active = $exact ? request()->routeIs($item['route']) : request()->routeIs($item['route'], $item['route'].'.*');
+                                $active = ($exact ? request()->routeIs($item['route']) : request()->routeIs($item['route'], $item['route'].'.*'))
+                                    || ($item['aktif'] && request()->routeIs(...$item['aktif']));
                             @endphp
                             <li>
+                                {{-- Items also current on other routes (spt.show) skip wire:current (URL-prefix only) and re-check Navigation::pola after each navigation. --}}
                                 <a href="{{ route($item['route']) }}" wire:navigate data-nav-link
-                                    @if ($item['route'] !== $user->role->dashboardRoute()) @if ($exact) wire:current.exact @else wire:current @endif @endif
+                                    @if ($item['aktif'])
+                                        wire:current.ignore x-data
+                                        x-init="const cek = () => { const p = location.pathname.replace(/\/+$/, ''); const on = {{ Js::from(\App\Support\Navigation::pola($item, $exact)) }}.some((r) => new RegExp(r).test(p)); $el.toggleAttribute('data-current', on); on ? $el.setAttribute('aria-current', 'page') : $el.removeAttribute('aria-current') }; cek(); document.addEventListener('livewire:navigated', cek)"
+                                    @elseif ($item['route'] !== $user->role->dashboardRoute()) @if ($exact) wire:current.exact @else wire:current @endif @endif
                                     @if ($active) aria-current="page" data-current @endif
                                     class="group relative flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:h-10 data-current:bg-mint-50 data-current:text-mint-700 data-current:before:absolute data-current:before:inset-y-2 data-current:before:left-0 data-current:before:w-[3px] data-current:before:rounded-full data-current:before:bg-mint-700">
                                     {{ svg('heroicon-m-'.$item['icon'], 'size-5 shrink-0') }}

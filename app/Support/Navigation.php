@@ -8,21 +8,21 @@ use Illuminate\Support\Facades\Route;
 /** Sidebar navigation per role (design/dashboard/admin.md "Navigation groups"); one source for the sidebar and the admin quick links. */
 class Navigation
 {
-    /** @return list<array{label: ?string, items: list<array{label: string, route: string, icon: string}>}> */
+    /** @return list<array{label: ?string, items: list<array{label: string, route: string, icon: string, aktif: list<string>}>}> `aktif` = other route names that also mark the item current. */
     public static function groups(Role $role): array
     {
-        $item = fn (string $label, string $route, string $icon) => compact('label', 'route', 'icon');
+        $item = fn (string $label, string $route, string $icon, array $aktif = []) => compact('label', 'route', 'icon', 'aktif');
         $dasbor = [['label' => null, 'items' => [$item('Dasbor', $role->dashboardRoute(), 'home')]]];
 
         $groups = match ($role) {
             Role::Irban => [...$dasbor, ['label' => null, 'items' => [
-                $item('SPT Saya', 'irban.spt', 'document-text'),
+                $item('SPT Saya', 'irban.spt', 'document-text', ['spt.show']),
                 $item('Ajukan Nomor SPT', 'irban.spt.ajukan', 'plus-circle'),
                 $item('Jadwal PKPT', 'irban.pkpt', 'calendar-days'),
             ]]],
             Role::BagianUmum => [...$dasbor, ['label' => null, 'items' => [
                 $item('Kotak Masuk Pengajuan', 'bagian-umum.pengajuan', 'inbox'),
-                $item('Register Nomor SPT', 'bagian-umum.register', 'book-open'),
+                $item('Register Nomor SPT', 'bagian-umum.register', 'book-open', ['spt.show']),
             ]]],
             Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [$item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path')]]],
             Role::Admin => [...$dasbor,
@@ -60,6 +60,19 @@ class Navigation
         }
 
         return $visible;
+    }
+
+    /**
+     * JS-compatible path regexes for an item with `aktif` routes: the persisted sidebar re-checks them after wire:navigate, since wire:current only matches URL prefixes.
+     *
+     * @return list<string>
+     */
+    public static function pola(array $item, bool $exact): array
+    {
+        $path = fn (string $name) => str_replace('__P__', '[^/]+', preg_quote(
+            rtrim(parse_url(url(preg_replace('/\{[^}]+\}/', '__P__', Route::getRoutes()->getByName($name)->uri())), PHP_URL_PATH) ?? '', '/'), '#'));
+
+        return [$exact ? '^'.$path($item['route']).'$' : '^'.$path($item['route']).'(/|$)', ...array_map(fn ($r) => '^'.$path($r).'$', $item['aktif'])];
     }
 
     /** Flat list of every visible item except the role's own dashboard. */

@@ -56,7 +56,7 @@ class KotakMasukTest extends TestCase
         $this->actingAs($this->bu)->get('/bagian-umum/pengajuan')->assertOk()->assertSee('Kotak Masuk Pengajuan')
             ->assertSee('Pintasan keyboard')->assertSee('Semua pengajuan sudah diproses.');
         $links = collect(Navigation::links(Role::BagianUmum));
-        $this->assertSame(['label' => 'Kotak Masuk Pengajuan', 'route' => 'bagian-umum.pengajuan', 'icon' => 'inbox'], $links->firstWhere('route', 'bagian-umum.pengajuan'));
+        $this->assertSame(['label' => 'Kotak Masuk Pengajuan', 'route' => 'bagian-umum.pengajuan', 'icon' => 'inbox', 'aktif' => []], $links->firstWhere('route', 'bagian-umum.pengajuan'));
 
         foreach ([Role::Admin, Role::Pimpinan, Role::Irban] as $role) {
             $u = User::factory()->create(['role' => $role]);

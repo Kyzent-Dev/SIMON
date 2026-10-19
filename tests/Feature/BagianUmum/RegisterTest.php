@@ -80,7 +80,7 @@ class RegisterTest extends TestCase
     public function test_route_nav_and_other_roles_forbidden(): void
     {
         $this->actingAs($this->bu)->get('/bagian-umum/register')->assertOk()->assertSee('Register Nomor SPT')->assertSee('Catat Nomor Manual');
-        $this->assertSame(['label' => 'Register Nomor SPT', 'route' => 'bagian-umum.register', 'icon' => 'book-open'],
+        $this->assertSame(['label' => 'Register Nomor SPT', 'route' => 'bagian-umum.register', 'icon' => 'book-open', 'aktif' => ['spt.show']],
             collect(Navigation::links(Role::BagianUmum))->firstWhere('route', 'bagian-umum.register'));
 
         foreach ([Role::Admin, Role::Pimpinan, Role::Irban] as $role) {

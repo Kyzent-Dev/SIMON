@@ -8,8 +8,6 @@
     $rentang = $item ? $kesesuaian->rentang($item) : null;
     $sesuai = $item && $spt->tanggal_mulai && $spt->tanggal_selesai ? $kesesuaian->sesuai($item, $spt->tanggal_mulai, $spt->tanggal_selesai) : true;
     $menunggu = $spt->status_pengajuan === StatusPengajuan::MenungguNomor;
-    $kejadian = ['dibuat' => 'Dibuat', 'diubah' => 'Diubah', 'diajukan' => 'Diajukan', 'perlu_revisi' => 'Perlu Revisi', 'ditolak' => 'Ditolak',
-        'diterima' => 'Diterima', 'dicatat_manual' => 'Dicatat manual', 'dibatalkan' => 'Dibatalkan'];
     $baris = 'grid gap-1 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4';
 @endphp
 
@@ -29,6 +27,9 @@
             @if (! $item)<x-app.flag jenis="non_pkpt" />@endif
             <span class="text-sm text-neutral-600">{{ $spt->irban->nama }} · {{ $spt->klasifikasi->nama }}</span>
         </div>
+        <a href="{{ route('spt.show', $spt) }}" wire:navigate class="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-mint-700 underline-offset-2 hover:underline lg:min-h-6">
+            Buka halaman detail{{ svg('heroicon-m-arrow-right', 'size-4') }}
+        </a>
     </div>
     <button type="button" x-on:click="tutup()" aria-label="Tutup rincian" x-show="!xl" x-cloak
         class="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 max-md:hidden">
@@ -127,7 +128,7 @@
     <ol class="mt-2 space-y-3 border-l-2 border-neutral-200 pl-4">
         @forelse ($spt->riwayat as $r)
             <li>
-                <p class="font-medium">{{ $kejadian[$r->kejadian] ?? $r->kejadian }}</p>
+                <p class="font-medium">{{ \App\Enums\KejadianSpt::label($r->kejadian) }}</p>
                 <p class="text-xs text-neutral-500 tabular-nums">{{ $r->created_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y H.i') }} WIB · {{ $r->olehUser?->name }}</p>
                 @if ($r->alasan)<p class="mt-1 whitespace-pre-line text-neutral-600">{{ $r->alasan }}</p>@endif
             </li>

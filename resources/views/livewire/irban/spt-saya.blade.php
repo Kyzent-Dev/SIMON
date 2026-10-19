@@ -33,6 +33,7 @@
                     <x-ui.th>Nomor SPT</x-ui.th>
                     <x-ui.th>Penugasan</x-ui.th>
                     <x-ui.th>Tanggal</x-ui.th>
+                    <x-ui.th>Penanda</x-ui.th>
                     <x-ui.th><span class="sr-only">Aksi</span></x-ui.th>
                 </x-slot:head>
                 @foreach ($spt as $s)
@@ -44,6 +45,9 @@
                             <span class="line-clamp-2 text-neutral-600" title="{{ $s->uraian_untuk }}">{{ $s->uraian_untuk ?: '—' }}</span>
                         </td>
                         <td class="whitespace-nowrap">{{ $tanggal($s) ?? '—' }}</td>
+                        <td class="min-w-40 !py-2">
+                            @if ($penanda[$s->id])<span class="flex flex-wrap gap-1">@foreach ($penanda[$s->id] as $p)<x-app.flag :jenis="$p" />@endforeach</span>@else<span class="text-neutral-500">—</span>@endif
+                        </td>
                         <td class="text-right">
                             @if ($bisaUbah($s))
                                 <a href="{{ route('irban.spt.ubah', $s) }}" wire:navigate class="relative inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-mint-700 hover:bg-mint-50 lg:h-9">
@@ -63,6 +67,7 @@
                             <span class="tabular-nums text-neutral-600">{{ $tanggal($s) ?? '—' }}</span>
                         </div>
                         <p class="mt-2">@include('livewire.irban.partials.nomor-spt')</p>
+                        @if ($penanda[$s->id])<p class="mt-2 flex flex-wrap gap-1">@foreach ($penanda[$s->id] as $p)<x-app.flag :jenis="$p" />@endforeach</p>@endif
                         @if ($s->jenisPenugasan)<x-app.type-chip class="mt-2" :color="$s->jenisPenugasan->warna" :label="$s->jenisPenugasan->nama" />@endif
                         <p class="mt-2 line-clamp-2 text-neutral-600">{{ $s->uraian_untuk ?: '—' }}</p>
                         @if ($bisaUbah($s))

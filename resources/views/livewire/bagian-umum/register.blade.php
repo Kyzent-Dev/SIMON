@@ -65,7 +65,7 @@
                         <td class="text-right font-medium">{{ $b[0] }}</td>
                         <td class="whitespace-nowrap">
                             <span class="inline-flex items-center gap-1">
-                                {{ $b[1] }}
+                                <a href="{{ route('spt.show', $s) }}" wire:navigate class="font-medium text-mint-700 underline-offset-2 hover:underline">{{ $b[1] }}</a>
                                 <button type="button" x-data x-on:click="navigator.clipboard?.writeText(@js($b[1])).then(() => $dispatch('toast', { type: 'success', message: 'Nomor disalin' }))"
                                     aria-label="Salin nomor {{ $b[1] }}" class="inline-flex size-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:size-8">
                                     {{ svg('heroicon-m-clipboard', 'size-4') }}
