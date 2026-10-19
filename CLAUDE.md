@@ -17,7 +17,13 @@ Before writing or changing anything visual — Blade views, Blade/Livewire compo
    | Bagian Umum inbox / register | `design/dashboard/_shared.md` + `design/dashboard/bagian-umum.md` |
    | Admin screens | `design/dashboard/_shared.md` + `design/dashboard/admin.md` |
 
-3. If a page file conflicts with `DESIGN.md`, `DESIGN.md` wins. If either conflicts with `PRD` business rules, the PRD wins on behavior and data; `DESIGN.md` wins on visuals. Note the conflict in `DECISIONS.md`.
+3. If a page file conflicts with `DESIGN.md`, `DESIGN.md` wins. If either conflicts with `PRD` business rules, the PRD wins on behavior and data; `DESIGN.md` wins on visuals. Note the conflict in the current phase's decisions file (see "Decisions log" below).
+
+## Decisions log (one file per phase)
+- Record every technical decision or deviation in `decisions/fase-N.md` for the phase being worked on (heading `# Keputusan Fase N`, sections `## Fase N, Task M`). Cross-phase deploy notes go in `decisions/catatan-deploy.md`.
+- `DECISIONS.md` is only an index: never add decisions to it. When starting a new phase, create `decisions/fase-N.md` and add one line to the index.
+- Never edit an earlier phase's file except to fix it; add a new bullet to the current phase instead. This keeps `/graphify . --update` re-extracting only the changed phase file.
+- Put this rule in every plan's Global Constraints and every implementer/subagent prompt that may record a deviation (replace "DECISIONS.md under `## Fase N, Task M`" with "`decisions/fase-N.md` under `## Fase N, Task M`").
 
 ## Hard rules (do not break without asking the user)
 - Colors: use only Tailwind tokens defined in `DESIGN.md` §13 and only the text/background pairs in §3.4. Never use the forbidden combinations in §3.5. No raw hex in Blade except assignment-type colors via `--type` / `--type-fg` CSS variables.
@@ -44,7 +50,7 @@ Session start (mandatory, before the first task of every new session):
 
 Keeping the graph current (automatic, not optional):
 - After adding or changing code, run `graphify update .` before you finish the task or hand back to the user.
-- After changing docs (`DECISIONS.md`, `docs/plans/*`, `PRD`, `DESIGN.md`, `design/*`), run `/graphify . --update` so the semantic nodes are re-extracted.
+- After changing docs (`DECISIONS.md`, `decisions/*`, `docs/plans/*`, `PRD`, `DESIGN.md`, `design/*`), run `/graphify . --update` so the semantic nodes are re-extracted.
 - If the git post-commit hook is installed (`graphify hook status`; install with `graphify hook install`), it also rebuilds the code part of the graph after every commit. It does not cover docs, and it does not replace the steps above.
 
 Rules:
