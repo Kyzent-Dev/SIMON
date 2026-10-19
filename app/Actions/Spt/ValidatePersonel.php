@@ -15,6 +15,26 @@ class ValidatePersonel
      * @param  bool  $lengkap  true for ajukan: also min one, exactly one Ketua, max one Supervisor/Dalnis
      * @return list<array{pegawai_id: int, peran: PeranTim, urutan: int, sumber: string, tim_id: ?int}>
      */
+    /**
+     * The composition rules as booleans, for the form's live strip and for handle(). ikut=false rows are ignored.
+     *
+     * @param  list<array{pegawai_id: int, peran: string, ikut?: bool}>  $rows
+     * @return array{ketua: bool, supervisor: bool, duplikat: bool, jumlah: int} duplikat = true when there is no duplicate
+     */
+    public function cek(array $rows): array
+    {
+        $rows = array_values(array_filter($rows, fn ($r) => ($r['ikut'] ?? true) !== false));
+        $peran = array_count_values(array_map(fn ($r) => (string) ($r['peran'] ?? ''), $rows));
+        $ids = array_column($rows, 'pegawai_id');
+
+        return [
+            'ketua' => ($peran[PeranTim::Ketua->value] ?? 0) === 1,
+            'supervisor' => ($peran[PeranTim::SupervisorDalnis->value] ?? 0) <= 1,
+            'duplikat' => count($ids) === count(array_unique($ids)),
+            'jumlah' => count($rows),
+        ];
+    }
+
     public function handle(array $rows, int $irbanId, array $sudahAda = [], bool $lengkap = true): array
     {
         $rows = array_values(array_filter($rows, fn ($r) => ($r['ikut'] ?? true) !== false));
@@ -44,13 +64,13 @@ class ValidatePersonel
             $hasil[] = ['pegawai_id' => $g->id, 'peran' => $peran, 'urutan' => $i + 1, 'sumber' => $tim ? 'tim' : 'tambahan', 'tim_id' => $tim ? (int) $r['tim_id'] : null];
         }
         if ($lengkap) {
-            $hitung = fn (PeranTim $p) => count(array_filter($hasil, fn ($h) => $h['peran'] === $p));
+            $cek = $this->cek(array_map(fn ($h) => ['pegawai_id' => $h['pegawai_id'], 'peran' => $h['peran']->value], $hasil));
             if (! $rows) {
                 $errors[] = 'Pilih minimal satu personel.';
-            } elseif ($hitung(PeranTim::Ketua) !== 1) {
+            } elseif (! $cek['ketua']) {
                 $errors[] = 'Tetapkan tepat satu Ketua Tim';
             }
-            if ($hitung(PeranTim::SupervisorDalnis) > 1) {
+            if (! $cek['supervisor']) {
                 $errors[] = 'Maksimal satu Supervisor/Dalnis.';
             }
         }

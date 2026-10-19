@@ -11,7 +11,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-/** Irban "SPT Saya": the own irban's SPT with status + year filters (irban.md). Table ≥768, cards below. */
+/** Irban "SPT Saya": the own irban's SPT with status + year filters (irban.md). Table ≥1024, cards below. */
 #[Title('SPT Saya')]
 class SptSaya extends Component
 {
@@ -23,6 +23,7 @@ class SptSaya extends Component
     #[Url]
     public string $tahun = '';
 
+    /** Bound to x-ui.pagination's per-page select, so it cannot be #[Locked]; tampered values are clamped instead. */
     public int $perPage = 25;
 
     public function mount(): void
@@ -33,6 +34,10 @@ class SptSaya extends Component
 
     public function updated(): void
     {
+        $this->irban();
+        if (! in_array($this->perPage, [25, 50, 100], true)) {
+            $this->perPage = 25;
+        }
         $this->resetPage();
     }
 

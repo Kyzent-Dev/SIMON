@@ -3,6 +3,7 @@
 namespace App\Livewire\Irban;
 
 use App\Actions\Spt\SimpanSpt;
+use App\Actions\Spt\ValidatePersonel;
 use App\Enums\KejadianSpt;
 use App\Enums\PeranTim;
 use App\Enums\Role;
@@ -18,7 +19,6 @@ use App\Models\Tim;
 use App\Models\User;
 use App\Services\KesesuaianPkpt;
 use App\Services\SaranUraian;
-use App\Services\Settings;
 use App\Support\DiinputOleh;
 use App\Support\Tanggal;
 use Illuminate\Validation\ValidationException;
@@ -122,7 +122,8 @@ class SptForm extends Component
             'tanggal_selesai' => (string) $spt->tanggal_selesai?->toDateString(), 'ppj_pegawai_id' => $spt->ppj_pegawai_id,
             'catatan_bagian_umum' => (string) $spt->catatan_bagian_umum,
         ]);
-        $this->non_pkpt = ! $spt->pkpt_item_id && $spt->status_pengajuan !== StatusPengajuan::Draf && ! Klasifikasi::find($spt->klasifikasi_id)?->wajib_item_pkpt;
+        // Non-PKPT has no column: it is "no item" under a klasifikasi that does not require one (drafts included).
+        $this->non_pkpt = ! $spt->pkpt_item_id && ! Klasifikasi::find($spt->klasifikasi_id)?->wajib_item_pkpt;
         $this->personel = $spt->personel->map(fn ($p) => ['pegawai_id' => $p->pegawai_id, 'peran' => $p->peran->value, 'sumber' => $p->sumber,
             'tim_id' => $p->tim_id, 'ikut' => true])->all();
         $this->timDipilih = array_values(array_unique(array_filter(array_column($this->personel, 'tim_id'))));
@@ -337,7 +338,7 @@ class SptForm extends Component
         return app(SaranUraian::class)->saran($jenis->nama, collect($this->objek_ids)->map(fn ($id) => $objek[$id] ?? '')->all(), $this->periode_diperiksa);
     }
 
-    public function render(SimpanSpt $action, KesesuaianPkpt $kesesuaian, Settings $settings)
+    public function render(SimpanSpt $action, ValidatePersonel $validatePersonel, KesesuaianPkpt $kesesuaian)
     {
         $user = $this->irban();
         $tahun = DiinputOleh::tahun();
@@ -348,8 +349,6 @@ class SptForm extends Component
         $item = $items->firstWhere('id', $this->pkpt_item_id);
         $aktif = Pegawai::where('aktif', true)->orderBy('nama_bergelar')->get();
         $pegawai = Pegawai::whereIn('id', array_column($this->personel, 'pegawai_id'))->get()->keyBy('id');
-        $ikut = array_values(array_filter($this->personel, fn ($r) => $r['ikut']));
-        $peran = array_count_values(array_column($ikut, 'peran'));
         $objek = Objek::with('parent')->get()->sortBy(fn ($o) => ($o->parent?->nama ?? $o->nama).' '.($o->parent ? $o->nama : ''));
         $mulai = $this->tanggal_mulai && strtotime($this->tanggal_mulai) ? $this->tanggal_mulai : null;
         $selesai = $this->tanggal_selesai && strtotime($this->tanggal_selesai) ? $this->tanggal_selesai : null;
@@ -372,14 +371,9 @@ class SptForm extends Component
             'tims' => Tim::withCount('anggota')->where('irban_id', $user->irban_id)->where('tahun', $tahun)->orderBy('nama')->get(),
             'tahun' => $tahun,
             'pegawai' => $pegawai,
-            'cek' => [
-                'ketua' => ($peran[PeranTim::Ketua->value] ?? 0) === 1,
-                'supervisor' => ($peran[PeranTim::SupervisorDalnis->value] ?? 0) <= 1,
-                'duplikat' => count($ikut) === count(array_unique(array_column($ikut, 'pegawai_id'))),
-                'jumlah' => count($ikut),
-            ],
-            'peringatan' => $action->peringatan($this->only(self::FIELDS)),
-            'durasi' => $mulai && $selesai && $mulai <= $selesai ? Tanggal::durasi($mulai, $selesai, $settings->get('penugasan.hitungan_hari') === 'kerja') : null,
+            'cek' => $validatePersonel->cek($this->personel),
+            'peringatan' => $action->peringatan($this->only(self::FIELDS), $user->irban_id),
+            'durasi' => $mulai && $selesai && $mulai <= $selesai ? Tanggal::durasiPenugasan($mulai, $selesai) : null,
             'saran' => $this->saran(),
             'penginput' => $penginput,
             'catatanRevisi' => $revisi,

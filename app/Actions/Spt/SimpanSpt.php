@@ -34,7 +34,7 @@ use Illuminate\Validation\ValidationException;
  *         diinput_oleh (pegawai id), personel: ordered list of [pegawai_id, peran, sumber 'tim'|'tambahan', tim_id|null, ikut bool]
  *         (ikut=false rows are dropped before validation and storage).
  * Failures throw ValidationException keyed by field ('personel', 'lampiran', and 'spt' for a locked SPT included).
- * After handle(), $peringatan holds the non-blocking warnings (also available live through peringatan($data)).
+ * After handle(), $peringatan holds the non-blocking warnings (also available live through peringatan($data, $irbanId)).
  */
 class SimpanSpt
 {
@@ -58,7 +58,7 @@ class SimpanSpt
 
         [$kolom, $objekIds, $personel] = $this->validasi($user, $user->irban_id, $spt, $data, $ajukan);
         $this->cekLampiran($lampiran);
-        $this->peringatan = $this->peringatan($data);
+        $this->peringatan = $this->peringatan($data, $user->irban_id);
 
         $path = null;
         try {
@@ -128,9 +128,9 @@ class SimpanSpt
      *
      * @return list<string>
      */
-    public function peringatan(array $data): array
+    public function peringatan(array $data, int $irbanId): array
     {
-        $item = PkptItem::with('pkpt')->find($this->int($data['pkpt_item_id'] ?? null));
+        $item = PkptItem::with('pkpt')->where('irban_id', $irbanId)->find($this->int($data['pkpt_item_id'] ?? null));
         if (! $item) {
             return [];
         }

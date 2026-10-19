@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
 use App\Enums\SumberSpt;
-use App\Services\Settings;
 use App\Support\Tanggal;
 use Database\Factories\SptFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -81,7 +80,7 @@ class Spt extends Model
             return null;
         }
 
-        return Tanggal::durasi($this->tanggal_mulai, $this->tanggal_selesai, app(Settings::class)->get('penugasan.hitungan_hari') === 'kerja');
+        return Tanggal::durasiPenugasan($this->tanggal_mulai, $this->tanggal_selesai);
     }
 
     public function irban()

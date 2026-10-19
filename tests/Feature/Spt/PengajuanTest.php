@@ -3,6 +3,7 @@
 namespace Tests\Feature\Spt;
 
 use App\Actions\Spt\SimpanSpt;
+use App\Actions\Spt\ValidatePersonel;
 use App\Enums\PeranTim;
 use App\Enums\StatusPengajuan;
 use App\Models\Irban;
@@ -196,7 +197,7 @@ class PengajuanTest extends TestCase
     public function test_pkpt_draf_warns_and_blocks_by_setting(): void
     {
         $this->item->pkpt->forceFill(['status' => 'draf'])->save();
-        $this->assertContains('PKPT belum disahkan.', app(SimpanSpt::class)->peringatan($this->data()));
+        $this->assertContains('PKPT belum disahkan.', app(SimpanSpt::class)->peringatan($this->data(), $this->irban->id));
 
         $action = app(SimpanSpt::class);
         $spt = $action->handle($this->user, null, $this->data(), 'ajukan');
@@ -211,11 +212,33 @@ class PengajuanTest extends TestCase
     public function test_out_of_pkpt_warning_text_and_never_blocks(): void
     {
         $data = $this->data(['tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-10']);
-        $this->assertSame(['Di luar jadwal PKPT (2–20 Maret 2026). SPT akan ditandai Tidak Sesuai PKPT.'], app(SimpanSpt::class)->peringatan($data));
+        $this->assertSame(['Di luar jadwal PKPT (2–20 Maret 2026). SPT akan ditandai Tidak Sesuai PKPT.'], app(SimpanSpt::class)->peringatan($data, $this->irban->id));
         $this->assertSame(StatusPengajuan::MenungguNomor, $this->simpan($data)->status_pengajuan);
 
-        $this->assertSame([], app(SimpanSpt::class)->peringatan($this->data()));
-        $this->assertSame([], app(SimpanSpt::class)->peringatan($this->data(['pkpt_item_id' => null, 'tanggal_mulai' => null])));
+        $this->assertSame([], app(SimpanSpt::class)->peringatan($this->data(), $this->irban->id));
+        $this->assertSame([], app(SimpanSpt::class)->peringatan($this->data(['pkpt_item_id' => null, 'tanggal_mulai' => null]), $this->irban->id));
+    }
+
+    public function test_peringatan_ignores_item_of_another_irban(): void
+    {
+        $this->item->pkpt->forceFill(['status' => 'draf'])->save();
+        $lain = PkptItem::factory()->create(['pkpt_id' => $this->item->pkpt_id, 'irban_id' => Irban::factory()->create()->id,
+            'tanggal_mulai' => '2026-01-05', 'tanggal_selesai' => '2026-01-09']);
+
+        $this->assertSame([], app(SimpanSpt::class)->peringatan($this->data(['pkpt_item_id' => $lain->id]), $this->irban->id));
+        $this->assertNotSame([], app(SimpanSpt::class)->peringatan($this->data(['pkpt_item_id' => $lain->id]), $lain->irban_id));
+    }
+
+    public function test_cek_personel_summarises_the_rules_used_by_handle(): void
+    {
+        $cek = app(ValidatePersonel::class);
+        $row = fn ($id, $peran, $ikut = true) => ['pegawai_id' => $id, 'peran' => $peran, 'ikut' => $ikut];
+
+        $this->assertSame(['ketua' => true, 'supervisor' => true, 'duplikat' => true, 'jumlah' => 2],
+            $cek->cek([$row(1, 'ketua'), $row(2, 'anggota'), $row(3, 'ketua', false)]));
+        $this->assertSame(['ketua' => false, 'supervisor' => false, 'duplikat' => false, 'jumlah' => 4],
+            $cek->cek([$row(1, 'supervisor_dalnis'), $row(2, 'supervisor_dalnis'), $row(3, 'anggota'), $row(3, 'anggota')]));
+        $this->assertSame(['ketua' => false, 'supervisor' => true, 'duplikat' => true, 'jumlah' => 0], $cek->cek([]));
     }
 
     public function test_transitions(): void

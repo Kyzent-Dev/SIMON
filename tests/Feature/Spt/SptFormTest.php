@@ -305,6 +305,16 @@ class SptFormTest extends TestCase
             ->assertSet('personel.0.pegawai_id', $this->budi->id)->assertSet('personel.0.peran', 'ketua');
     }
 
+    public function test_draf_saved_as_non_pkpt_reloads_checked(): void
+    {
+        $this->form()->set('diinput_oleh', $this->budi->id)->set('klasifikasi_id', $this->klas('KHUSUS'))
+            ->set('non_pkpt', true)->call('simpan')->assertHasNoErrors();
+        $this->form(Spt::sole())->assertSet('non_pkpt', true);
+
+        $reguler = Spt::factory()->create(['irban_id' => $this->irban->id, 'klasifikasi_id' => $this->klas('REGULER'), 'pkpt_item_id' => null]);
+        $this->form($reguler)->assertSet('non_pkpt', false);
+    }
+
     public function test_edit_only_own_irban_and_editable_statuses(): void
     {
         $lain = Spt::factory()->create();
@@ -334,6 +344,12 @@ class SptFormTest extends TestCase
         $page->set('status', 'menunggu_nomor')->assertSee('Menunggu milik saya')->assertDontSee('Draf milik saya');
         $page->set('status', 'penyusunan_laporan')->assertSee('Bernomor milik saya')->assertDontSee('Menunggu milik saya');
         $page->set('status', '')->set('tahun', '2025')->assertDontSee('Draf milik saya')->assertSee('Belum ada SPT');
+    }
+
+    public function test_spt_saya_per_page_is_clamped(): void
+    {
+        Livewire::actingAs($this->user)->test(SptSaya::class)->set('perPage', 100000)->assertSet('perPage', 25)
+            ->set('perPage', 50)->assertSet('perPage', 50);
     }
 
     public function test_spt_saya_empty_state_cta(): void

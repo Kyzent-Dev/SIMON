@@ -37,9 +37,9 @@
             e.preventDefault();
             const k = e.target.dataset.fokus ?? 'nama';
             const up = e.key === 'ArrowUp';
-            if (e.altKey) { this.tujuan = { id, k }; $wire[up ? 'naik' : 'turun'](id); return; }
             const row = e.target.closest('[data-row]');
             const next = up ? row.previousElementSibling : row.nextElementSibling;
+            if (e.altKey) { if (next) { this.tujuan = { id, k }; $wire[up ? 'naik' : 'turun'](id) } return; }
             if (next) this.fokus(next.dataset.row, k);
         },
         fokus(id, k) {

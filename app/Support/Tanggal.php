@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 
@@ -20,6 +21,12 @@ class Tanggal
         }
 
         return $m->format('j').'–'.$s->translatedFormat('j F Y');
+    }
+
+    /** Assignment duration: kalender or kerja per `penugasan.hitungan_hari` (one place for Spt::durasi() and the form). */
+    public static function durasiPenugasan(DateTimeInterface|string $mulai, DateTimeInterface|string $selesai): int
+    {
+        return self::durasi($mulai, $selesai, app(Settings::class)->get('penugasan.hitungan_hari') === 'kerja');
     }
 
     /** Inclusive day count; $kerja counts Monday–Friday only (no holiday calendar). */
