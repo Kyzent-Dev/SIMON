@@ -183,3 +183,13 @@
 - Drawer 768–1279 dan halaman penuh di bawah 768 adalah satu elemen detail yang posisinya diatur CSS (bukan `x-ui.drawer`), agar detail hanya dirender sekali; tanpa animasi geser (batas ≤220ms dipenuhi dengan nol). Di bawah 768 filter dibuka sebagai panel lipat "Filter (n)" di tempat, bukan bottom drawer (DESIGN §11) — cukup untuk tiga isian.
 - Detail belum memuat "PKPT link" ke halaman lain dan komentar (halaman detail SPT Fase 5, komentar Fase 7); item PKPT ditampilkan dengan jadwal berlaku dan catatan di luar jadwal. Helper modal catatan: "Catatan akan dikirim ke {irban}. Minimal 10 karakter."
 - Uji proses konkurensi ditambah varian `TerimaPengajuan` dari 5 proses pada SPT berbeda (`tests/Support/ambil-nomor.php` menerima argumen opsional spt id + user id).
+
+## Fase 4, Task 5
+
+- Catat Nomor Manual does not take a typed number: the number comes from the same locked `Penomoran::ambil` sequence as accepted submissions (PRD §7.7 wins over the typed nomor field in bagian-umum.md). The form shows the `pratinjau` before confirming and the toast shows the issued number.
+- PDF export uses `barryvdh/laravel-dompdf` ^3.1 (Packagist release 3.1.2 requires `illuminate/support ^13.0`, so it is compatible). A4 landscape, built-in DejaVu Sans, synchronous. Dompdf's embedded font makes the file about 0.9 MB.
+- Table, Excel and PDF share `App\Services\RegisterNomor` (query, row cells, filter summary), so exported values equal the table. Export file names: `register-nomor-spt-{tahun}.xlsx` / `.pdf`.
+- Register month filter is the month of `tanggal_spt`; the status filter uses the computed `StatusSpt` through `Spt::scopeBerstatus`, limited to the statuses a numbered SPT can have. The per-page select of `x-ui.pagination` offers only 100 (fixed by the spec).
+- "Batalkan Nomor" row action is an icon-only danger button (`no-symbol`, `aria-label="Batalkan Nomor {nomor}"`) placed right after Status so it stays visible when the table scrolls sideways at 1280 with the sidebar open; Keterangan is the last column and scrolls inside the table container. Tampered or non-`diterima` ids passed to `bukaBatal` are ignored (no modal opens) and the action re-checks the status under lock.
+- "Atur nomor awal" is for the selected year only. With `penomoran.scope` = per_irban the modal asks for an Irban; once any SPT holds a number on a global register the page button is disabled with an explanation, and the modal shows the same message for a per-Irban register.
+- `phpunit.xml` now sets `memory_limit` 512M: the full suite (366 tests) crashed the PHP process at the 128M default.

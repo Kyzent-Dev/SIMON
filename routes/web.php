@@ -19,6 +19,7 @@ use App\Livewire\Admin\PkptImpor;
 use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\WilayahIrban;
 use App\Livewire\BagianUmum\Pengajuan as BagianUmumPengajuan;
+use App\Livewire\BagianUmum\Register as BagianUmumRegister;
 use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
 use App\Livewire\Irban\SptSaya;
@@ -71,4 +72,5 @@ Route::middleware('auth')->group(function () {
     });
     Route::view('/bagian-umum', 'dashboard.bagian-umum')->name('bagian-umum.dashboard')->middleware('role:bagian_umum');
     Route::get('/bagian-umum/pengajuan', BagianUmumPengajuan::class)->name('bagian-umum.pengajuan')->middleware('role:bagian_umum');
+    Route::get('/bagian-umum/register', BagianUmumRegister::class)->name('bagian-umum.register')->middleware('role:bagian_umum');
 });
