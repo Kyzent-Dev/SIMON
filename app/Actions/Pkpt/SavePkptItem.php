@@ -27,7 +27,10 @@ class SavePkptItem
         $dates = [];
         foreach (['tanggal_mulai' => 'Tanggal mulai', 'tanggal_selesai' => 'Tanggal selesai'] as $f => $label) {
             try {
-                $dates[$f] = CarbonImmutable::parse((string) ($data[$f] ?? ''))->startOfDay();
+                if (blank($data[$f] ?? null)) {
+                    throw new \InvalidArgumentException;
+                }
+                $dates[$f] = CarbonImmutable::parse($data[$f])->startOfDay();
             } catch (\Throwable) {
                 $errors[$f] = "{$label} wajib diisi.";
             }

@@ -70,6 +70,12 @@ class PkptRulesTest extends TestCase
         $this->assertRejected(fn () => $save(['irban_id' => 999999]), 'irban_id', 'Pilih irban.');
         $this->assertRejected(fn () => $save(['jenis_penugasan_id' => null]), 'jenis_penugasan_id', 'Pilih jenis penugasan.');
 
+        foreach ([null, '', '  '] as $blank) {
+            $this->assertRejected(fn () => $save(['tanggal_mulai' => $blank]), 'tanggal_mulai', 'Tanggal mulai wajib diisi.');
+            $this->assertRejected(fn () => $save(['tanggal_selesai' => $blank]), 'tanggal_selesai', 'Tanggal selesai wajib diisi.');
+        }
+        $this->assertRejected(fn () => (new SavePkptItem)->handle($pkpt, null, array_diff_key($this->itemData(), ['tanggal_mulai' => 1])), 'tanggal_mulai', 'Tanggal mulai wajib diisi.');
+
         $item = $save(['tanggal_mulai' => '2026-01-01', 'tanggal_selesai' => '2026-12-31', 'target_spt' => '999']);
         $this->assertSame('2026-12-31', $item->fresh()->tanggal_selesai->toDateString());
         $this->assertSame(999, $item->fresh()->target_spt);
