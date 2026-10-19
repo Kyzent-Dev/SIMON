@@ -15,9 +15,9 @@ class JenisPenugasan extends Model
 
     protected $table = 'jenis_penugasan';
 
-    /** shortcut: nothing references jenis_penugasan until PKPT (Fase 3); check the PKPT item table there, then. */
+    /** True when a pkpt_item points at this type, so it cannot be deleted. */
     public function isReferenced(): bool
     {
-        return false;
+        return PkptItem::where('jenis_penugasan_id', $this->id)->exists();
     }
 }

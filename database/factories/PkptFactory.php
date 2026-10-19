@@ -1,0 +1,30 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Enums\StatusPkpt;
+use App\Models\Pkpt;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/** @extends Factory<Pkpt> */
+class PkptFactory extends Factory
+{
+    protected $model = Pkpt::class;
+
+    public function definition(): array
+    {
+        return ['tahun' => fake()->unique()->numberBetween(2000, 2030), 'nomor_sk' => null, 'tanggal_sk' => null, 'status' => StatusPkpt::Draf];
+    }
+
+    public function disahkan(): static
+    {
+        return $this->state(fn (array $a) => [
+            'status' => StatusPkpt::Disahkan,
+            'nomor_sk' => '100.3.3.2/1/KPTS/INSPEKTORAT/'.$a['tahun'],
+            'tanggal_sk' => $a['tahun'].'-01-02',
+            'disahkan_pada' => now(),
+            'disahkan_oleh' => User::factory()->admin(),
+        ]);
+    }
+}

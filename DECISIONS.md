@@ -90,3 +90,9 @@
 
 ## Catatan deploy
 - `Cache::lock` per tahun (`irban-tahunan-{tahun}`, `irban-wilayah-{tahun}`) hanya melindungi bila cache store dipakai bersama semua proses: produksi wajib `CACHE_STORE=database` atau `redis` (bukan `array`/`file` per server). Indeks unik tetap menjadi jaring pengaman untuk Pegawai, Irban, Tim dan impor; pelanggarannya dikembalikan sebagai galat validasi, bukan 500.
+
+## Fase 3, Task 1
+- `SavePkpt` menolak perubahan tahun selama PKPT Draf masih punya item (item sudah divalidasi terhadap tahun lama); plan tidak menyebut ini.
+- `SahkanPkpt::handle(Pkpt, User)`; semua aturan Draf memakai `SavePkpt::ensureDraf()` (pesan di kunci `pkpt`). `SavePkptItem::validated()` bersifat static agar dapat dipakai impor (Task 3).
+- `PkptItem::revisiDisetujuiTerakhir()` berupa method query segar (bukan relation) agar tidak basi setelah keputusan revisi. `Pkpt` punya default atribut `status = draf` supaya model baru langsung berstatus Draf.
+- Penguncian antar-proses (sahkan vs. tambah item bersamaan) belum ada; mengandalkan pengecekan status per aksi.

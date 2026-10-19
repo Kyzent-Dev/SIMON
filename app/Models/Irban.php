@@ -29,6 +29,6 @@ class Irban extends Model
     public function isReferenced(): bool
     {
         return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists() || Tim::where('irban_id', $this->id)->exists()
-            || IrbanWilayah::where('irban_id', $this->id)->exists();
+            || IrbanWilayah::where('irban_id', $this->id)->exists() || PkptItem::where('irban_id', $this->id)->exists();
     }
 }
