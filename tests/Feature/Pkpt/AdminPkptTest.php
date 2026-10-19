@@ -74,7 +74,7 @@ class AdminPkptTest extends TestCase
         $this->actingAs($admin)->get('/admin/pkpt')->assertOk()
             ->assertSee('href="'.route('admin.pkpt').'"', false)->assertSee('PKPT');
         $this->actingAs($admin)->get("/admin/pkpt/{$pkpt->id}")->assertOk()->assertSee('PKPT 2026');
-        $this->actingAs($admin)->get("/admin/pkpt/{$pkpt->id}/impor")->assertOk()->assertSee('Segera tersedia');
+        $this->actingAs($admin)->get("/admin/pkpt/{$pkpt->id}/impor")->assertOk()->assertSee('Impor Item PKPT 2026');
     }
 
     public function test_list_renders_rows_with_tags(): void

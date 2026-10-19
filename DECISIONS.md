@@ -107,3 +107,10 @@
 - Halaman `admin.pkpt.impor` sementara hanya placeholder "Segera tersedia" (komponen `Admin\PkptImpor`); Task 3 menggantinya.
 - Durasi pada baris input tidak dihitung langsung saat mengetik; "Durasi: N hari" tampil setelah item disimpan.
 - Tidak ada breadcrumb di halaman PKPT (halaman Livewire lain juga belum memakainya); halaman editor memakai tautan "Kembali ke daftar".
+
+## Fase 3, Task 3
+- Aturan item per baris memakai `SavePkptItem::validated()` (tanpa duplikasi aturan). Pesan irban/jenis tidak ditemukan dan format tanggal diganti pesan khusus impor; sel irban/jenis kosong memberi "Irban wajib diisi." / "Jenis penugasan wajib diisi.".
+- Sel angka pada kolom tanggal dianggap serial tanggal Excel (disimpan di state Livewire sebagai string digit, dikenali dari bentuknya); string hanya `dd/mm/yyyy` atau `yyyy-mm-dd` yang ketat (tanggal mustahil seperti 31/02 ditolak). `target_spt` kosong menjadi null.
+- Duplikat = irban + jenis + tanggal mulai + tanggal selesai (keterangan dan target diabaikan), terhadap item yang sudah ada maupun baris sebelumnya di berkas; hanya baris tanpa galat yang dihitung. Duplikat berstatus peringatan dan dilewati bila "Lewati duplikat" dicentang (default); tombol impor menghitung sesuai.
+- `ImportPkptItems` memvalidasi ulang tiap baris dan memeriksa status Draf di dalam transaksi; PKPT yang disahkan setelah pratinjau menolak impor (toast galat, tidak ada item tersimpan). Halaman PKPT Disahkan hanya menampilkan peringatan, tanpa stepper dan kontrol unggah.
+- Pada baris dengan tanggal tak terbaca, kolom Jadwal pratinjau menampilkan "—" (nilai mentah tidak disimpan di data baris); pesan galatnya tetap jelas.
