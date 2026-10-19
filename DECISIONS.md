@@ -127,3 +127,11 @@
 - Pilihan tahun = tahun yang punya PKPT plus tahun berjalan (default tahun berjalan).
 - Seeder dev: `TimSeeder` kini juga membuat Komposisi Irban Tahunan Irban I tahun berjalan (PPJ + 3 anggota) supaya "Diinput oleh" punya pilihan.
 - `PkptFactory`: tahun default kini 2100–2999 (tidak bertabrakan dengan tahun eksplisit di test), dan `disahkan()` membentuk nomor/tanggal SK dari tahun akhir lewat closure atribut.
+
+## Fase 3, Task 5
+- `PutuskanRevisiJadwal` membatasi komentar maksimal 1000 karakter ("Komentar maksimal 1000 karakter."), diperiksa setelah syarat alasan penolakan.
+- Halaman `pimpinan.revisi-jadwal`: kartu revisi menunggu urut terlama dulu (`created_at`, lalu `id`); dua kolom di ≥1280. Baris pengaju: "Diajukan {tanggal} · Diinput oleh **{pegawai}** (akun {akun})"; bila `diinput_oleh` kosong: "oleh akun **{akun}**".
+- Mini-bar (`x-app.revisi-lane`): satu lajur 12 bulan tahun PKPT; semula = outline putus-putus 2px `--type` 70% (`color-mix`) setinggi lajur, usulan = batang solid `--type` lebih tipis di atasnya supaya keduanya tetap terlihat saat tumpang tindih. Lajur `aria-hidden`; arti dinyatakan di daftar teks "Semula …/Usulan … · N hari" di bawahnya. Label bulan 3 huruf, 1 huruf di bawah 640px.
+- Tombol "Tolak" memakai varian baru `danger-outline` di `x-ui.button` (danger-700 di atas putih; hover putih di atas danger-700, keduanya pasangan §3.4).
+- Modal "Setujui Revisi Jadwal" (komentar opsional) dan "Tolak Revisi Jadwal" (alasan wajib) menjelaskan akibatnya. Membuka revisi yang sudah diputuskan memberi toast "Revisi ini sudah diputuskan."; id yang tidak ada = 404. Setelah keputusan, fokus pindah ke judul "Menunggu Persetujuan Anda" (`tabindex=-1`, event `revisi-diputuskan`), karena kartu dan tombol pemicunya hilang.
+- Riwayat keputusan: tabel compact, filter "Tahun PKPT" (tahun PKPT item; pilihan = tahun yang punya PKPT plus tahun berjalan, seperti halaman Irban; default tahun berjalan), urut `diputuskan_pada` terbaru, paginasi 25/50/100. Sel "Semula → Baru" diberi `relative` agar span `sr-only` di dalamnya tidak melebarkan halaman di 360px.

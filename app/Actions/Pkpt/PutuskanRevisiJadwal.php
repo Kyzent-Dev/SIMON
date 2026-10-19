@@ -25,6 +25,9 @@ class PutuskanRevisiJadwal
             if (! $setujui && $komentar === '') {
                 throw ValidationException::withMessages(['komentar' => 'Alasan penolakan wajib diisi.']);
             }
+            if (mb_strlen($komentar) > 1000) {
+                throw ValidationException::withMessages(['komentar' => 'Komentar maksimal 1000 karakter.']);
+            }
             $locked->forceFill([
                 'status' => $setujui ? StatusRevisi::Disetujui : StatusRevisi::Ditolak,
                 'diputuskan_oleh' => $user->id, 'diputuskan_pada' => now(),

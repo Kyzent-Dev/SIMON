@@ -16,6 +16,7 @@ class Navigation
 
         $groups = match ($role) {
             Role::Irban => [...$dasbor, ['label' => null, 'items' => [$item('Jadwal PKPT', 'irban.pkpt', 'calendar-days')]]],
+            Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [$item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path')]]],
             Role::Admin => [...$dasbor,
                 ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],
                 ['label' => 'Master Data', 'items' => [

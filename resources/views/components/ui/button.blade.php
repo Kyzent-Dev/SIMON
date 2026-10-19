@@ -9,6 +9,7 @@
         'secondary' => 'bg-white text-mint-700 border border-border-strong enabled:hover:bg-mint-50',
         'ghost' => 'bg-transparent text-mint-700 enabled:hover:bg-mint-50',
         'danger' => 'bg-danger-700 text-white',
+        'danger-outline' => 'bg-white text-danger-700 border border-danger-700 enabled:hover:bg-danger-700 enabled:hover:text-white',
         'brand-soft' => 'bg-mint-300 text-mint-950',
     ];
     $sizes = ['sm' => 'h-8 px-3 text-sm', 'md' => 'h-11 lg:h-10 px-4 text-sm', 'lg' => 'h-12 px-5 text-base'];
