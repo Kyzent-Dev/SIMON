@@ -3,7 +3,7 @@
      `ganti` is false it shows as a mint-50 chip button "Ganti penginput, saat ini …" that calls the host's `gantiPenginput()`; otherwise a required
      combobox ("Budi Santoso · …0012"), focused when it replaces the chip. Never hidden. No list → warning that the admin must fill Komposisi Irban Tahunan. --}}
 @use('App\Support\DiinputOleh')
-@props(['pegawai', 'value' => null, 'ganti' => false, 'error' => null])
+@props(['pegawai', 'value' => null, 'ganti' => false, 'error' => null, 'dropUp' => false])
 
 @php
     $helper = 'Pilih pegawai yang benar-benar melakukan input ini.';
@@ -29,7 +29,7 @@
         <div @if ($ganti) x-init="$nextTick(() => $el.querySelector('input')?.focus())" @endif>
             <x-ui.combobox name="diinput_oleh" label="Diinput oleh" icon="user-circle" required placeholder="Cari nama penginput"
                 :options="$pegawai->mapWithKeys(fn ($p) => [$p->id => DiinputOleh::label($p)])->all()"
-                :helper="$helper" :error="$error" {{ $attributes->whereStartsWith('wire:model') }} />
+                :drop-up="$dropUp" :helper="$helper" :error="$error" {{ $attributes->whereStartsWith('wire:model') }} />
         </div>
     @endif
 </div>

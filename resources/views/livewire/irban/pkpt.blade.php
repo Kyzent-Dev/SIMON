@@ -7,7 +7,7 @@
     $tahun = (int) $this->tahun;
     $disahkan = $pkpt?->status === \App\Enums\StatusPkpt::Disahkan;
 @endphp
-<div>
+<div x-on:revisi-terkirim.window="setTimeout(() => [...document.querySelectorAll(`[data-menunggu='${$event.detail.id}']`)].find((e) => e.offsetParent)?.focus(), 50)">
     <x-ui.page-header title="Jadwal PKPT" :description="'Item PKPT '.$irbanNama.' yang sudah disahkan. Ajukan revisi bila jadwal perlu digeser; revisi berlaku setelah disetujui pimpinan.'">
         @if ($disahkan)
             <x-slot:meta>
@@ -110,11 +110,14 @@
                 <x-ui.textarea label="Alasan revisi" name="alasan" wire:model="alasan" rows="3" maxlength="1000" required
                     helper="Jelaskan mengapa jadwal perlu diubah (maksimal 1000 karakter)." :error="$errors->first('alasan')" />
 
-                <x-app.diinput-oleh :pegawai="$penginput" :value="$diinput_oleh" :ganti="$ganti" :error="$errors->first('diinput_oleh')"
-                    wire:model.live="diinput_oleh" class="border-t border-neutral-200 pt-4" />
             </form>
         @endif
         <x-slot:footer>
+            {{-- login.md §5: Diinput oleh lives in the modal's sticky footer, full width above the buttons. --}}
+            @if ($aktif)
+                <x-app.diinput-oleh :pegawai="$penginput" :value="$diinput_oleh" :ganti="$ganti" :error="$errors->first('diinput_oleh')" drop-up
+                    wire:model.live="diinput_oleh" class="w-full text-left" />
+            @endif
             <x-ui.button type="button" variant="ghost" x-on:click="$dispatch('close-modal', { name: 'revisi-jadwal' })">Batal</x-ui.button>
             @php $nama = $diinput_oleh ? $penginput->firstWhere('id', $diinput_oleh)?->nama_bergelar : null; @endphp
             <x-ui.button form="form-revisi" icon="paper-airplane" wire:loading.attr="disabled" wire:target="kirim" class="max-sm:w-full">

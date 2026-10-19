@@ -14,7 +14,7 @@ class PkptFactory extends Factory
 
     public function definition(): array
     {
-        // Far outside the years tests hard-code (2024–2027), so a random default never collides with an explicit one.
+        // Far outside the years tests hard-code (2024-2027), so a random default never collides with an explicit one.
         return ['tahun' => fake()->unique()->numberBetween(2100, 2999), 'nomor_sk' => null, 'tanggal_sk' => null, 'status' => StatusPkpt::Draf];
     }
 

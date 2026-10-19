@@ -95,6 +95,8 @@ class Pkpt extends Component
             DiinputOleh::ingat($user, $this->diinput_oleh);
         }
         $this->open = false;
+        // The trigger becomes a disabled button, so the view moves focus to the item's "menunggu" reason instead.
+        $this->dispatch('revisi-terkirim', id: $item->id);
         $this->dispatch('toast', type: 'success', message: 'Revisi jadwal diajukan. Menunggu persetujuan pimpinan.');
     }
 

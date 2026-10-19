@@ -1,8 +1,8 @@
 {{-- DESIGN §8 x-ui.combobox: Alpine listbox (role=combobox, aria-expanded, aria-activedescendant, aria-controls). Single or `multiple` (selected items become removable chips).
      Search is CLIENT-SIDE: the full `options` ([value => label]) are passed in and filtered in the browser (fine for a few hundred pegawai; for large sets switch to a
      Livewire query debounced 250ms). "Tidak ditemukan" shows when nothing matches. Bind with wire:model (x-modelable): an int/null (single) or a list of ints (multiple).
-     Keys: ArrowDown/Up move (and open), Enter picks, Esc closes, Backspace on empty search removes the last chip. --}}
-@props(['name', 'label', 'options' => [], 'multiple' => false, 'id' => null, 'placeholder' => 'Cari…', 'error' => null, 'helper' => null, 'required' => false, 'icon' => null])
+     `drop-up` opens the list above the field (e.g. in a modal footer). Keys: ArrowDown/Up move (and open), Enter picks, Esc closes, Backspace on empty search removes the last chip. --}}
+@props(['name', 'label', 'options' => [], 'multiple' => false, 'id' => null, 'placeholder' => 'Cari…', 'error' => null, 'helper' => null, 'required' => false, 'icon' => null, 'dropUp' => false])
 
 @php
     $id ??= $name;
@@ -71,7 +71,7 @@
     </div>
 
     <ul id="{{ $id }}-listbox" role="listbox" aria-label="{{ $label }}" @if ($multiple) aria-multiselectable="true" @endif x-show="open" x-cloak
-        class="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-md border border-neutral-200 bg-white py-1 shadow-md">
+        class="absolute z-30 {{ $dropUp ? 'bottom-full mb-1' : 'mt-1' }} max-h-60 w-full overflow-auto rounded-md border border-neutral-200 bg-white py-1 shadow-md">
         <template x-for="(o, i) in filtered" :key="o.value">
             <li role="option" x-bind:id="'{{ $id }}-opt-' + o.value" x-bind:aria-selected="isSel(o).toString()" aria-selected="false"
                 x-on:mousedown.prevent="pick(o)" x-on:mousemove="active = i"
