@@ -32,6 +32,7 @@ class Spt extends Model
             'tanggal_spt' => 'immutable_date',
             'tanggal_lhp' => 'immutable_date',
             'diajukan_pada' => 'immutable_datetime',
+            'ditandai_selesai_pada' => 'immutable_datetime',
         ];
     }
 
@@ -50,25 +51,27 @@ class Spt extends Model
 
     private function statusBerjalan(): StatusSpt
     {
-        // Fase 5: return StatusSpt::Selesai here when the klasifikasi's syarat selesai are met (before the date checks).
+        if ($this->ditandai_selesai_pada !== null) {
+            return StatusSpt::Selesai;
+        }
         $hariIni = now('Asia/Jakarta')->toDateString();
         if ($this->tanggal_mulai === null || $hariIni < $this->tanggal_mulai->toDateString()) {
             return StatusSpt::SiapDilaksanakan;
         }
 
-        return $hariIni <= $this->tanggal_selesai?->toDateString() ? StatusSpt::Pelaksanaan : StatusSpt::PenyusunanLaporan;
+        return $this->tanggal_selesai === null || $hariIni <= $this->tanggal_selesai->toDateString() ? StatusSpt::Pelaksanaan : StatusSpt::PenyusunanLaporan;
     }
 
     /** SQL twin of status() for list filters; keep both in step. */
     public function scopeBerstatus(Builder $q, StatusSpt $status): void
     {
         $hariIni = now('Asia/Jakarta')->toDateString();
-        $diterima = fn () => $q->where('status_pengajuan', StatusPengajuan::Diterima);
+        $diterima = fn () => $q->where('status_pengajuan', StatusPengajuan::Diterima)->whereNull('ditandai_selesai_pada');
         match ($status) {
             StatusSpt::SiapDilaksanakan => $diterima()->where(fn ($w) => $w->whereNull('tanggal_mulai')->orWhereDate('tanggal_mulai', '>', $hariIni)),
             StatusSpt::Pelaksanaan => $diterima()->whereDate('tanggal_mulai', '<=', $hariIni)->where(fn ($w) => $w->whereNull('tanggal_selesai')->orWhereDate('tanggal_selesai', '>=', $hariIni)),
             StatusSpt::PenyusunanLaporan => $diterima()->whereDate('tanggal_mulai', '<=', $hariIni)->whereDate('tanggal_selesai', '<', $hariIni),
-            StatusSpt::Selesai => $q->whereRaw('1 = 0'), // Fase 5
+            StatusSpt::Selesai => $q->where('status_pengajuan', StatusPengajuan::Diterima)->whereNotNull('ditandai_selesai_pada'),
             default => $q->where('status_pengajuan', StatusPengajuan::from($status->value)),
         };
     }
@@ -146,5 +149,15 @@ class Spt extends Model
     public function riwayat()
     {
         return $this->hasMany(SptRiwayat::class);
+    }
+
+    public function kendala()
+    {
+        return $this->hasOne(SptKendala::class);
+    }
+
+    public function ditandaiSelesaiOleh()
+    {
+        return $this->belongsTo(User::class, 'ditandai_selesai_oleh');
     }
 }

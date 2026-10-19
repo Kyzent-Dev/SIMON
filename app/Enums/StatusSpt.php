@@ -30,6 +30,12 @@ enum StatusSpt: string
         };
     }
 
+    /** PRD §9.2 "Kelompok tampilan": On Process. */
+    public function onProcess(): bool
+    {
+        return in_array($this, [self::SiapDilaksanakan, self::Pelaksanaan, self::PenyusunanLaporan], true);
+    }
+
     /** Heroicon name (Selesai uses the solid variant). */
     public function icon(): string
     {

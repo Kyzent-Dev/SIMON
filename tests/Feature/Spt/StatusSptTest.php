@@ -10,6 +10,7 @@ use App\Services\Settings;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class StatusSptTest extends TestCase
@@ -77,5 +78,57 @@ class StatusSptTest extends TestCase
         $this->assertNotNull($spt->irban);
         $this->assertNotNull($spt->klasifikasi);
         $this->assertNotNull($spt->dibuatOleh);
+    }
+
+    /** @return array<string, array{0: StatusPengajuan, 1: ?string, 2: ?string, 3: bool, 4: string, 5: StatusSpt}> pengajuan, mulai, selesai, ditandai selesai, now, expected */
+    public static function matriksStatus(): array
+    {
+        $d = StatusPengajuan::Diterima;
+        $jkt = fn (string $t) => $t.' Asia/Jakarta';
+        $cases = [
+            'sebelum mulai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-09 12:00'), StatusSpt::SiapDilaksanakan],
+            'hari mulai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-10 12:00'), StatusSpt::Pelaksanaan],
+            'hari selesai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-20 12:00'), StatusSpt::Pelaksanaan],
+            'sehari setelah selesai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-21 12:00'), StatusSpt::PenyusunanLaporan],
+            'mulai kosong' => [$d, null, null, false, $jkt('2026-03-15 12:00'), StatusSpt::SiapDilaksanakan],
+            'selesai kosong setelah mulai' => [$d, '2026-03-10', null, false, $jkt('2026-03-15 12:00'), StatusSpt::Pelaksanaan],
+            'selesai sebelum mulai' => [$d, '2026-03-10', '2026-03-20', true, $jkt('2026-03-09 12:00'), StatusSpt::Selesai],
+            'selesai dalam rentang' => [$d, '2026-03-10', '2026-03-20', true, $jkt('2026-03-15 12:00'), StatusSpt::Selesai],
+            'selesai setelah rentang' => [$d, '2026-03-10', '2026-03-20', true, $jkt('2026-03-25 12:00'), StatusSpt::Selesai],
+            // 23:30 Jakarta = 16:30 UTC; 00:30 Jakarta is still the previous UTC day.
+            '23.30 WIB sebelum mulai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-09 23:30'), StatusSpt::SiapDilaksanakan],
+            '23.30 WIB hari selesai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-20 23:30'), StatusSpt::Pelaksanaan],
+            '00.30 WIB hari mulai (UTC kemarin)' => [$d, '2026-03-10', '2026-03-20', false, '2026-03-09 17:30 UTC', StatusSpt::Pelaksanaan],
+            '00.30 WIB setelah selesai (UTC kemarin)' => [$d, '2026-03-10', '2026-03-20', false, '2026-03-20 17:30 UTC', StatusSpt::PenyusunanLaporan],
+        ];
+        foreach ([StatusPengajuan::Draf, StatusPengajuan::MenungguNomor, StatusPengajuan::PerluRevisi, StatusPengajuan::Ditolak, StatusPengajuan::Dibatalkan] as $p) {
+            foreach (['2026-03-09', '2026-03-15', '2026-03-25'] as $hari) {
+                $cases["{$p->value} {$hari}"] = [$p, '2026-03-10', '2026-03-20', false, $jkt("$hari 12:00"), StatusSpt::from($p->value)];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('matriksStatus')]
+    public function test_status_matrix_and_berstatus_scope(StatusPengajuan $pengajuan, ?string $mulai, ?string $selesai, bool $ditandai, string $now, StatusSpt $expected): void
+    {
+        $spt = Spt::factory()->diterima()->create(['tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai]);
+        $spt->forceFill(['status_pengajuan' => $pengajuan, 'ditandai_selesai_pada' => $ditandai ? '2026-03-01 08:00:00' : null])->save();
+        $spt = $spt->fresh();
+
+        $this->travelTo(CarbonImmutable::parse($now));
+        $this->assertSame($expected, $spt->status());
+        foreach (StatusSpt::cases() as $status) {
+            $this->assertSame($status === $expected ? [$spt->id] : [], Spt::berstatus($status)->pluck('id')->all(), $status->value);
+        }
+    }
+
+    public function test_on_process_group(): void
+    {
+        $this->assertSame(
+            [StatusSpt::SiapDilaksanakan, StatusSpt::Pelaksanaan, StatusSpt::PenyusunanLaporan],
+            array_values(array_filter(StatusSpt::cases(), fn ($s) => $s->onProcess())),
+        );
     }
 }

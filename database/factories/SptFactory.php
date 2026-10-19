@@ -52,6 +52,11 @@ class SptFactory extends Factory
         ]);
     }
 
+    public function selesai(): static
+    {
+        return $this->diterima()->state(['ditandai_selesai_pada' => now(), 'ditandai_selesai_oleh' => User::factory()->irban()]);
+    }
+
     public function dibatalkan(): static
     {
         return $this->diterima()->state(['status_pengajuan' => StatusPengajuan::Dibatalkan]);
