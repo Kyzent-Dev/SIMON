@@ -34,3 +34,8 @@
 - Tombol `Batal` memakai varian `ghost`, sama dengan modal revisi jadwal (`irban/pkpt.blade.php`) yang juga memuat Diinput oleh di footer.
 - Tautan "Lihat" dokumen mendapat sr-only "(tab baru)" (minor tertunda Task 3), sama dengan `x-ui.file-upload`.
 - Batas unggah sementara Livewire tetap bawaan (12 MB, config belum dipublikasikan); jika Admin menaikkan `upload.maks_mb` di atas 12, Livewire menolak lebih dulu. Dicatat, tidak diubah di Fase 5.
+
+## Fase 5, Task 5
+- `SptSeeder` gets a second pass, `pelaksanaan()`, building relative-date demo SPT for Irban I: Pelaksanaan with final SPT, Penyusunan Laporan (not late, final missing), Terlambat (selesai 30 days ago) with final, Selesai (final + cover LHP, nomor/tanggal LHP) and one linked to the latest past PKPT item of Irban I (Tidak Sesuai PKPT) with kendala and final. Dates come from today in Asia/Jakarta so statuses stay true. The kendala SPT is skipped if Irban I has no past PKPT item.
+- Seeded rows are written directly (models) with riwayat shaped like the actions write them (dibuat, diajukan, diterima, final_diunggah, kendala_diisi, ditandai_selesai) and back-dated created_at; two personel (ketua, anggota) are added so the Personel table is not empty.
+- Demo PDFs are a 193-byte hand-written valid PDF stored on the private `local` disk at `spt/{id}/{uuid}.pdf` with real sha256 and size.
