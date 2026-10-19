@@ -34,6 +34,12 @@ class SptPolicy
         return $this->milik($user, $spt) && in_array($spt->status_pengajuan, [StatusPengajuan::Draf, StatusPengajuan::PerluRevisi], true);
     }
 
+    /** Irban of the SPT, after the number is issued and until it is marked Selesai: dates, final SPT, Selesai, kendala. */
+    public function laksanakan(User $user, Spt $spt): bool
+    {
+        return $this->milik($user, $spt) && $spt->status_pengajuan === StatusPengajuan::Diterima && $spt->ditandai_selesai_pada === null;
+    }
+
     /** Terima / minta revisi / tolak a pending submission. */
     public function decide(User $user, Spt $spt): bool
     {

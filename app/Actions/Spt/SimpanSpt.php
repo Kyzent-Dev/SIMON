@@ -15,6 +15,7 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Services\KesesuaianPkpt;
 use App\Services\Settings;
+use App\Support\BerkasSpt;
 use App\Support\DiinputOleh;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
@@ -22,7 +23,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -86,11 +86,7 @@ class SimpanSpt
                     $spt->dokumen()->whereIn('id', $dihapus->modelKeys())->delete();
                 }
                 if ($lampiran) {
-                    $path = $lampiran->storeAs("spt/{$spt->id}", Str::uuid().'.pdf', 'local');
-                    $spt->dokumen()->create([
-                        'jenis' => 'draf', 'path' => $path, 'nama_asli' => $lampiran->getClientOriginalName(), 'ukuran' => $lampiran->getSize(),
-                        'sha256' => hash_file('sha256', $lampiran->getRealPath()), 'diunggah_oleh' => $user->id, 'diinput_oleh' => $kolom['diinput_oleh'],
-                    ]);
+                    $path = BerkasSpt::simpan($spt, $lampiran, 'draf', $user, $kolom['diinput_oleh'])->path;
                 }
 
                 $kejadian = $baru ? [KejadianSpt::DIBUAT] : [];
@@ -178,10 +174,8 @@ class SimpanSpt
         $e = [];
         $diinput = $this->int($d['diinput_oleh'] ?? null);
         if ($user->role === Role::Irban) {
-            if (! $diinput) {
-                $e['diinput_oleh'] = 'Pilih nama penginput terlebih dahulu';
-            } elseif (! DiinputOleh::pilihan($user)->contains('id', $diinput)) {
-                $e['diinput_oleh'] = 'Penginput harus PPJ atau anggota aktif Irban ini tahun '.DiinputOleh::tahun().'.';
+            if ($galat = DiinputOleh::galat($user, $diinput)) {
+                $e['diinput_oleh'] = $galat;
             }
         }
 

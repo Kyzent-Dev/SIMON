@@ -29,6 +29,16 @@ class DiinputOleh
             ->unique('id')->sortBy('nama_bergelar')->values();
     }
 
+    /** Error message for a submitted "Diinput oleh" id (null = valid). */
+    public static function galat(User $user, ?int $id): ?string
+    {
+        if (! $id) {
+            return 'Pilih nama penginput terlebih dahulu';
+        }
+
+        return self::pilihan($user)->contains('id', $id) ? null : 'Penginput harus PPJ atau anggota aktif Irban ini tahun '.self::tahun().'.';
+    }
+
     /** "Budi Santoso · …0012" */
     public static function label(Pegawai $p): string
     {
