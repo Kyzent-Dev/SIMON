@@ -2,24 +2,174 @@
 
 namespace App\Livewire\Spt;
 
+use App\Actions\Spt\SimpanKendala;
+use App\Actions\Spt\TandaiSelesai;
+use App\Actions\Spt\UbahTanggalRealisasi;
+use App\Actions\Spt\UnggahDokumenSpt;
 use App\Models\Spt;
 use App\Services\KesesuaianPkpt;
 use App\Services\PenandaSpt;
 use App\Services\Settings;
+use App\Support\DiinputOleh;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
-/** Shared SPT detail page (_shared.md §7), any role allowed by SptPolicy::view. Read-only here; the Fase 5 action modals hang off this component. */
+/**
+ * Shared SPT detail page (_shared.md §7), any role allowed by SptPolicy::view, with the four Irban action modals
+ * (Ubah Tanggal, Unggah SPT Final, Tandai Selesai, Kendala). The component only collects input and calls the actions;
+ * the actions authorize `laksanakan` and hold every rule (the UI reads TandaiSelesai::syarat()/bisa()).
+ */
 class Detail extends Component
 {
+    use WithFileUploads;
+
+    /** modal => fields that can show an inline error in it; any other error key becomes a toast. */
+    private const FIELDS = [
+        'tanggal' => ['tanggal_mulai', 'tanggal_selesai', 'alasan', 'diinput_oleh'],
+        'final' => ['berkas', 'diinput_oleh'],
+        'selesai' => ['berkas', 'nomor_lhp', 'tanggal_lhp', 'konfirmasi', 'diinput_oleh'],
+        'kendala' => ['kategori', 'uraian', 'diinput_oleh'],
+    ];
+
     #[Locked]
     public int $sptId;
+
+    /** The open modal ('' = none). Only its content is rendered, so field ids stay unique across the four modals. */
+    public string $modal = '';
+
+    public string $tanggal_mulai = '';
+
+    public string $tanggal_selesai = '';
+
+    public string $alasan = '';
+
+    public ?TemporaryUploadedFile $berkas = null;
+
+    public string $nomor_lhp = '';
+
+    public string $tanggal_lhp = '';
+
+    public bool $konfirmasi = false;
+
+    public string $kategori = '';
+
+    public string $uraian = '';
+
+    public ?int $diinput_oleh = null;
+
+    /** Diinput oleh shows the combobox instead of the prefilled chip. */
+    public bool $ganti = false;
 
     public function mount(Spt $spt): void
     {
         Gate::authorize('view', $spt);
         $this->sptId = $spt->id;
+    }
+
+    public function buka(string $modal): void
+    {
+        $spt = $this->sptDasar();
+        Gate::authorize('laksanakan', $spt);
+        if (! isset(self::FIELDS[$modal])) {
+            return;
+        }
+        $this->resetValidation();
+        $this->reset('alasan', 'berkas', 'nomor_lhp', 'tanggal_lhp', 'konfirmasi', 'ganti');
+        $this->tanggal_mulai = (string) $spt->tanggal_mulai?->toDateString();
+        $this->tanggal_selesai = (string) $spt->tanggal_selesai?->toDateString();
+        $kendala = $spt->kendala()->first();
+        $this->kategori = (string) $kendala?->kategori;
+        $this->uraian = (string) $kendala?->uraian;
+        $this->diinput_oleh = DiinputOleh::terakhir(auth()->user());
+        $this->modal = $modal;
+        $this->dispatch('open-modal', name: "aksi-{$modal}");
+    }
+
+    public function gantiPenginput(): void
+    {
+        Gate::authorize('laksanakan', $this->sptDasar());
+        $this->ganti = true;
+    }
+
+    public function hapusBerkas(): void
+    {
+        Gate::authorize('laksanakan', $this->sptDasar());
+        $this->berkas = null;
+    }
+
+    public function simpanTanggal(UbahTanggalRealisasi $aksi): void
+    {
+        $this->jalankan('tanggal', 'Tanggal realisasi diperbarui', fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, $this->only(self::FIELDS['tanggal'])));
+    }
+
+    public function unggahFinal(UnggahDokumenSpt $aksi): void
+    {
+        $this->jalankan('final', 'SPT final diunggah', fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, $this->only('diinput_oleh'), $this->berkas));
+    }
+
+    public function tandaiSelesai(TandaiSelesai $aksi): void
+    {
+        // The action buttons vanish once Selesai, so focus goes to the h1.
+        $this->jalankan('selesai', 'SPT ditandai Selesai', fn (Spt $spt) => $aksi->handle(
+            auth()->user(), $spt, $this->only('diinput_oleh', 'konfirmasi', 'nomor_lhp', 'tanggal_lhp'), $this->berkas,
+        ), 'judul-spt');
+    }
+
+    public function simpanKendala(SimpanKendala $aksi): void
+    {
+        // The perlu-kendala alert (and its button) disappears once a kendala exists, so focus goes to the header button.
+        $this->jalankan('kendala', 'Kendala disimpan', fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, $this->only(self::FIELDS['kendala'])), 'aksi-kendala');
+    }
+
+    /**
+     * Runs an action (it authorizes `laksanakan`): errors of the open modal's fields stay inline, any other key (`spt`) closes it as a toast.
+     * `$fokus` = id of the element to focus after success when the trigger may be gone. The actions call DiinputOleh::ingat() themselves.
+     */
+    private function jalankan(string $modal, string $pesan, callable $fn, ?string $fokus = null): void
+    {
+        $spt = $this->sptDasar();
+        $this->resetValidation();
+        try {
+            $fn($spt);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $key => $messages) {
+                if (in_array($key, self::FIELDS[$modal], true)) {
+                    $this->addError($key, $messages[0]);
+                } else {
+                    $this->tutup();
+                    $this->dispatch('toast', type: 'error', message: $messages[0]);
+                }
+            }
+
+            return;
+        }
+        $this->tutup();
+        $this->reset('berkas', 'ganti');
+        $this->dispatch('toast', type: 'success', message: $pesan);
+        if ($fokus) {
+            $this->dispatch('fokus-ke', id: $fokus);
+        }
+    }
+
+    private function tutup(): void
+    {
+        if ($this->modal !== '') {
+            $this->dispatch('close-modal', name: "aksi-{$this->modal}");
+        }
+        $this->modal = '';
+    }
+
+    /** Lookup for the write methods: `view` here, `laksanakan` in the action (which first turns "already Selesai" into a toastable `spt` error). */
+    private function sptDasar(): Spt
+    {
+        $spt = Spt::findOrFail($this->sptId);
+        Gate::authorize('view', $spt);
+
+        return $spt;
     }
 
     private function spt(): Spt
@@ -35,10 +185,12 @@ class Detail extends Component
         return $spt;
     }
 
-    public function render(PenandaSpt $penanda, KesesuaianPkpt $kesesuaian, Settings $settings)
+    public function render(PenandaSpt $penanda, KesesuaianPkpt $kesesuaian, Settings $settings, TandaiSelesai $selesai)
     {
         $spt = $this->spt();
         $item = $spt->pkptItem;
+        $laksanakan = auth()->user()->can('laksanakan', $spt);
+        $modal = $laksanakan ? $this->modal : '';
 
         return view('livewire.spt.detail', [
             'spt' => $spt,
@@ -47,8 +199,14 @@ class Detail extends Component
             'rentang' => $item ? $kesesuaian->rentang($item) : null,
             'sesuai' => $item && $spt->tanggal_mulai && $spt->tanggal_selesai ? $kesesuaian->sesuai($item, $spt->tanggal_mulai, $spt->tanggal_selesai) : null,
             'hariKerja' => $settings->get('penugasan.hitungan_hari') === 'kerja',
-            'laksanakan' => auth()->user()->can('laksanakan', $spt),
+            'laksanakan' => $laksanakan,
             'bisaUbah' => auth()->user()->can('update', $spt),
+            'aktif' => $modal,
+            'penginput' => $modal !== '' ? DiinputOleh::pilihan(auth()->user()) : collect(),
+            'syarat' => $modal === 'selesai' ? $selesai->syarat($spt) : null,
+            'blokir' => $modal === 'selesai' ? $selesai->bisa($spt) : null,
+            'maksMb' => (int) $settings->get('upload.maks_mb'),
+            'kategoriKendala' => (array) $settings->get('kendala.kategori'),
         ])->title($spt->nomor_lengkap ?? 'Detail SPT');
     }
 }

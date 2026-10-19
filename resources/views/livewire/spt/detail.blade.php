@@ -1,6 +1,7 @@
 {{-- Shared SPT detail page (_shared.md §7). Header (h1 nomor + copy, status + flags, type/klasifikasi/irban, actions), perlu-kendala alert,
      ≥1024 an 8/4 grid; below that the two columns dissolve (`contents`) and `order-*` gives the mobile order Ringkasan, Riwayat, Kendala, Personel, Dokumen.
-     Komentar and Log Aktivitas are later phases (no placeholders). No animation (§7.5). Action buttons get their modals in Task 4. --}}
+     Komentar and Log Aktivitas are later phases (no placeholders). No animation (§7.5) apart from the modal/toast transitions.
+     Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` moves focus when a modal's trigger is gone after success. --}}
 @use('App\Support\Tanggal')
 @use('App\Enums\KejadianSpt')
 @php
@@ -14,7 +15,7 @@
     $judulKartu = 'font-display text-[22px] leading-[30px] font-bold text-neutral-900';
     $kendalaLabel = $spt->kendala ? 'Ubah Kendala' : 'Isi Kendala';
 @endphp
-<div>
+<div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
     <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div class="min-w-0">
             <div class="flex items-start gap-1">
@@ -47,10 +48,10 @@
         @if ($laksanakan || $bisaUbah)
             <div class="flex flex-wrap items-center gap-2 max-sm:[&>*]:w-full xl:max-w-[26rem] xl:shrink-0 xl:justify-end">
                 @if ($laksanakan)
-                    <x-ui.button type="button" variant="secondary" icon="calendar-days">Ubah Tanggal</x-ui.button>
-                    <x-ui.button type="button" variant="secondary" icon="arrow-up-tray">Unggah SPT Final</x-ui.button>
-                    <x-ui.button type="button" variant="secondary" icon="exclamation-circle">{{ $kendalaLabel }}</x-ui.button>
-                    <x-ui.button type="button" icon="check-circle">Tandai Selesai</x-ui.button>
+                    <x-ui.button type="button" variant="secondary" icon="calendar-days" wire:click="buka('tanggal')">Ubah Tanggal</x-ui.button>
+                    <x-ui.button type="button" variant="secondary" icon="arrow-up-tray" wire:click="buka('final')">Unggah SPT Final</x-ui.button>
+                    <x-ui.button type="button" variant="secondary" icon="exclamation-circle" id="aksi-kendala" wire:click="buka('kendala')">{{ $kendalaLabel }}</x-ui.button>
+                    <x-ui.button type="button" icon="check-circle" wire:click="buka('selesai')">Tandai Selesai</x-ui.button>
                 @endif
                 @if ($bisaUbah)
                     <a href="{{ route('irban.spt.ubah', $spt) }}" wire:navigate class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-mint-700 px-4 text-sm font-medium text-white hover:bg-mint-800 lg:h-10">
@@ -65,7 +66,7 @@
         <x-ui.alert variant="warning" class="mb-6">
             <p>SPT ini Tidak Sesuai PKPT. Isi kendala untuk menjelaskan penyebabnya.</p>
             @if ($laksanakan)
-                <x-ui.button type="button" variant="secondary" size="sm" icon="exclamation-circle" class="mt-2">Isi Kendala</x-ui.button>
+                <x-ui.button type="button" variant="secondary" size="sm" icon="exclamation-circle" class="mt-2" wire:click="buka('kendala')">Isi Kendala</x-ui.button>
             @endif
         </x-ui.alert>
     @endif
@@ -165,7 +166,7 @@
                                 </div>
                                 <div class="flex shrink-0 gap-1 pl-9 sm:pl-0">
                                     <a href="{{ $url }}" target="_blank" rel="noopener" class="inline-flex h-11 items-center gap-1.5 rounded-md px-3 font-medium text-mint-700 hover:bg-mint-50 lg:h-9">
-                                        {{ svg('heroicon-m-eye', 'size-5') }}Lihat<span class="sr-only"> {{ $d->nama_asli }}</span>
+                                        {{ svg('heroicon-m-eye', 'size-5') }}Lihat<span class="sr-only"> {{ $d->nama_asli }} (tab baru)</span>
                                     </a>
                                     <a href="{{ $url }}?unduh=1" class="inline-flex h-11 items-center gap-1.5 rounded-md px-3 font-medium text-mint-700 hover:bg-mint-50 lg:h-9">
                                         {{ svg('heroicon-m-arrow-down-tray', 'size-5') }}Unduh<span class="sr-only"> {{ $d->nama_asli }}</span>
@@ -216,4 +217,8 @@
             </x-ui.card>
         </div>
     </div>
+
+    @if ($laksanakan)
+        @include('livewire.spt.partials.aksi-modal')
+    @endif
 </div>
