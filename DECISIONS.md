@@ -96,3 +96,14 @@
 - `SahkanPkpt::handle(Pkpt, User)`; semua aturan Draf memakai `SavePkpt::ensureDraf()` (pesan di kunci `pkpt`). `SavePkptItem::validated()` bersifat static agar dapat dipakai impor (Task 3).
 - `PkptItem::revisiDisetujuiTerakhir()` berupa method query segar (bukan relation) agar tidak basi setelah keputusan revisi. `Pkpt` punya default atribut `status = draf` supaya model baru langsung berstatus Draf.
 - Penguncian antar-proses (sahkan vs. tambah item bersamaan) belum ada; mengandalkan pengecekan status per aksi.
+
+## Fase 3, Task 2
+- Item PKPT diubah langsung di baris tabel (inline), bukan lewat drawer. Baris tambah dan baris ubah memakai partial sel yang sama (`livewire/admin/partials/pkpt-item-fields`); input dikirim lewat atribut HTML `form` ke `<form>` kosong di luar tabel, jadi Enter menyimpan tanpa `<form>` bersarang di tabel. Hanya satu baris yang bisa diubah sekaligus; field pertamanya langsung mendapat fokus.
+- Setelah Disahkan, kolom "Jadwal" diganti "Jadwal berlaku" (rentang efektif dari `KesesuaianPkpt::rentang`, plus durasinya). Bila direvisi, jadwal asli tampil di bawahnya sebagai "semula 3–21 Februari 2026" dengan penanda garis putus-putus kecil yang meniru outline putus-putus di linimasa publik. Tidak ada kolom jadwal asli terpisah. "Riwayat revisi (N)" adalah `<details>` di sel yang sama dan hanya muncul bila item punya revisi.
+- Rentang di sel tabel ditulis lengkap ("3 Maret 2026 – 21 Maret 2026", seperti popover jadwal.md); bentuk ringkas ("3–21 Februari 2026") dari `App\Support\Tanggal::rentang()` dipakai untuk "semula", riwayat revisi dan modal hapus. Tanggal tunggal tetap `translatedFormat('d F Y')`.
+- Pemetaan ikon/varian `x-app.tag` ada di enum (`StatusPkpt::tag()`, `StatusRevisi::tag()`). Varian revisi memakai pasangan §3.4: Menunggu Persetujuan = accent-700 di atas putih (tepi accent-400 dekoratif), Disetujui = mint-800 di atas mint-100, Ditolak = danger-700 di atas putih.
+- Galat aksi PKPT yang bukan galat kolom (status bukan Draf, SK belum diisi, PKPT tanpa item) tampil sebagai toast galat. Modal "Sahkan PKPT" juga sudah menampilkan peringatan sebelum diklik bila SK atau item belum ada.
+- `x-ui.page-header` mendapat slot opsional `meta` di bawah judul (tag status + info SK).
+- Halaman `admin.pkpt.impor` sementara hanya placeholder "Segera tersedia" (komponen `Admin\PkptImpor`); Task 3 menggantinya.
+- Durasi pada baris input tidak dihitung langsung saat mengetik; "Durasi: N hari" tampil setelah item disimpan.
+- Tidak ada breadcrumb di halaman PKPT (halaman Livewire lain juga belum memakainya); halaman editor memakai tautan "Kembali ke daftar".
