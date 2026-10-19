@@ -163,7 +163,7 @@ class PkptImporTest extends TestCase
         $admin = User::factory()->admin()->create();
         $path = $this->xlsx([$this->row(), $this->row()]);
         $c = Livewire::actingAs($admin)->test(Page::class, ['pkpt' => $this->pkpt])->set('file', $this->upload($path))
-            ->assertSet('lewatiDuplikat', true)->assertSee('1 peringatan')->assertSee('Item yang sama sudah ada.');
+            ->assertSet('lewatiDuplikat', true)->assertSee('1 peringatan')->assertSee('Baris 3:')->assertSee('Item yang sama sudah ada.');
         $c->call('impor')->assertSet('diimpor', 1);
         $this->assertSame(1, $this->pkpt->items()->count());
 

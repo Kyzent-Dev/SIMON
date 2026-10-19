@@ -5,7 +5,7 @@
 @props(['revisi'])
 
 @if ($revisi->isNotEmpty())
-    <details {{ $attributes->class('group') }}>
+    <details {{ $attributes->class('group relative') }}>
         <summary class="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-sm text-sm font-medium text-mint-700 hover:underline lg:min-h-6">
             {{ svg('heroicon-m-chevron-right', 'size-4 group-open:rotate-90') }}Riwayat revisi ({{ $revisi->count() }})
         </summary>

@@ -88,7 +88,7 @@
                                 @endforeach
                             </ul>
                         @elseif ($r['status'] === 'warning')
-                            <span class="flex items-start gap-1.5">{{ svg('heroicon-m-exclamation-triangle', 'mt-px size-5 shrink-0 text-accent-700') }}<span>{{ $r['warning'] }}</span></span>
+                            <span class="flex items-start gap-1.5">{{ svg('heroicon-m-exclamation-triangle', 'mt-px size-5 shrink-0 text-accent-700') }}<span><span class="font-medium">Baris {{ $r['baris'] }}:</span> {{ $r['warning'] }}</span></span>
                         @else
                             <span class="flex items-center gap-1.5">{{ svg('heroicon-m-check-circle', 'size-5 shrink-0 text-success-700') }}Valid</span>
                         @endif

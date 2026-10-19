@@ -26,6 +26,7 @@ class Pegawai extends Model
     {
         return DB::table('tim_anggota')->where('pegawai_id', $this->id)->exists()
             || DB::table('irban_anggota')->where('pegawai_id', $this->id)->exists()
-            || DB::table('irban_tahunan')->where('ppj_pegawai_id', $this->id)->exists();
+            || DB::table('irban_tahunan')->where('ppj_pegawai_id', $this->id)->exists()
+            || DB::table('pkpt_item_revisi')->where('diinput_oleh', $this->id)->exists();
     }
 }
