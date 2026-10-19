@@ -346,6 +346,15 @@ class SptFormTest extends TestCase
         $page->set('status', '')->set('tahun', '2025')->assertDontSee('Draf milik saya')->assertSee('Belum ada SPT');
     }
 
+    public function test_spt_saya_filters_by_selesai(): void
+    {
+        Spt::factory()->diterima()->create(['irban_id' => $this->irban->id, 'uraian_untuk' => 'Masih jalan', 'nomor_lengkap' => '700/2/IRBAN-I/2026']);
+        Spt::factory()->diterima()->create(['irban_id' => $this->irban->id, 'uraian_untuk' => 'Sudah tuntas', 'nomor_lengkap' => '700/3/IRBAN-I/2026', 'ditandai_selesai_pada' => now()]);
+
+        Livewire::actingAs($this->user)->test(SptSaya::class)->assertSeeHtml('value="selesai"')
+            ->set('status', 'selesai')->assertSee('Sudah tuntas')->assertDontSee('Masih jalan');
+    }
+
     public function test_spt_saya_per_page_is_clamped(): void
     {
         Livewire::actingAs($this->user)->test(SptSaya::class)->set('perPage', 100000)->assertSet('perPage', 25)

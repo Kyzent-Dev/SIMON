@@ -194,6 +194,31 @@ class DetailAksiTest extends TestCase
         $this->assertNull($spt->kendala()->first());
     }
 
+    public function test_buka_di_tab_basi_setelah_selesai_memberi_toast_dan_fokus(): void
+    {
+        $spt = $this->spt();
+        $page = $this->detail($spt);
+        $spt->forceFill(['ditandai_selesai_pada' => now()])->save();
+        $page->call('buka', 'tanggal')->assertOk()->assertSet('modal', '')
+            ->assertDispatched('toast', type: 'error', message: 'SPT ini sudah Selesai dan tidak dapat diubah.')
+            ->assertDispatched('fokus-ke', id: 'judul-spt');
+    }
+
+    public function test_galat_non_field_memfokuskan_judul(): void
+    {
+        $belum = $this->spt('KHUSUS', ['tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-10']);
+        $this->detail($belum)->call('buka', 'selesai')->set('diinput_oleh', $this->penginput->id)->call('tandaiSelesai')
+            ->assertDispatched('fokus-ke', id: 'judul-spt');
+    }
+
+    public function test_batas_dan_kegagalan_unggah_berbahasa_indonesia(): void
+    {
+        $page = $this->detail($this->spt())->call('buka', 'final')
+            ->set('berkas', UploadedFile::fake()->create('besar.pdf', 13000, 'application/pdf'))->assertHasErrors('berkas');
+        $this->assertSame('Ukuran berkas maksimal 12288 KB.', $page->errors()->first('berkas'));
+        $this->assertSame('Gagal mengunggah lampiran draf.', trans('validation.uploaded', ['attribute' => trans('validation.attributes.lampiran')]));
+    }
+
     public function test_bu_dan_pimpinan_tanpa_tombol_dan_ditolak(): void
     {
         $spt = $this->spt();

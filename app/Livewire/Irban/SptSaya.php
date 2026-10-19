@@ -67,7 +67,7 @@ class SptSaya extends Component
             'spt' => $spt,
             // shortcut: PenandaSpt::untuk still runs its revisi/dokumen exists queries per row (bounded by the page size); batch them with the Fase 8 SQL flag filters.
             'penanda' => $spt->getCollection()->mapWithKeys(fn (Spt $s) => [$s->id => $penanda->untuk($s)])->all(),
-            'statusOptions' => collect(StatusSpt::cases())->reject(fn ($s) => $s === StatusSpt::Selesai)
+            'statusOptions' => collect(StatusSpt::cases())
                 ->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all(),
             'tahunList' => $tahunList,
             'filtered' => $status !== null,

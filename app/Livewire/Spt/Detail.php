@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Spt;
 
+use App\Actions\Spt\Concerns\MelaksanakanSpt;
 use App\Actions\Spt\SimpanKendala;
 use App\Actions\Spt\TandaiSelesai;
 use App\Actions\Spt\UbahTanggalRealisasi;
@@ -25,6 +26,7 @@ use Livewire\WithFileUploads;
  */
 class Detail extends Component
 {
+    use MelaksanakanSpt;
     use WithFileUploads;
 
     /** modal => fields that can show an inline error in it; any other error key becomes a toast. */
@@ -73,7 +75,13 @@ class Detail extends Component
     public function buka(string $modal): void
     {
         $spt = $this->sptDasar();
-        Gate::authorize('laksanakan', $spt);
+        try {
+            $this->izinkan(auth()->user(), $spt); // owning Irban on a Selesai SPT gets the toast, others 403
+        } catch (ValidationException $e) {
+            $this->galatUmum($e->errors()['spt'][0]);
+
+            return;
+        }
         if (! isset(self::FIELDS[$modal])) {
             return;
         }
@@ -140,8 +148,7 @@ class Detail extends Component
                 if (in_array($key, self::FIELDS[$modal], true)) {
                     $this->addError($key, $messages[0]);
                 } else {
-                    $this->tutup();
-                    $this->dispatch('toast', type: 'error', message: $messages[0]);
+                    $this->galatUmum($messages[0]);
                 }
             }
 
@@ -153,6 +160,14 @@ class Detail extends Component
         if ($fokus) {
             $this->dispatch('fokus-ke', id: $fokus);
         }
+    }
+
+    /** Non-field error: close the modal, toast, and focus the h1 since a re-render may remove the action buttons. */
+    private function galatUmum(string $pesan): void
+    {
+        $this->tutup();
+        $this->dispatch('toast', type: 'error', message: $pesan);
+        $this->dispatch('fokus-ke', id: 'judul-spt');
     }
 
     private function tutup(): void

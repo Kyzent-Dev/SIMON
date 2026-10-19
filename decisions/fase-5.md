@@ -40,3 +40,9 @@
 - Baris seed ditulis langsung lewat model dengan riwayat berbentuk sama seperti yang ditulis aksi (dibuat, diajukan, diterima, final_diunggah, kendala_diisi, ditandai_selesai) dan `created_at` dimundurkan; dua personel (ketua, anggota) ditambahkan agar tabel Personel tidak kosong.
 - PDF demo berupa PDF valid tulisan tangan (193 byte) di disk privat `local` pada `spt/{id}/{uuid}.pdf` dengan sha256 dan ukuran asli.
 - `Penomoran::ambil` di seeder (blok lama dan baru) dijalankan di `DB::transaction(..., attempts: 3)` sesuai Global Constraints.
+
+## Fase 5, review akhir
+- Filter status SPT Saya kini menawarkan Selesai (sisa Fase 4 yang menyembunyikannya dihapus); `Spt::scopeBerstatus` sudah mendukungnya.
+- `Spt\Detail::buka()` memakai guard bersama `MelaksanakanSpt::izinkan` (trait dipakai juga di komponen), bukan `Gate::authorize('laksanakan')` langsung. Irban pemilik pada SPT yang sudah Selesai (tab basi) mendapat toast `SPT ini sudah Selesai dan tidak dapat diubah.`; pihak lain tetap 403. Aturan tidak diduplikasi.
+- Semua galat non-field (cabang toast di `jalankan()` dan jalur `buka()` di atas) lewat `galatUmum()`: tutup modal, toast, lalu `fokus-ke` `judul-spt`, karena render ulang bisa menghapus tombol aksi dan fokus jatuh ke `body`.
+- `lang/id/validation.php`: ditambah `max.file`, `file`, `uploaded` dan atribut `berkas`, `lampiran`, `file`. Pesan tidak diawali `:attribute` karena Livewire menurunkan huruf atribut (`:Attribute` tidak menghasilkan huruf kapital): "Ukuran berkas maksimal 12288 KB.", "Gagal mengunggah berkas.". Atribut Fase 4 yang tampil Inggris hanya `lampiran`; `file` untuk impor Admin.

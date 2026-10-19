@@ -1,6 +1,6 @@
 <?php
 
-// Only keys used so far (Fase 1-2); other keys fall back to en.
+// Only keys used so far (Fase 1-5); other keys fall back to en.
 return [
     'required' => ':attribute wajib diisi.',
     'email' => ':attribute harus berupa alamat email yang valid.',
@@ -13,7 +13,10 @@ return [
     'max' => [
         'string' => ':attribute maksimal :max karakter.',
         'numeric' => ':attribute maksimal :max.',
+        'file' => 'Ukuran :attribute maksimal :max KB.',
     ],
+    'file' => ':attribute harus berupa berkas.',
+    'uploaded' => 'Gagal mengunggah :attribute.',
     'integer' => ':attribute harus berupa bilangan bulat.',
     'string' => ':attribute harus berupa teks.',
     'array' => ':attribute tidak valid.',
@@ -33,5 +36,8 @@ return [
         'username' => 'nama pengguna',
         'password' => 'kata sandi',
         'email' => 'email',
+        'berkas' => 'berkas',
+        'lampiran' => 'lampiran draf',
+        'file' => 'berkas',
     ],
 ];
