@@ -84,8 +84,9 @@ class DashboardShellTest extends TestCase
         }
         foreach ([Role::Pimpinan, Role::Irban, Role::BagianUmum] as $role) {
             $this->assertSame(['Dasbor'], array_column(Navigation::groups($role)[0]['items'], 'label'));
-            $this->assertCount($role === Role::BagianUmum ? 1 : 2, Navigation::groups($role));
+            $this->assertCount(2, Navigation::groups($role));
         }
+        $this->assertSame(['Kotak Masuk Pengajuan'], array_column(Navigation::groups(Role::BagianUmum)[1]['items'], 'label'));
         $this->assertSame(['SPT Saya', 'Ajukan Nomor SPT', 'Jadwal PKPT'], array_column(Navigation::groups(Role::Irban)[1]['items'], 'label'));
         $this->assertSame(['Revisi Jadwal'], array_column(Navigation::groups(Role::Pimpinan)[1]['items'], 'label'));
     }

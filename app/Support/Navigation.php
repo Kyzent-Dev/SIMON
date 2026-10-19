@@ -20,6 +20,7 @@ class Navigation
                 $item('Ajukan Nomor SPT', 'irban.spt.ajukan', 'plus-circle'),
                 $item('Jadwal PKPT', 'irban.pkpt', 'calendar-days'),
             ]]],
+            Role::BagianUmum => [...$dasbor, ['label' => null, 'items' => [$item('Kotak Masuk Pengajuan', 'bagian-umum.pengajuan', 'inbox')]]],
             Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [$item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path')]]],
             Role::Admin => [...$dasbor,
                 ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],

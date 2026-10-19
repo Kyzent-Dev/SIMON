@@ -41,26 +41,37 @@ class PenomoranKonkurensiTest extends TestCase
         return ['DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $this->db, 'DB_URL' => '', 'APP_ENV' => 'testing', 'CACHE_STORE' => 'array'];
     }
 
-    public function test_twenty_concurrent_processes_get_twenty_sequential_numbers(): void
+    /** Migrates the file database, points the `konkurensi` connection at it and inserts the irban; returns its id. */
+    private function siapkan(): int
     {
         $migrate = new Process([PHP_BINARY, 'artisan', 'migrate', '--force', '--no-interaction'], base_path(), $this->env(), null, 120);
         $migrate->mustRun();
 
         config(['database.connections.konkurensi' => ['driver' => 'sqlite', 'database' => $this->db, 'prefix' => '', 'foreign_key_constraints' => true]]);
-        $irbanId = DB::connection('konkurensi')->table('irban')->insertGetId([
+
+        return DB::connection('konkurensi')->table('irban')->insertGetId([
             'nama' => 'Irban II', 'kode_nomor' => 'INSPEKTORAT-II', 'created_at' => now(), 'updated_at' => now(),
         ]);
-        DB::purge('konkurensi');
+    }
 
+    /**
+     * Starts one child per argument list, releases them together through the start barrier, and returns their decoded output.
+     *
+     * @param  list<list<string>>  $argumen
+     * @return list<array{nomor_urut: int, nomor_lengkap: string}>
+     */
+    private function jalankan(array $argumen): array
+    {
+        DB::purge('konkurensi');
         $proses = [];
-        for ($i = 0; $i < self::PROSES; $i++) {
-            $p = new Process([PHP_BINARY, base_path('tests/Support/ambil-nomor.php'), (string) $irbanId, '2026-05-04', $this->barrier], base_path(), $this->env(), null, 120);
+        foreach ($argumen as $args) {
+            $p = new Process([PHP_BINARY, base_path('tests/Support/ambil-nomor.php'), ...$args], base_path(), $this->env(), null, 120);
             $p->start();
             $proses[] = $p;
         }
 
-        // Start barrier: release all children only once every one has booted, so the 20 transactions overlap every run.
-        for ($batas = microtime(true) + 90; count(glob($this->barrier.'/siap-*')) < self::PROSES; usleep(10000)) {
+        // Start barrier: release all children only once every one has booted, so the transactions overlap every run.
+        for ($batas = microtime(true) + 90; count(glob($this->barrier.'/siap-*')) < count($proses); usleep(10000)) {
             foreach ($proses as $p) {
                 $this->assertTrue($p->isRunning() || $p->getExitCode() === 0, 'Proses berhenti sebelum barrier: '.$p->getErrorOutput().$p->getOutput());
             }
@@ -74,6 +85,15 @@ class PenomoranKonkurensiTest extends TestCase
             $this->assertSame(0, $p->getExitCode(), $p->getErrorOutput().$p->getOutput());
             $hasil[] = json_decode(trim($p->getOutput()), true, flags: JSON_THROW_ON_ERROR);
         }
+        config(['database.connections.konkurensi' => ['driver' => 'sqlite', 'database' => $this->db, 'prefix' => '']]);
+
+        return $hasil;
+    }
+
+    public function test_twenty_concurrent_processes_get_twenty_sequential_numbers(): void
+    {
+        $irbanId = $this->siapkan();
+        $hasil = $this->jalankan(array_fill(0, self::PROSES, [(string) $irbanId, '2026-05-04', $this->barrier]));
 
         $urut = array_column($hasil, 'nomor_urut');
         sort($urut);
@@ -82,8 +102,32 @@ class PenomoranKonkurensiTest extends TestCase
         $this->assertCount(self::PROSES, array_unique($lengkap));
         $this->assertContains('700/20/INSPEKTORAT-II/SPT/2026', $lengkap);
 
-        config(['database.connections.konkurensi' => ['driver' => 'sqlite', 'database' => $this->db, 'prefix' => '']]);
         $this->assertSame(self::PROSES, (int) DB::connection('konkurensi')->table('nomor_counter')->value('nomor_terakhir'));
         $this->assertSame(1, DB::connection('konkurensi')->table('nomor_counter')->count());
+    }
+
+    /** PRD §14 #2 at decision level: Bagian Umum accepting different SPT from several processes at once gets distinct consecutive numbers. */
+    public function test_concurrent_terima_pengajuan_on_different_spt(): void
+    {
+        $irbanId = $this->siapkan();
+        $db = DB::connection('konkurensi');
+        $userId = $db->table('users')->insertGetId(['name' => 'Bagian Umum', 'username' => 'bu', 'email' => 'bu@example.test', 'password' => 'x',
+            'role' => 'bagian_umum', 'created_at' => now(), 'updated_at' => now()]);
+        $klasifikasi = $db->table('klasifikasi')->where('kode', 'KHUSUS')->value('id');
+        $sptIds = [];
+        for ($i = 0; $i < 5; $i++) {
+            $sptIds[] = $db->table('spt')->insertGetId(['irban_id' => $irbanId, 'klasifikasi_id' => $klasifikasi, 'status_pengajuan' => 'menunggu_nomor',
+                'diajukan_pada' => now(), 'dibuat_oleh' => $userId, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        $hasil = $this->jalankan(array_map(fn ($id) => [(string) $irbanId, '', $this->barrier, (string) $id, (string) $userId], $sptIds));
+
+        $urut = array_column($hasil, 'nomor_urut');
+        sort($urut);
+        $this->assertSame(range(1, 5), $urut);
+        $db = DB::connection('konkurensi');
+        $this->assertSame(5, $db->table('spt')->where('status_pengajuan', 'diterima')->distinct()->count('nomor_lengkap'));
+        $this->assertSame(5, (int) $db->table('nomor_counter')->value('nomor_terakhir'));
+        $this->assertSame(5, $db->table('spt_riwayat')->where('kejadian', 'diterima')->count());
     }
 }

@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Actions\Spt;
+
+use App\Enums\KejadianSpt;
+use App\Enums\StatusPengajuan;
+use App\Models\Spt;
+use App\Models\User;
+
+/** Bagian Umum rejects a pengajuan; the catatan (10–1000 characters) is stored as the riwayat alasan and shown to the Irban. */
+class TolakPengajuan
+{
+    use PutuskanPengajuan;
+
+    public function handle(User $user, Spt $spt, string $catatan): Spt
+    {
+        $catatan = $this->catatan($catatan);
+
+        return $this->putuskan($user, $spt, fn () => [StatusPengajuan::Ditolak, KejadianSpt::DITOLAK, $catatan]);
+    }
+}

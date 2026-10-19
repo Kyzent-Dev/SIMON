@@ -1,10 +1,14 @@
 <?php
 
 // Child process for PenomoranKonkurensiTest: boots the app against the SQLite file given by DB_DATABASE (env),
-// takes one number inside a transaction and prints it as JSON. Args: irban id, decision date (Y-m-d), barrier dir.
+// takes one number inside a transaction and prints it as JSON. Args: irban id, decision date (Y-m-d), barrier dir
+// [, spt id, user id: run TerimaPengajuan on that SPT as that user instead; its decision date is today].
 // Start barrier: after booting, touch {dir}/siap-{pid} and wait for {dir}/mulai, so all children take a number together.
 
+use App\Actions\Spt\TerimaPengajuan;
 use App\Models\Irban;
+use App\Models\Spt;
+use App\Models\User;
 use App\Services\Penomoran;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
@@ -24,8 +28,12 @@ for ($batas = microtime(true) + 60; ! file_exists($dir.'/mulai'); usleep(5000)) 
 }
 
 try {
-    $irban = Irban::findOrFail((int) $argv[1]);
-    $hasil = DB::transaction(fn () => app(Penomoran::class)->ambil($irban, CarbonImmutable::parse($argv[2])));
+    if (isset($argv[5])) {
+        $hasil = app(TerimaPengajuan::class)->handle(User::findOrFail((int) $argv[5]), Spt::findOrFail((int) $argv[4]))->only(['nomor_urut', 'nomor_lengkap']);
+    } else {
+        $irban = Irban::findOrFail((int) $argv[1]);
+        $hasil = DB::transaction(fn () => app(Penomoran::class)->ambil($irban, CarbonImmutable::parse($argv[2])));
+    }
 } catch (Throwable $e) {
     fwrite(STDERR, $e::class.': '.$e->getMessage());
     exit(1);

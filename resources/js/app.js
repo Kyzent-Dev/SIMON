@@ -1,4 +1,5 @@
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
+import kotakMasuk from './kotak-masuk';
 
 // Livewire's bundled Alpine already includes intersect, focus and sort; do not register them again.
 
@@ -11,5 +12,7 @@ document.addEventListener('livewire:navigated', () => {
     document.querySelectorAll('[data-nav-link]').forEach((a) =>
         a.hasAttribute('data-current') ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
 });
+
+Alpine.data('kotakMasuk', kotakMasuk);
 
 Livewire.start();
