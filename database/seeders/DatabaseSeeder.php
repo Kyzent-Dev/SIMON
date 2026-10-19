@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         if (! app()->isProduction()) {
             // irban_id is not mass-assignable.
             User::where('username', 'irban1')->first()?->forceFill(['irban_id' => Irban::where('nama', 'Irban I')->value('id')])->save();
+            $this->call(SptSeeder::class);
         }
     }
 }

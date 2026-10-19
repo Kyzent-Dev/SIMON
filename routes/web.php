@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\SptDokumenController;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\JenisPenugasan;
@@ -37,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/perbarui-kata-sandi', [ForcedPasswordController::class, 'edit'])->name('password.force.edit');
     Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');
 
+    Route::get('/spt/{spt}/dokumen/{dokumen}', SptDokumenController::class)->name('spt.dokumen');
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');
 
     Route::view('/admin', 'dashboard.admin')->name('admin.dashboard')->middleware('role:admin');

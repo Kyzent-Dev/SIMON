@@ -1,0 +1,276 @@
+<?php
+
+namespace App\Actions\Spt;
+
+use App\Enums\KejadianSpt;
+use App\Enums\Role;
+use App\Enums\StatusPengajuan;
+use App\Enums\SumberSpt;
+use App\Models\JenisPenugasan;
+use App\Models\Klasifikasi;
+use App\Models\Objek;
+use App\Models\Pegawai;
+use App\Models\PkptItem;
+use App\Models\Spt;
+use App\Models\User;
+use App\Services\KesesuaianPkpt;
+use App\Services\Settings;
+use App\Support\DiinputOleh;
+use App\Support\Tanggal;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Irban saves a pengajuan SPT as draf or submits it (PRD §5, §7, §9.2).
+ *
+ * handle(User $user, ?Spt $spt, array $data, 'draf'|'ajukan', ?UploadedFile $lampiran = null, bool $hapusLampiran = false): Spt
+ *  $data: klasifikasi_id, pkpt_item_id, non_pkpt (bool, informational: no item is the same thing), jenis_penugasan_id, objek_ids (int[]),
+ *         periode_diperiksa, uraian_untuk, tanggal_mulai, tanggal_selesai (Y-m-d), ppj_pegawai_id, catatan_bagian_umum,
+ *         diinput_oleh (pegawai id), personel: ordered list of [pegawai_id, peran, sumber 'tim'|'tambahan', tim_id|null, ikut bool]
+ *         (ikut=false rows are dropped before validation and storage).
+ * Failures throw ValidationException keyed by field ('personel', 'lampiran', and 'spt' for a locked SPT included).
+ * After handle(), $peringatan holds the non-blocking warnings (also available live through peringatan($data)).
+ */
+class SimpanSpt
+{
+    public const MAKS_LAMPIRAN = 5 * 1024 * 1024;
+
+    /** @var list<string> */
+    public array $peringatan = [];
+
+    public function __construct(private KesesuaianPkpt $kesesuaian, private ValidatePersonel $validatePersonel, private Settings $settings) {}
+
+    public function handle(User $user, ?Spt $spt, array $data, string $mode, ?UploadedFile $lampiran = null, bool $hapusLampiran = false): Spt
+    {
+        $ajukan = $mode === 'ajukan';
+        if ($spt) {
+            Gate::forUser($user)->authorize('view', $spt);
+            $this->pastikanBisaDiubah($spt);
+            Gate::forUser($user)->authorize('update', $spt);
+        } else {
+            Gate::forUser($user)->authorize('create', Spt::class);
+        }
+
+        [$kolom, $objekIds, $personel] = $this->validasi($user, $user->irban_id, $spt, $data, $ajukan);
+        $this->cekLampiran($lampiran);
+        $this->peringatan = $this->peringatan($data);
+
+        $path = null;
+        try {
+            [$spt, $dihapus] = DB::transaction(function () use ($user, $spt, $kolom, $objekIds, $personel, $ajukan, $lampiran, $hapusLampiran, &$path) {
+                if ($spt) {
+                    $spt = Spt::whereKey($spt->id)->lockForUpdate()->firstOrFail();
+                    $this->pastikanBisaDiubah($spt);
+                }
+                $baru = ! $spt;
+                $spt ??= (new Spt)->forceFill(['irban_id' => $user->irban_id, 'dibuat_oleh' => $user->id, 'status_pengajuan' => StatusPengajuan::Draf, 'sumber' => SumberSpt::Sistem]);
+                $lama = $spt->status_pengajuan;
+                $spt->fill($kolom);
+                if ($ajukan) {
+                    $spt->forceFill(['status_pengajuan' => StatusPengajuan::MenungguNomor, 'diajukan_pada' => now()]);
+                }
+                $spt->save();
+
+                $spt->objek()->sync($objekIds);
+                $spt->personel()->delete();
+                $spt->personel()->createMany($personel);
+
+                $dihapus = collect();
+                if ($lampiran || $hapusLampiran) {
+                    $dihapus = $spt->dokumen()->where('jenis', 'draf')->get();
+                    $spt->dokumen()->whereIn('id', $dihapus->modelKeys())->delete();
+                }
+                if ($lampiran) {
+                    $path = $lampiran->storeAs("spt/{$spt->id}", Str::uuid().'.pdf', 'local');
+                    $spt->dokumen()->create([
+                        'jenis' => 'draf', 'path' => $path, 'nama_asli' => $lampiran->getClientOriginalName(), 'ukuran' => $lampiran->getSize(),
+                        'sha256' => hash_file('sha256', $lampiran->getRealPath()), 'diunggah_oleh' => $user->id, 'diinput_oleh' => $kolom['diinput_oleh'],
+                    ]);
+                }
+
+                $kejadian = $baru ? [KejadianSpt::DIBUAT] : [];
+                if ($ajukan) {
+                    $kejadian[] = KejadianSpt::DIAJUKAN;
+                } elseif (! $baru) {
+                    $kejadian[] = KejadianSpt::DIUBAH;
+                }
+                foreach ($kejadian as $k) {
+                    $spt->riwayat()->create([
+                        'kejadian' => $k, 'nilai_lama' => $baru || $k === KejadianSpt::DIBUAT ? null : ['status_pengajuan' => $lama->value],
+                        'nilai_baru' => ['status_pengajuan' => $spt->status_pengajuan->value], 'oleh' => $user->id, 'diinput_oleh' => $kolom['diinput_oleh'],
+                    ]);
+                }
+
+                return [$spt, $dihapus];
+            });
+        } catch (\Throwable $e) {
+            if ($path) {
+                Storage::disk('local')->delete($path);
+            }
+            throw $e;
+        }
+
+        foreach ($dihapus as $d) {
+            Storage::disk('local')->delete($d->path);
+        }
+        DiinputOleh::ingat($user, $kolom['diinput_oleh']);
+
+        return $spt->refresh();
+    }
+
+    /**
+     * Non-blocking warnings for the form (live) and for the save result.
+     *
+     * @return list<string>
+     */
+    public function peringatan(array $data): array
+    {
+        $item = PkptItem::with('pkpt')->find($this->int($data['pkpt_item_id'] ?? null));
+        if (! $item) {
+            return [];
+        }
+        $w = [];
+        if ($item->pkpt->isDraf()) {
+            $w[] = 'PKPT belum disahkan.';
+        }
+        $mulai = $this->tanggal($data['tanggal_mulai'] ?? null);
+        $selesai = $this->tanggal($data['tanggal_selesai'] ?? null);
+        if ($mulai && $selesai && ! $this->kesesuaian->sesuai($item, $mulai, $selesai)) {
+            [$m, $s] = $this->kesesuaian->rentang($item);
+            $w[] = 'Di luar jadwal PKPT ('.Tanggal::rentang($m, $s).'). SPT akan ditandai Tidak Sesuai PKPT.';
+        }
+
+        return $w;
+    }
+
+    private function pastikanBisaDiubah(Spt $spt): void
+    {
+        if (! in_array($spt->status_pengajuan, [StatusPengajuan::Draf, StatusPengajuan::PerluRevisi], true)) {
+            throw ValidationException::withMessages(['spt' => 'SPT ini sudah dikirim dan tidak dapat diubah.']);
+        }
+    }
+
+    private function int(mixed $v): ?int
+    {
+        return filter_var($v, FILTER_VALIDATE_INT) ?: null;
+    }
+
+    private function tanggal(mixed $v): ?CarbonImmutable
+    {
+        return is_string($v) && CarbonImmutable::canBeCreatedFromFormat($v, 'Y-m-d') ? CarbonImmutable::createFromFormat('Y-m-d', $v)->startOfDay() : null;
+    }
+
+    private function cekLampiran(?UploadedFile $f): void
+    {
+        if ($f && (strtolower($f->getClientOriginalExtension()) !== 'pdf' || $f->getMimeType() !== 'application/pdf' || $f->getSize() > self::MAKS_LAMPIRAN)) {
+            throw ValidationException::withMessages(['lampiran' => 'Lampiran harus PDF dan maksimal 5 MB.']);
+        }
+    }
+
+    /** @return array{0: array<string, mixed>, 1: list<int>, 2: list<array>} columns for the spt row, objek ids, normalized personel */
+    private function validasi(User $user, int $irbanId, ?Spt $spt, array $d, bool $ajukan): array
+    {
+        $e = [];
+        $diinput = $this->int($d['diinput_oleh'] ?? null);
+        if ($user->role === Role::Irban) {
+            if (! $diinput) {
+                $e['diinput_oleh'] = 'Pilih nama penginput terlebih dahulu';
+            } elseif (! DiinputOleh::pilihan($user)->contains('id', $diinput)) {
+                $e['diinput_oleh'] = 'Penginput harus PPJ atau anggota aktif Irban ini tahun '.DiinputOleh::tahun().'.';
+            }
+        }
+
+        $klasifikasi = Klasifikasi::find($this->int($d['klasifikasi_id'] ?? null));
+        if (! $klasifikasi) {
+            $e['klasifikasi_id'] = 'Pilih klasifikasi.';
+        }
+
+        // Non-PKPT is "no item chosen"; it is only accepted when the klasifikasi does not require an item.
+        $item = null;
+        if ($itemId = $this->int($d['pkpt_item_id'] ?? null)) {
+            $item = PkptItem::with('pkpt')->where('irban_id', $irbanId)->find($itemId);
+            if (! $item) {
+                $e['pkpt_item_id'] = 'Item PKPT tidak valid untuk Irban ini.';
+            }
+        }
+        if ($klasifikasi && $ajukan && ! $item && ! isset($e['pkpt_item_id']) && $klasifikasi->wajib_item_pkpt) {
+            $e['pkpt_item_id'] = 'Pilih item PKPT untuk SPT Reguler.';
+        }
+        if ($ajukan && $item && $item->pkpt->isDraf() && $this->settings->get('pkpt.draf_memblokir')) {
+            $e['pkpt_item_id'] = 'PKPT belum disahkan.';
+        }
+
+        $jenisId = $item?->jenis_penugasan_id ?? $this->int($d['jenis_penugasan_id'] ?? null);
+        if ($jenisId && ! JenisPenugasan::whereKey($jenisId)->exists()) {
+            $jenisId = null;
+        }
+        if ($ajukan && ! $jenisId) {
+            $e['jenis_penugasan_id'] = 'Pilih jenis penugasan.';
+        }
+
+        $objekIds = array_values(array_unique(array_filter(array_map(fn ($v) => $this->int($v), (array) ($d['objek_ids'] ?? [])))));
+        $objekIds = Objek::whereIn('id', $objekIds)->pluck('id')->all();
+        if ($ajukan && ! $objekIds) {
+            $e['objek_ids'] = 'Pilih minimal satu objek.';
+        }
+
+        $periode = trim((string) ($d['periode_diperiksa'] ?? ''));
+        if ($ajukan && $periode === '') {
+            $e['periode_diperiksa'] = 'Isi periode yang diperiksa.';
+        } elseif (mb_strlen($periode) > 255) {
+            $e['periode_diperiksa'] = 'Periode maksimal 255 karakter.';
+        }
+        $uraian = trim((string) ($d['uraian_untuk'] ?? ''));
+        if ($ajukan && $uraian === '') {
+            $e['uraian_untuk'] = 'Isi uraian.';
+        } elseif (mb_strlen($uraian) > 1000) {
+            $e['uraian_untuk'] = 'Uraian maksimal 1000 karakter.';
+        }
+        $catatan = trim((string) ($d['catatan_bagian_umum'] ?? ''));
+        if (mb_strlen($catatan) > 1000) {
+            $e['catatan_bagian_umum'] = 'Catatan maksimal 1000 karakter.';
+        }
+
+        $mulai = $this->tanggal($d['tanggal_mulai'] ?? null);
+        $selesai = $this->tanggal($d['tanggal_selesai'] ?? null);
+        if (! $mulai && ($ajukan || ($d['tanggal_mulai'] ?? null))) {
+            $e['tanggal_mulai'] = 'Isi tanggal mulai.';
+        }
+        if (! $selesai && ($ajukan || ($d['tanggal_selesai'] ?? null))) {
+            $e['tanggal_selesai'] = 'Isi tanggal selesai.';
+        }
+        if ($mulai && $selesai && $selesai->lt($mulai)) {
+            $e['tanggal_selesai'] = 'Tanggal selesai tidak boleh sebelum tanggal mulai.';
+        }
+
+        $ppj = $this->int($d['ppj_pegawai_id'] ?? null);
+        if ($ppj && $ppj !== $spt?->ppj_pegawai_id && ! Pegawai::whereKey($ppj)->where('aktif', true)->exists()) {
+            $ppj = null;
+        }
+        if ($ajukan && ! $ppj) {
+            $e['ppj_pegawai_id'] = 'Pilih PPJ.';
+        }
+
+        $personel = [];
+        try {
+            $personel = $this->validatePersonel->handle((array) ($d['personel'] ?? []), $irbanId, $spt ? $spt->personel()->pluck('pegawai_id')->all() : [], $ajukan);
+        } catch (ValidationException $ex) {
+            $e += $ex->errors();
+        }
+
+        if ($e) {
+            throw ValidationException::withMessages($e);
+        }
+
+        return [[
+            'klasifikasi_id' => $klasifikasi->id, 'pkpt_item_id' => $item?->id, 'jenis_penugasan_id' => $jenisId, 'ppj_pegawai_id' => $ppj,
+            'periode_diperiksa' => $periode ?: null, 'uraian_untuk' => $uraian ?: null, 'tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai,
+            'catatan_bagian_umum' => $catatan ?: null, 'diinput_oleh' => $diinput,
+        ], $objekIds, $personel];
+    }
+}

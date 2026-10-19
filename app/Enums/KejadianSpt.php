@@ -7,6 +7,8 @@ final class KejadianSpt
 {
     public const DIBUAT = 'dibuat';
 
+    public const DIUBAH = 'diubah';
+
     public const DIAJUKAN = 'diajukan';
 
     public const PERLU_REVISI = 'perlu_revisi';
