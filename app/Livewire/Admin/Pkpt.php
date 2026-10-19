@@ -62,7 +62,12 @@ class Pkpt extends Component
                 'tahun' => $this->tahun, 'nomor_sk' => $this->nomor_sk, 'tanggal_sk' => $this->tanggal_sk,
             ]);
         } catch (ValidationException $e) {
-            $this->setErrorBag($e->validator->errors());
+            // Field errors show under their input; anything else (e.g. `pkpt`: disahkan meanwhile) would be invisible in the form.
+            foreach ($e->errors() as $key => $messages) {
+                in_array($key, ['tahun', 'nomor_sk', 'tanggal_sk'], true)
+                    ? $this->addError($key, $messages[0])
+                    : $this->dispatch('toast', type: 'error', message: $messages[0]);
+            }
 
             return;
         }

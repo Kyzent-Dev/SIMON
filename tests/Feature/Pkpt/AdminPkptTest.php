@@ -119,6 +119,17 @@ class AdminPkptTest extends TestCase
         $this->assertModelExists($pkpt);
     }
 
+    public function test_saving_pkpt_disahkan_meanwhile_shows_error_toast(): void
+    {
+        $pkpt = $this->draf();
+        $page = $this->list()->call('edit', $pkpt->id);
+        $pkpt->forceFill(['status' => StatusPkpt::Disahkan])->save();
+
+        $page->set('nomor_sk', 'SK/9')->call('save')
+            ->assertDispatched('toast', type: 'error', message: 'PKPT yang sudah disahkan tidak dapat diubah.');
+        $this->assertNull($pkpt->fresh()->nomor_sk);
+    }
+
     public function test_inline_add_edit_delete_item(): void
     {
         $pkpt = $this->draf();
