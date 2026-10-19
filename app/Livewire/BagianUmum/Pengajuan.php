@@ -157,12 +157,12 @@ class Pengajuan extends Component
         $this->dispatch('kotak-masuk-maju');
     }
 
-    /** The selected SPT if it is still pending; otherwise the conflict alert. */
+    /** The selected SPT if it is still pending. If not: the conflict alert only when the user was in the Menunggu queue (a lost race); elsewhere there is nothing to decide, so silently nothing. */
     private function menunggu(): ?Spt
     {
         $spt = $this->spt($this->pilih);
         if ($spt->status_pengajuan !== StatusPengajuan::MenungguNomor) {
-            $this->konflik = true;
+            $this->konflik = $this->tab === 'menunggu_nomor';
 
             return null;
         }
@@ -188,8 +188,8 @@ class Pengajuan extends Component
 
         return Spt::query()->where('status_pengajuan', '!=', StatusPengajuan::Draf)
             ->when(filter_var($this->irban, FILTER_VALIDATE_INT), fn ($q, $id) => $q->where('irban_id', $id))
-            ->when($dari, fn ($q) => $q->where('diajukan_pada', '>=', $dari->utc()))
-            ->when($sampai, fn ($q) => $q->where('diajukan_pada', '<=', $sampai->utc()));
+            ->when($dari, fn ($q) => $q->where('diajukan_pada', '>=', $dari))
+            ->when($sampai, fn ($q) => $q->where('diajukan_pada', '<=', $sampai));
     }
 
     private function daftar()

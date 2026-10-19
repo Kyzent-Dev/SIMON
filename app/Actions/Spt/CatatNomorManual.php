@@ -59,6 +59,6 @@ class CatatNomorManual
             ]);
 
             return $spt;
-        });
+        }, attempts: 3);
     }
 }

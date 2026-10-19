@@ -10,7 +10,10 @@ class DeleteObjek
 {
     public function handle(Objek $objek): void
     {
-        if ($objek->children()->exists() || $objek->wilayah()->exists() || DB::table('spt_objek')->where('objek_id', $objek->id)->exists()) {
+        if (DB::table('spt_objek')->where('objek_id', $objek->id)->exists()) {
+            throw ValidationException::withMessages(['delete' => 'Objek ini sudah dipakai pada SPT; tidak dapat dihapus.']);
+        }
+        if ($objek->children()->exists() || $objek->wilayah()->exists()) {
             throw ValidationException::withMessages(['delete' => 'Objek ini masih punya objek di bawahnya atau sudah dipakai pada wilayah Irban, sehingga tidak dapat dihapus.']);
         }
         $objek->delete();

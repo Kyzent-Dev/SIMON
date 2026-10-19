@@ -166,9 +166,34 @@ class KotakMasukTest extends TestCase
             ->call('muatUlang')->assertSet('konflik', false)->assertDontSee('Pengajuan ini sudah diproses oleh pengguna lain.');
         $this->assertNull($spt->refresh()->nomor_lengkap);
 
-        // Opening a decision on an SPT that is no longer pending also reports the conflict instead of opening the modal.
-        $this->inbox()->set('tab', 'ditolak')->call('pilihSpt', $spt->id)->call('bukaTerima')->assertSet('showTerima', false)->assertSet('konflik', true)
+        // Opening a decision on an SPT that was pending in this view but is not any more also reports the conflict instead of opening the modal.
+        $baru = $this->menunggu('Kedua');
+        $d = $this->inbox()->call('pilihSpt', $baru->id);
+        $baru->forceFill(['status_pengajuan' => StatusPengajuan::Ditolak])->save();
+        $d->call('bukaTerima')->assertSet('showTerima', false)->assertSet('konflik', true)
             ->call('muatUlang')->call('bukaCatatan', 'tolak')->assertSet('showCatatan', false)->assertSet('konflik', true);
+    }
+
+    public function test_decision_keys_on_a_processed_spt_do_nothing_and_raise_no_conflict(): void
+    {
+        $spt = Spt::factory()->diterima()->create(['irban_id' => $this->irban->id]);
+
+        $this->inbox()->set('tab', 'diterima')->call('pilihSpt', $spt->id)
+            ->call('bukaTerima')->assertSet('showTerima', false)->assertSet('konflik', false)
+            ->call('bukaCatatan', 'revisi')->assertSet('showCatatan', false)->assertSet('konflik', false)
+            ->call('bukaCatatan', 'tolak')->assertSet('showCatatan', false)->assertSet('konflik', false);
+    }
+
+    public function test_date_filter_uses_jakarta_days(): void
+    {
+        foreach (['2026-10-14', '2026-10-15', '2026-10-16'] as $hari) {
+            Spt::factory()->menungguNomor()->create([
+                'irban_id' => $this->irban->id, 'uraian_untuk' => "Malam {$hari}", 'diajukan_pada' => CarbonImmutable::parse("{$hari} 18:00", 'Asia/Jakarta'),
+            ]);
+        }
+
+        $this->inbox()->set('dari', '2026-10-15')->set('sampai', '2026-10-15')
+            ->assertSee('Menunggu (1)')->assertSee('Malam 2026-10-15')->assertDontSee('Malam 2026-10-14')->assertDontSee('Malam 2026-10-16');
     }
 
     public function test_keyboard_markup_and_shortcut_guard(): void

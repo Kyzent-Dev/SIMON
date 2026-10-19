@@ -76,7 +76,7 @@ class SptReferensiTest extends TestCase
 
         $objek = Objek::factory()->create();
         Spt::factory()->create()->objek()->attach($objek);
-        $this->assertRejected(fn () => (new DeleteObjek)->handle($objek), 'delete', 'Objek ini masih punya objek di bawahnya atau sudah dipakai pada wilayah Irban, sehingga tidak dapat dihapus.');
+        $this->assertRejected(fn () => (new DeleteObjek)->handle($objek), 'delete', 'Objek ini sudah dipakai pada SPT; tidak dapat dihapus.');
 
         $item = PkptItem::factory()->create();
         Spt::factory()->create(['pkpt_item_id' => $item->id]);

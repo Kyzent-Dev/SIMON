@@ -10,12 +10,6 @@ use Illuminate\Validation\ValidationException;
 class ValidatePersonel
 {
     /**
-     * @param  list<array{pegawai_id: int, peran: string, sumber?: string, tim_id?: ?int, ikut?: bool}>  $rows  display order; ikut=false rows are dropped
-     * @param  list<int>  $sudahAda  pegawai already on the SPT (may stay even if now inactive)
-     * @param  bool  $lengkap  true for ajukan: also min one, exactly one Ketua, max one Supervisor/Dalnis
-     * @return list<array{pegawai_id: int, peran: PeranTim, urutan: int, sumber: string, tim_id: ?int}>
-     */
-    /**
      * The composition rules as booleans, for the form's live strip and for handle(). ikut=false rows are ignored.
      *
      * @param  list<array{pegawai_id: int, peran: string, ikut?: bool}>  $rows
@@ -35,6 +29,12 @@ class ValidatePersonel
         ];
     }
 
+    /**
+     * @param  list<array{pegawai_id: int, peran: string, sumber?: string, tim_id?: ?int, ikut?: bool}>  $rows  display order; ikut=false rows are dropped
+     * @param  list<int>  $sudahAda  pegawai already on the SPT (may stay even if now inactive)
+     * @param  bool  $lengkap  true for ajukan: also min one, exactly one Ketua, max one Supervisor/Dalnis
+     * @return list<array{pegawai_id: int, peran: PeranTim, urutan: int, sumber: string, tim_id: ?int}>
+     */
     public function handle(array $rows, int $irbanId, array $sudahAda = [], bool $lengkap = true): array
     {
         $rows = array_values(array_filter($rows, fn ($r) => ($r['ikut'] ?? true) !== false));

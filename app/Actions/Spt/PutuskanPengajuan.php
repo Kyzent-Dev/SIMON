@@ -35,7 +35,7 @@ trait PutuskanPengajuan
             ]);
 
             return $spt;
-        });
+        }, attempts: 3);
     }
 
     private function catatan(string $catatan): string

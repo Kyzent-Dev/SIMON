@@ -193,3 +193,13 @@
 - "Batalkan Nomor" row action is an icon-only danger button (`no-symbol`, `aria-label="Batalkan Nomor {nomor}"`) placed right after Status so it stays visible when the table scrolls sideways at 1280 with the sidebar open; Keterangan is the last column and scrolls inside the table container. Tampered or non-`diterima` ids passed to `bukaBatal` are ignored (no modal opens) and the action re-checks the status under lock.
 - "Atur nomor awal" is for the selected year only. With `penomoran.scope` = per_irban the modal asks for an Irban; once any SPT holds a number on a global register the page button is disabled with an explanation, and the modal shows the same message for a per-Irban register.
 - `phpunit.xml` now sets `memory_limit` 512M: the full suite (366 tests) crashed the PHP process at the 128M default.
+
+## Fase 4, perbaikan review akhir
+
+- `resources/views/pdf/register-nomor.blade.php` memakai hex mentah (#151C1A, #4B5955, #F1F5F4, #D5DEDB) karena dompdf tidak bisa membaca token Tailwind; nilainya sama dengan neutral-900, neutral-600, neutral-50 dan neutral-200. Ini pengecualian dari aturan "tanpa hex mentah di Blade" hanya untuk templat PDF.
+- Combobox Personel/Objek di form pengajuan menyaring seluruh daftar pegawai/objek aktif di sisi klien, bukan pencarian server 250 ms seperti DESIGN §8. Cukup untuk ukuran daftar sekarang; ganti ke pencarian server bila daftar tumbuh besar.
+- Filter tanggal Kotak Masuk membandingkan `diajukan_pada` (disimpan dalam waktu Asia/Jakarta) langsung dengan awal/akhir hari Jakarta, tanpa konversi UTC.
+- `ArrayExport` memakai `WithCustomValueBinder`: string berawalan `=`, `+`, `-`, `@`, tab atau CR disimpan sebagai teks (bukan rumus); angka tetap angka.
+- Pintasan T/R/X tidak berbuat apa-apa bila tidak ada bilah aksi (SPT bukan menunggu). Pesan konflik "sudah diproses pengguna lain" hanya muncul bila SPT terpilih di tab Menunggu ternyata sudah tidak menunggu.
+- Objek yang dipakai SPT punya pesan sendiri ("Objek ini sudah dipakai pada SPT; tidak dapat dihapus."); pesan wilayah Irban hanya untuk anak/wilayah.
+- Transaksi keputusan/penomoran (`PutuskanPengajuan`, `CatatNomorManual`, `AturNomorAwal`) memakai `DB::transaction(..., attempts: 3)` agar deadlock MySQL diulang. Aman diulang: isi closure hanya menulis ke DB (tanpa berkas, event, atau antrean); toast dan dispatch Livewire terjadi di luar transaksi.

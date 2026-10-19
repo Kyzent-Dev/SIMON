@@ -13,7 +13,15 @@ export default () => ({
     init() {
         matchMedia(XL).addEventListener('change', (e) => (this.xl = e.matches));
         matchMedia(DRAWER).addEventListener('change', (e) => (this.drawer = e.matches));
-        this.aktif = this.$wire.pilih ?? this.opsi()[0]?.dataset.id * 1 ?? null;
+        this.aktif = (this.$wire.pilih ?? +this.opsi()[0]?.dataset.id) || null;
+        // A tab/filter change or a decision re-renders the list: drop an active option that is gone (aria-activedescendant must not dangle).
+        this.lepasHook = window.Livewire.hook('morphed', () => {
+            if (this.aktif && !this.opsi().some((o) => +o.dataset.id === this.aktif)) this.aktif = (this.$wire.pilih ?? +this.opsi()[0]?.dataset.id) || null;
+        });
+    },
+
+    destroy() {
+        this.lepasHook?.();
     },
 
     opsi() {
@@ -84,7 +92,7 @@ export default () => ({
         } else if (k === '?') {
             e.preventDefault();
             this.$dispatch('open-modal', { name: 'bantuan-pintasan' });
-        } else if (this.$wire.pilih && (key === 't' || key === 'r' || key === 'x')) {
+        } else if ((key === 't' || key === 'r' || key === 'x') && this.$refs.detail?.querySelector('[aria-keyshortcuts=t]')) {
             e.preventDefault();
             if (key === 't') this.$wire.bukaTerima();
             else this.$wire.bukaCatatan(key === 'r' ? 'revisi' : 'tolak');

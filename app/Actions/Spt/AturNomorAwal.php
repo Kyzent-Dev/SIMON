@@ -33,6 +33,6 @@ class AturNomorAwal
             $counter->forceFill(['nomor_terakhir' => $nomor, 'diatur_oleh' => $user->id, 'diatur_pada' => now()])->save();
 
             return $counter;
-        });
+        }, attempts: 3);
     }
 }
