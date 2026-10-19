@@ -47,7 +47,7 @@ class SptSeeder extends Seeder
                         'tahun' => $mulai->year, 'tanggal_spt' => $mulai]);
                 }
                 $spt->save();
-            });
+            }, attempts: 3);
         };
 
         $buat(StatusPengajuan::Draf, 'Pemeriksaan khusus pengelolaan dana desa (draf).', 11);
@@ -132,7 +132,7 @@ class SptSeeder extends Seeder
                     $spt->forceFill($lhp + ['ditandai_selesai_pada' => $waktu, 'ditandai_selesai_oleh' => $user->id])->save();
                     $riwayat($spt, KejadianSpt::DITANDAI_SELESAI, $waktu, null, ['syarat' => 'lhp_lengkap'] + $lhp);
                 }
-            });
+            }, attempts: 3);
         }
     }
 }
