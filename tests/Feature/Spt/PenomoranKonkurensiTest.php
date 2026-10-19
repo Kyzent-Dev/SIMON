@@ -13,6 +13,8 @@ class PenomoranKonkurensiTest extends TestCase
 
     private string $db;
 
+    private string $barrier;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -20,12 +22,16 @@ class PenomoranKonkurensiTest extends TestCase
             $this->markTestSkipped('proc_open tidak tersedia.');
         }
         $this->db = tempnam(sys_get_temp_dir(), 'simon-konkurensi-');
+        $this->barrier = $this->db.'-barrier';
+        mkdir($this->barrier);
     }
 
     protected function tearDown(): void
     {
         DB::purge('konkurensi');
         @unlink($this->db);
+        array_map('unlink', glob($this->barrier.'/*') ?: []);
+        @rmdir($this->barrier);
         parent::tearDown();
     }
 
@@ -48,10 +54,19 @@ class PenomoranKonkurensiTest extends TestCase
 
         $proses = [];
         for ($i = 0; $i < self::PROSES; $i++) {
-            $p = new Process([PHP_BINARY, base_path('tests/Support/ambil-nomor.php'), (string) $irbanId, '2026-05-04'], base_path(), $this->env(), null, 120);
+            $p = new Process([PHP_BINARY, base_path('tests/Support/ambil-nomor.php'), (string) $irbanId, '2026-05-04', $this->barrier], base_path(), $this->env(), null, 120);
             $p->start();
             $proses[] = $p;
         }
+
+        // Start barrier: release all children only once every one has booted, so the 20 transactions overlap every run.
+        for ($batas = microtime(true) + 90; count(glob($this->barrier.'/siap-*')) < self::PROSES; usleep(10000)) {
+            foreach ($proses as $p) {
+                $this->assertTrue($p->isRunning() || $p->getExitCode() === 0, 'Proses berhenti sebelum barrier: '.$p->getErrorOutput().$p->getOutput());
+            }
+            $this->assertLessThan($batas, microtime(true), 'Barrier timeout');
+        }
+        touch($this->barrier.'/mulai');
 
         $hasil = [];
         foreach ($proses as $p) {

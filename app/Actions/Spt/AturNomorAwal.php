@@ -25,7 +25,7 @@ class AturNomorAwal
         $kunci = app(Penomoran::class)->kunci($irban, $tahun);
 
         return DB::transaction(function () use ($user, $kunci, $nomor) {
-            NomorCounter::createOrFirst($kunci);
+            Penomoran::pastikanCounter($kunci);
             $counter = NomorCounter::where($kunci)->lockForUpdate()->firstOrFail();
             if (Spt::where('nomor_counter_id', $counter->id)->whereNotNull('nomor_urut')->exists()) {
                 throw ValidationException::withMessages(['nomor' => 'Nomor awal hanya bisa diatur sebelum ada nomor yang terbit pada register ini.']);

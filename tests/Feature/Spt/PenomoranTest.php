@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 use Tests\TestCase;
 
 class PenomoranTest extends TestCase
@@ -59,6 +60,34 @@ class PenomoranTest extends TestCase
         $counter->forceFill(['nomor_terakhir' => 751])->save();
 
         $this->assertSame('700/752/INSPEKTORAT-II/SPT/2026', $this->ambil($irban)['nomor_lengkap']);
+    }
+
+    public function test_existing_counter_is_never_reset_by_the_create_step(): void
+    {
+        $irban = $this->irban();
+        NomorCounter::create(['tahun' => 2026, 'scope' => 'global'])->forceFill(['nomor_terakhir' => 5])->save();
+
+        $this->assertSame(6, $this->ambil($irban)['nomor_urut']);
+        $this->assertSame(7, $this->ambil($irban)['nomor_urut']);
+        $this->assertSame(1, NomorCounter::count());
+        $this->assertSame(7, NomorCounter::first()->nomor_terakhir);
+    }
+
+    public function test_ambil_outside_a_transaction_is_refused(): void
+    {
+        $this->expectException(LogicException::class);
+        // RefreshDatabase wraps each test in a transaction; leave it to reach level 0.
+        $level = DB::transactionLevel();
+        for ($i = 0; $i < $level; $i++) {
+            DB::rollBack();
+        }
+        try {
+            $this->penomoran()->ambil(new Irban(['kode_nomor' => 'A']), CarbonImmutable::parse('2026-05-04'));
+        } finally {
+            for ($i = 0; $i < $level; $i++) {
+                DB::beginTransaction();
+            }
+        }
     }
 
     public function test_kode_arsip_and_custom_template(): void

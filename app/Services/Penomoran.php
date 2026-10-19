@@ -6,6 +6,8 @@ use App\Models\Irban;
 use App\Models\Klasifikasi;
 use App\Models\NomorCounter;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /** SPT numbering (PRD §9.1): one locked counter row per register, never MAX(nomor_urut)+1; numbers are never reused. */
 class Penomoran
@@ -22,18 +24,19 @@ class Penomoran
     }
 
     /**
-     * Takes the next number. Must run inside the caller's DB::transaction.
+     * Takes the next number. Must run inside the caller's DB::transaction (LogicException otherwise).
      *
      * @return array{counter: NomorCounter, nomor_urut: int, nomor_lengkap: string}
      */
     public function ambil(Irban $irban, CarbonImmutable $tanggal, ?Klasifikasi $klasifikasi = null): array
     {
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException('Penomoran::ambil harus dipanggil di dalam DB::transaction.');
+        }
         $kunci = $this->kunci($irban, $this->tahun($tanggal));
 
-        // firstOrCreate falls back to createOrFirst, which survives the unique race on a register's first number.
-        // On SQLite the IMMEDIATE transaction mode (config/database.php) already holds the write lock; lockForUpdate is for MySQL.
-        $id = NomorCounter::firstOrCreate($kunci)->id;
-        $counter = NomorCounter::whereKey($id)->lockForUpdate()->firstOrFail();
+        self::pastikanCounter($kunci);
+        $counter = NomorCounter::where($kunci)->lockForUpdate()->firstOrFail();
         $counter->increment('nomor_terakhir');
 
         return [
@@ -41,6 +44,17 @@ class Penomoran
             'nomor_urut' => $counter->nomor_terakhir,
             'nomor_lengkap' => $this->format($counter->nomor_terakhir, $irban, $tanggal, $klasifikasi),
         ];
+    }
+
+    /**
+     * Creates the register row if missing, as one atomic write that takes an exclusive lock and never touches an existing
+     * nomor_terakhir. A plain firstOrCreate deadlocks on MySQL when several transactions race for a register's first number
+     * (duplicate-key errors leave shared locks, then FOR UPDATE waits on each other). On SQLite the IMMEDIATE transaction
+     * mode (config/database.php) already holds the write lock; lockForUpdate after this is for MySQL.
+     */
+    public static function pastikanCounter(array $kunci): void
+    {
+        NomorCounter::upsert([$kunci + ['nomor_terakhir' => 0]], ['tahun', 'scope'], ['updated_at']);
     }
 
     /** @return array{nomor_urut: int, nomor_lengkap: string} what the next ambil() would give; no lock, no write. */
