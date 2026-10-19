@@ -14,15 +14,17 @@ class PkptFactory extends Factory
 
     public function definition(): array
     {
-        return ['tahun' => fake()->unique()->numberBetween(2000, 2030), 'nomor_sk' => null, 'tanggal_sk' => null, 'status' => StatusPkpt::Draf];
+        // Far outside the years tests hard-code (2024–2027), so a random default never collides with an explicit one.
+        return ['tahun' => fake()->unique()->numberBetween(2100, 2999), 'nomor_sk' => null, 'tanggal_sk' => null, 'status' => StatusPkpt::Draf];
     }
 
     public function disahkan(): static
     {
-        return $this->state(fn (array $a) => [
+        // Attribute closures run after create()/make() overrides, so the SK follows the final tahun.
+        return $this->state([
             'status' => StatusPkpt::Disahkan,
-            'nomor_sk' => '100.3.3.2/1/KPTS/INSPEKTORAT/'.$a['tahun'],
-            'tanggal_sk' => $a['tahun'].'-01-02',
+            'nomor_sk' => fn (array $a) => '100.3.3.2/1/KPTS/INSPEKTORAT/'.$a['tahun'],
+            'tanggal_sk' => fn (array $a) => $a['tahun'].'-01-02',
             'disahkan_pada' => now(),
             'disahkan_oleh' => User::factory()->admin(),
         ]);

@@ -153,7 +153,7 @@ class PkptDetail extends Component
     public function render(KesesuaianPkpt $kesesuaian)
     {
         $items = $this->pkpt->items()
-            ->with(['irban', 'jenisPenugasan', 'revisi' => fn ($q) => $q->with('diputuskanOleh')->orderBy('created_at')->orderBy('id')])
+            ->with(['irban', 'jenisPenugasan', 'revisi' => fn ($q) => $q->with(['diputuskanOleh', 'diinputOleh', 'diajukanOleh'])->orderBy('created_at')->orderBy('id')])
             ->when($this->irbanId !== '', fn ($q) => $q->where('irban_id', $this->irbanId))
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
 

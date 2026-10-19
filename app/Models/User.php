@@ -18,6 +18,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public function irban()
+    {
+        return $this->belongsTo(Irban::class);
+    }
+
     public function initials(): string
     {
         return collect(preg_split('/\s+/', trim($this->name)))->filter()->take(2)

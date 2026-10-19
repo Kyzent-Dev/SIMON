@@ -84,8 +84,9 @@ class DashboardShellTest extends TestCase
         }
         foreach ([Role::Pimpinan, Role::Irban, Role::BagianUmum] as $role) {
             $this->assertSame(['Dasbor'], array_column(Navigation::groups($role)[0]['items'], 'label'));
-            $this->assertCount(1, Navigation::groups($role));
+            $this->assertCount($role === Role::Irban ? 2 : 1, Navigation::groups($role));
         }
+        $this->assertSame(['Jadwal PKPT'], array_column(Navigation::groups(Role::Irban)[1]['items'], 'label'));
     }
 
     public function test_admin_dashboard_quick_links_come_from_navigation(): void

@@ -7,7 +7,6 @@
     $draf = $pkpt->isDraf();
     $tag = $pkpt->status->tag();
     $full = fn ($a, $b) => $a->translatedFormat('j F Y').' – '.$b->translatedFormat('j F Y');
-    $durasi = fn ($a, $b) => (int) $a->diffInDays($b) + 1;
     $cols = $draf ? 6 : 5;
 @endphp
 <div>
@@ -81,51 +80,14 @@
                 @else
                     @php
                         [$mulai, $selesai] = $rentang[$item->id];
-                        $direvisi = ! $mulai->equalTo($item->tanggal_mulai) || ! $selesai->equalTo($item->tanggal_selesai);
                         $label = $item->jenisPenugasan->nama.', '.$item->irban->nama.', '.$full($item->tanggal_mulai, $item->tanggal_selesai);
                     @endphp
                     <tr wire:key="item-{{ $item->id }}">
                         <td class="whitespace-nowrap align-top !py-3">{{ $item->irban->nama }}</td>
                         <td class="min-w-44 align-top !py-3"><x-app.type-chip :color="$item->jenisPenugasan->warna" :label="$item->jenisPenugasan->nama" /></td>
                         <td class="min-w-56 align-top !py-3">
-                            <p class="whitespace-nowrap">{{ $full($mulai, $selesai) }}</p>
-                            <p class="text-xs text-neutral-500">Durasi: {{ $durasi($mulai, $selesai) }} hari</p>
-                            @if ($direvisi)
-                                <p class="mt-1 flex items-center gap-1.5 text-xs text-neutral-600">
-                                    <span aria-hidden="true" class="inline-block h-2.5 w-4 shrink-0 rounded-sm border border-dashed border-border-strong"></span>
-                                    <span><span class="sr-only">Jadwal direvisi, </span>semula {{ Tanggal::rentang($item->tanggal_mulai, $item->tanggal_selesai) }}</span>
-                                </p>
-                            @endif
-                            @if (! $draf && $item->revisi->isNotEmpty())
-                                <details class="mt-2 group">
-                                    <summary class="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-sm text-sm font-medium text-mint-700 hover:underline lg:min-h-6">
-                                        {{ svg('heroicon-m-chevron-right', 'size-4 group-open:rotate-90') }}Riwayat revisi ({{ $item->revisi->count() }})
-                                    </summary>
-                                    <ol class="mt-2 max-w-sm space-y-3 border-l-2 border-neutral-200 pl-3">
-                                        @foreach ($item->revisi as $r)
-                                            @php $rt = $r->status->tag(); @endphp
-                                            <li class="space-y-1 text-xs text-neutral-600" wire:key="revisi-{{ $r->id }}">
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    <x-app.tag :icon="$rt['icon']" :variant="$rt['variant']">{{ $r->status->label() }}</x-app.tag>
-                                                    <span>Diajukan {{ $r->created_at->timezone('Asia/Jakarta')->translatedFormat('d F Y') }}</span>
-                                                </div>
-                                                <p class="text-sm text-neutral-900">
-                                                    {{ Tanggal::rentang($r->tanggal_mulai_semula, $r->tanggal_selesai_semula) }}
-                                                    <span aria-hidden="true">→</span><span class="sr-only">menjadi</span>
-                                                    {{ Tanggal::rentang($r->tanggal_mulai, $r->tanggal_selesai) }}
-                                                </p>
-                                                <p class="whitespace-normal"><span class="font-medium text-neutral-900">Alasan:</span> {{ $r->alasan }}</p>
-                                                @if ($r->diputuskan_pada)
-                                                    <p class="whitespace-normal">Diputuskan oleh {{ $r->diputuskanOleh?->name ?? 'pengguna terhapus' }} pada {{ $r->diputuskan_pada->timezone('Asia/Jakarta')->translatedFormat('d F Y') }}</p>
-                                                @endif
-                                                @if ($r->komentar)
-                                                    <p class="whitespace-normal"><span class="font-medium text-neutral-900">Komentar:</span> {{ $r->komentar }}</p>
-                                                @endif
-                                            </li>
-                                        @endforeach
-                                    </ol>
-                                </details>
-                            @endif
+                            <x-app.jadwal-berlaku :item="$item" :mulai="$mulai" :selesai="$selesai" />
+                            @unless ($draf)<x-app.riwayat-revisi :revisi="$item->revisi" class="mt-2" />@endunless
                         </td>
                         <td class="min-w-32 align-top !py-3">
                             @if ($item->keterangan){{ $item->keterangan }}@else<span class="text-neutral-500">—</span>@endif

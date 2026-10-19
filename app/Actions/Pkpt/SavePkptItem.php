@@ -24,6 +24,33 @@ class SavePkptItem
             $errors['jenis_penugasan_id'] = 'Pilih jenis penugasan.';
         }
 
+        $dates = self::tanggal($pkpt, $data, $errors);
+
+        $ket = trim((string) ($data['keterangan'] ?? ''));
+        if (mb_strlen($ket) > 255) {
+            $errors['keterangan'] = 'Keterangan maksimal 255 karakter.';
+        }
+        $target = $data['target_spt'] ?? null;
+        if ($target === '' || $target === null) {
+            $target = null;
+        } elseif (($target = filter_var($target, FILTER_VALIDATE_INT)) === false || $target < 1 || $target > 999) {
+            $errors['target_spt'] = 'Target SPT harus berupa angka 1 sampai 999.';
+        }
+
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return [
+            'irban_id' => (int) $irban, 'jenis_penugasan_id' => (int) $jenis,
+            'tanggal_mulai' => $dates['tanggal_mulai'], 'tanggal_selesai' => $dates['tanggal_selesai'],
+            'keterangan' => $ket === '' ? null : $ket, 'target_spt' => $target,
+        ];
+    }
+
+    /** Date rules shared with AjukanRevisiJadwal: both required, mulai <= selesai, inside the PKPT year. Adds messages to $errors. */
+    public static function tanggal(Pkpt $pkpt, array $data, array &$errors): array
+    {
         $dates = [];
         foreach (['tanggal_mulai' => 'Tanggal mulai', 'tanggal_selesai' => 'Tanggal selesai'] as $f => $label) {
             try {
@@ -46,26 +73,7 @@ class SavePkptItem
             }
         }
 
-        $ket = trim((string) ($data['keterangan'] ?? ''));
-        if (mb_strlen($ket) > 255) {
-            $errors['keterangan'] = 'Keterangan maksimal 255 karakter.';
-        }
-        $target = $data['target_spt'] ?? null;
-        if ($target === '' || $target === null) {
-            $target = null;
-        } elseif (($target = filter_var($target, FILTER_VALIDATE_INT)) === false || $target < 1 || $target > 999) {
-            $errors['target_spt'] = 'Target SPT harus berupa angka 1 sampai 999.';
-        }
-
-        if ($errors) {
-            throw ValidationException::withMessages($errors);
-        }
-
-        return [
-            'irban_id' => (int) $irban, 'jenis_penugasan_id' => (int) $jenis,
-            'tanggal_mulai' => $dates['tanggal_mulai'], 'tanggal_selesai' => $dates['tanggal_selesai'],
-            'keterangan' => $ket === '' ? null : $ket, 'target_spt' => $target,
-        ];
+        return $dates;
     }
 
     public function handle(Pkpt $pkpt, ?PkptItem $item, array $data): PkptItem

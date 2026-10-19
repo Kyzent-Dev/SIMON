@@ -14,29 +14,33 @@ class Navigation
         $item = fn (string $label, string $route, string $icon) => compact('label', 'route', 'icon');
         $dasbor = [['label' => null, 'items' => [$item('Dasbor', $role->dashboardRoute(), 'home')]]];
 
-        $groups = $role !== Role::Admin ? $dasbor : [...$dasbor,
-            ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],
-            ['label' => 'Master Data', 'items' => [
-                $item('Pegawai', 'admin.pegawai', 'identification'),
-                $item('Irban', 'admin.irban', 'building-office-2'),
-                $item('Komposisi Irban Tahunan', 'admin.irban-tahunan', 'user-group'),
-                $item('Tim', 'admin.tim', 'users'),
-                $item('Objek Pemeriksaan', 'admin.objek', 'building-library'),
-                $item('Wilayah Irban', 'admin.wilayah-irban', 'map'),
-                $item('Jenis Penugasan', 'admin.jenis-penugasan', 'swatch'),
-                $item('Klasifikasi & Aturan', 'admin.klasifikasi', 'tag'),
-            ]],
-            ['label' => null, 'items' => [$item('PKPT', 'admin.pkpt', 'calendar-days')]],
-            ['label' => 'Konten Beranda', 'items' => [
-                $item('Slide Beranda', 'admin.slide', 'photo'),
-                $item('Kontak & Footer', 'admin.kontak', 'phone'),
-            ]],
-            ['label' => null, 'items' => [
-                $item('Pengaturan Sistem', 'admin.pengaturan', 'cog-6-tooth'),
-                $item('Impor Excel', 'admin.impor', 'arrow-up-tray'),
-                $item('Log Aktivitas', 'admin.log', 'clipboard-document-list'),
-            ]],
-        ];
+        $groups = match ($role) {
+            Role::Irban => [...$dasbor, ['label' => null, 'items' => [$item('Jadwal PKPT', 'irban.pkpt', 'calendar-days')]]],
+            Role::Admin => [...$dasbor,
+                ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],
+                ['label' => 'Master Data', 'items' => [
+                    $item('Pegawai', 'admin.pegawai', 'identification'),
+                    $item('Irban', 'admin.irban', 'building-office-2'),
+                    $item('Komposisi Irban Tahunan', 'admin.irban-tahunan', 'user-group'),
+                    $item('Tim', 'admin.tim', 'users'),
+                    $item('Objek Pemeriksaan', 'admin.objek', 'building-library'),
+                    $item('Wilayah Irban', 'admin.wilayah-irban', 'map'),
+                    $item('Jenis Penugasan', 'admin.jenis-penugasan', 'swatch'),
+                    $item('Klasifikasi & Aturan', 'admin.klasifikasi', 'tag'),
+                ]],
+                ['label' => null, 'items' => [$item('PKPT', 'admin.pkpt', 'calendar-days')]],
+                ['label' => 'Konten Beranda', 'items' => [
+                    $item('Slide Beranda', 'admin.slide', 'photo'),
+                    $item('Kontak & Footer', 'admin.kontak', 'phone'),
+                ]],
+                ['label' => null, 'items' => [
+                    $item('Pengaturan Sistem', 'admin.pengaturan', 'cog-6-tooth'),
+                    $item('Impor Excel', 'admin.impor', 'arrow-up-tray'),
+                    $item('Log Aktivitas', 'admin.log', 'clipboard-document-list'),
+                ]],
+            ],
+            default => $dasbor,
+        };
 
         $visible = [];
         foreach ($groups as $group) {

@@ -17,6 +17,7 @@ use App\Livewire\Admin\PkptDetail;
 use App\Livewire\Admin\PkptImpor;
 use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\WilayahIrban;
+use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'placeholder.public');
@@ -55,5 +56,6 @@ Route::middleware('auth')->group(function () {
     });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');
+    Route::get('/irban/pkpt', IrbanPkpt::class)->name('irban.pkpt')->middleware('role:irban');
     Route::view('/bagian-umum', 'dashboard.bagian-umum')->name('bagian-umum.dashboard')->middleware('role:bagian_umum');
 });
