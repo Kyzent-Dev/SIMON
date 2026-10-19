@@ -1,0 +1,17 @@
+{{-- Compact segmented radio group (irban.md role control): a real <fieldset> + radios, so arrows move between options and the legend names the group
+     ("Peran untuk Budi Santoso"). x-ui.radio is a label-beside-dot control and cannot render joined segments. `options` = [value => label];
+     wire:model / x-model / data-fokus attributes go on every radio. Checked: white on mint-700 (§3.4). --}}
+@props(['name', 'legend', 'options' => [], 'value' => null, 'legendVisible' => false])
+
+<fieldset {{ $attributes->whereDoesntStartWith(['wire:model', 'x-model', 'data-fokus'])->class('min-w-0') }}>
+    <legend @class(['sr-only' => ! $legendVisible, 'mb-1 text-sm font-medium text-neutral-900' => $legendVisible])>{{ $legend }}</legend>
+    <div class="inline-flex max-w-full rounded-md border border-border-strong bg-white p-0.5">
+        @foreach ($options as $v => $label)
+            <label class="relative inline-flex min-h-11 cursor-pointer items-center rounded px-2 text-xs font-medium text-neutral-900 has-checked:bg-mint-700 has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-mint-600 lg:min-h-8">
+                <input type="radio" name="{{ $name }}" value="{{ $v }}" @checked((string) $value === (string) $v) class="sr-only"
+                    {{ $attributes->whereStartsWith(['wire:model', 'x-model', 'data-fokus']) }}>
+                <span class="whitespace-nowrap">{{ $label }}</span>
+            </label>
+        @endforeach
+    </div>
+</fieldset>

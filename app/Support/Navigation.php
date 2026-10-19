@@ -15,7 +15,11 @@ class Navigation
         $dasbor = [['label' => null, 'items' => [$item('Dasbor', $role->dashboardRoute(), 'home')]]];
 
         $groups = match ($role) {
-            Role::Irban => [...$dasbor, ['label' => null, 'items' => [$item('Jadwal PKPT', 'irban.pkpt', 'calendar-days')]]],
+            Role::Irban => [...$dasbor, ['label' => null, 'items' => [
+                $item('SPT Saya', 'irban.spt', 'document-text'),
+                $item('Ajukan Nomor SPT', 'irban.spt.ajukan', 'plus-circle'),
+                $item('Jadwal PKPT', 'irban.pkpt', 'calendar-days'),
+            ]]],
             Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [$item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path')]]],
             Role::Admin => [...$dasbor,
                 ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],

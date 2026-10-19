@@ -9,6 +9,7 @@ use App\Services\Settings;
 use App\Support\Tanggal;
 use Database\Factories\SptFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -57,6 +58,20 @@ class Spt extends Model
         }
 
         return $hariIni <= $this->tanggal_selesai?->toDateString() ? StatusSpt::Pelaksanaan : StatusSpt::PenyusunanLaporan;
+    }
+
+    /** SQL twin of status() for list filters; keep both in step. */
+    public function scopeBerstatus(Builder $q, StatusSpt $status): void
+    {
+        $hariIni = now('Asia/Jakarta')->toDateString();
+        $diterima = fn () => $q->where('status_pengajuan', StatusPengajuan::Diterima);
+        match ($status) {
+            StatusSpt::SiapDilaksanakan => $diterima()->where(fn ($w) => $w->whereNull('tanggal_mulai')->orWhereDate('tanggal_mulai', '>', $hariIni)),
+            StatusSpt::Pelaksanaan => $diterima()->whereDate('tanggal_mulai', '<=', $hariIni)->where(fn ($w) => $w->whereNull('tanggal_selesai')->orWhereDate('tanggal_selesai', '>=', $hariIni)),
+            StatusSpt::PenyusunanLaporan => $diterima()->whereDate('tanggal_mulai', '<=', $hariIni)->whereDate('tanggal_selesai', '<', $hariIni),
+            StatusSpt::Selesai => $q->whereRaw('1 = 0'), // Fase 5
+            default => $q->where('status_pengajuan', StatusPengajuan::from($status->value)),
+        };
     }
 
     /** Inclusive days, kalender or kerja per `penugasan.hitungan_hari`; null while dates are incomplete. */

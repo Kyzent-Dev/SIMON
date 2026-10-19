@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\StatusSpt;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
@@ -102,5 +103,32 @@ class UiComponentsTest extends TestCase
     {
         $this->blade('<x-ui.page-header title="Pegawai" description="Data pegawai."><x-slot:actions><x-ui.button>Tambah</x-ui.button></x-slot:actions></x-ui.page-header>')
             ->assertSee('<h1', false)->assertSeeInOrder(['Pegawai', 'Data pegawai.', 'Tambah']);
+    }
+
+    public function test_status_badge_renders_icon_label_pill_for_each_status(): void
+    {
+        foreach (StatusSpt::cases() as $s) {
+            $view = $this->blade('<x-app.status-badge :status="$s" />', ['s' => $s]);
+            $view->assertSee($s->label())->assertSee('rounded-full', false)->assertSee('<svg', false)
+                ->assertSee('bg-status-'.$s->value.'-bg', false)->assertSee('text-status-'.$s->value.'-fg', false);
+        }
+        $this->blade('<x-app.status-badge :status="$s" />', ['s' => StatusSpt::Dibatalkan])->assertSee('border-dashed', false);
+        $this->blade('<x-app.status-badge :status="$s" />', ['s' => StatusSpt::Selesai])->assertDontSee('border-dashed', false);
+    }
+
+    public function test_flag_renders_icon_label_rectangle_for_each_flag(): void
+    {
+        $flags = ['terlambat' => 'Terlambat', 'tidak_sesuai_pkpt' => 'Tidak Sesuai PKPT', 'spt_final_belum_diupload' => 'SPT Final Belum Diupload', 'non_pkpt' => 'Non-PKPT'];
+        foreach ($flags as $k => $label) {
+            $this->blade('<x-app.flag :jenis="$k" />', ['k' => $k])->assertSee($label)->assertSee('<svg', false)
+                ->assertSee('rounded-sm', false)->assertDontSee('rounded-full', false)->assertSee('bg-flag-'.$k.'-bg', false);
+        }
+    }
+
+    public function test_segmented_is_a_radio_group_with_legend(): void
+    {
+        $this->blade('<x-ui.segmented name="peran-1" legend="Peran untuk Budi Santoso" :options="[\'ketua\' => \'Ketua Tim\', \'anggota\' => \'Anggota\']" value="ketua" />')
+            ->assertSee('<fieldset', false)->assertSee('Peran untuk Budi Santoso')->assertSee('type="radio"', false)
+            ->assertSee('Ketua Tim')->assertSee('checked', false);
     }
 }

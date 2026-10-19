@@ -28,6 +28,20 @@
   --shadow-md:0 6px 16px -4px rgb(8 43 35 / .12);
   --shadow-lg:0 16px 40px -8px rgb(8 43 35 / .18);
   --color-scrim: rgb(8 43 35 / .55); /* DESIGN §5 elevation 3 scrim */
+  /* DESIGN §3.6 status badges (bg / fg / border) and flags (bg / fg); only x-app.status-badge and x-app.flag use these. */
+  --color-status-draf-bg:#E6ECEA; --color-status-draf-fg:#37433F; --color-status-draf-bd:#B8C4C0;
+  --color-status-menunggu_nomor-bg:#FEF3C7; --color-status-menunggu_nomor-fg:#713F12; --color-status-menunggu_nomor-bd:#E9C46A;
+  --color-status-perlu_revisi-bg:#FFEDD5; --color-status-perlu_revisi-fg:#7C2D12; --color-status-perlu_revisi-bd:#FDBA74;
+  --color-status-ditolak-bg:#FEE2E2; --color-status-ditolak-fg:#991B1B; --color-status-ditolak-bd:#FCA5A5;
+  --color-status-siap_dilaksanakan-bg:#DBEAFE; --color-status-siap_dilaksanakan-fg:#1E40AF; --color-status-siap_dilaksanakan-bd:#93C5FD;
+  --color-status-pelaksanaan-bg:#DBEAFE; --color-status-pelaksanaan-fg:#1E40AF; --color-status-pelaksanaan-bd:#93C5FD;
+  --color-status-penyusunan_laporan-bg:#DBEAFE; --color-status-penyusunan_laporan-fg:#1E40AF; --color-status-penyusunan_laporan-bd:#93C5FD;
+  --color-status-selesai-bg:#1D6B34; --color-status-selesai-fg:#FFFFFF; --color-status-selesai-bd:#1D6B34;
+  --color-status-dibatalkan-bg:#FFFFFF; --color-status-dibatalkan-fg:#4B5955; --color-status-dibatalkan-bd:#8A9894;
+  --color-flag-terlambat-bg:#FEE2E2; --color-flag-terlambat-fg:#991B1B;
+  --color-flag-tidak_sesuai_pkpt-bg:#F5F3FF; --color-flag-tidak_sesuai_pkpt-fg:#5B21B6;
+  --color-flag-spt_final_belum_diupload-bg:#FFF7ED; --color-flag-spt_final_belum_diupload-fg:#7C2D12;
+  --color-flag-non_pkpt-bg:#F1F5F4; --color-flag-non_pkpt-fg:#37433F;
   --color-row-warning:#FFFBEB; --color-row-error:#FEF2F2; /* admin.md import preview row tints; text on them is always neutral-900 + icon */
   --ease-standard:cubic-bezier(.2,0,0,1); --ease-enter:cubic-bezier(0,0,.2,1);
   --ease-exit:cubic-bezier(.4,0,1,1);
@@ -68,3 +82,6 @@ html.motion-ready [data-motion="bars"]:not([data-motion-done]) [data-bar] { tran
 @layer base {
   :focus-visible { outline: 2px solid var(--color-mint-600); outline-offset: 2px; }
 }
+
+/* WCAG 2.4.11: keep focused fields clear of a sticky form footer. */
+html:has([data-sticky-footer]) { scroll-padding-bottom: 7rem; }
