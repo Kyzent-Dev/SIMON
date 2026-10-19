@@ -21,4 +21,20 @@ class Tanggal
 
         return $m->format('j').'–'.$s->translatedFormat('j F Y');
     }
+
+    /** Inclusive day count; $kerja counts Monday–Friday only (no holiday calendar). */
+    public static function durasi(DateTimeInterface|string $mulai, DateTimeInterface|string $selesai, bool $kerja = false): int
+    {
+        $m = CarbonImmutable::parse($mulai)->startOfDay();
+        $s = CarbonImmutable::parse($selesai)->startOfDay();
+        if (! $kerja) {
+            return (int) $m->diffInDays($s) + 1;
+        }
+        $hari = 0;
+        for ($d = $m; $d->lte($s); $d = $d->addDay()) {
+            $hari += $d->isWeekday() ? 1 : 0;
+        }
+
+        return $hari;
+    }
 }

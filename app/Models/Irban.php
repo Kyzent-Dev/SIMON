@@ -25,10 +25,11 @@ class Irban extends Model
         return $this->hasMany(IrbanTahunan::class);
     }
 
-    /** True when users, irban_tahunan or tim point at this irban, so it cannot be deleted. */
+    /** True when users, irban_tahunan, tim, wilayah, PKPT items or SPT point at this irban, so it cannot be deleted. */
     public function isReferenced(): bool
     {
         return User::where('irban_id', $this->id)->exists() || $this->tahunan()->exists() || Tim::where('irban_id', $this->id)->exists()
-            || IrbanWilayah::where('irban_id', $this->id)->exists() || PkptItem::where('irban_id', $this->id)->exists();
+            || IrbanWilayah::where('irban_id', $this->id)->exists() || PkptItem::where('irban_id', $this->id)->exists()
+            || Spt::where('irban_id', $this->id)->exists();
     }
 }

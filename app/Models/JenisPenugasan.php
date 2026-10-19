@@ -15,9 +15,9 @@ class JenisPenugasan extends Model
 
     protected $table = 'jenis_penugasan';
 
-    /** True when a pkpt_item points at this type, so it cannot be deleted. */
+    /** True when a pkpt_item or spt points at this type, so it cannot be deleted. */
     public function isReferenced(): bool
     {
-        return PkptItem::where('jenis_penugasan_id', $this->id)->exists();
+        return PkptItem::where('jenis_penugasan_id', $this->id)->exists() || Spt::where('jenis_penugasan_id', $this->id)->exists();
     }
 }

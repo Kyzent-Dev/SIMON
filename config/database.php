@@ -38,10 +38,10 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            'busy_timeout' => 10000, // ms; concurrent numbering transactions wait for the write lock instead of failing
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'transaction_mode' => 'IMMEDIATE', // take the write lock at BEGIN so numbering waits instead of failing a lock upgrade (PHP >= 8.4)
         ],
 
         'mysql' => [
