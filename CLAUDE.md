@@ -22,6 +22,7 @@ Before writing or changing anything visual — Blade views, Blade/Livewire compo
 ## Session handoff
 - Before writing the next phase's plan (or resuming work in a new session), read `docs/plans/serah-terima.md`: repo/branch status, working method, the "Jebakan yang sudah diketahui" list (copy it into every plan's Global Constraints), and items carried to later phases.
 - At the end of each phase, update that file: status, new pitfalls that cost a fix round, and deferred minors from the reviews.
+- When the user says they are going to `/clear`, compact, or continue in a new session, first update `docs/plans/serah-terima.md` with the work in progress (current phase and task, last commit, what is half-done, the relevant lines of the SDD ledger in `.superpowers/sdd/<plan>/progress.md` including rulings and deferred minors, open review findings), commit it, and only then answer. The SDD workspace is git-ignored and does not survive a fresh clone or `git clean`.
 - To rebuild the graph after a semantic doc extraction, use `scripts/rebuild_graph.py` (see its docstring); delete the chunk file only after it prints `wrote True`.
 
 ## Decisions log (one file per phase)
