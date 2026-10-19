@@ -51,7 +51,7 @@ class TandaiSelesai
 
         $path = null;
         try {
-            $spt = DB::transaction(function () use ($user, $spt, $data, $berkas, &$path) {
+            [$spt, $diinput] = DB::transaction(function () use ($user, $spt, $data, $berkas, &$path) {
                 $spt = $this->kunci($user, $spt);
                 if ($pesan = $this->bisa($spt)) {
                     throw ValidationException::withMessages(['spt' => $pesan]);
@@ -75,9 +75,8 @@ class TandaiSelesai
                     'kejadian' => KejadianSpt::DITANDAI_SELESAI, 'oleh' => $user->id, 'diinput_oleh' => $diinput,
                     'nilai_baru' => ['syarat' => $syarat->value, 'nomor_lhp' => $kolom['nomor_lhp'] ?? null, 'tanggal_lhp' => $kolom['tanggal_lhp'] ?? null],
                 ]);
-                DiinputOleh::ingat($user, $diinput);
 
-                return $spt;
+                return [$spt, $diinput];
             });
         } catch (\Throwable $ex) {
             if ($path) {
@@ -85,6 +84,7 @@ class TandaiSelesai
             }
             throw $ex;
         }
+        DiinputOleh::ingat($user, $diinput);
 
         return $spt;
     }
@@ -128,12 +128,15 @@ class TandaiSelesai
             }
         } elseif (! CarbonImmutable::canBeCreatedFromFormat($tanggal, 'Y-m-d')) {
             $e['tanggal_lhp'] = 'Isi tanggal LHP.';
-        } elseif ($tanggal < $spt->tanggal_mulai->toDateString()) {
-            $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh sebelum tanggal mulai SPT.';
-        } elseif ($tanggal > now('Asia/Jakarta')->toDateString()) {
-            $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh di masa depan.';
         } else {
-            $kolom['tanggal_lhp'] = $tanggal;
+            $tanggal = CarbonImmutable::createFromFormat('Y-m-d', $tanggal)->toDateString();
+            if ($tanggal < $spt->tanggal_mulai->toDateString()) {
+                $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh sebelum tanggal mulai SPT.';
+            } elseif ($tanggal > now('Asia/Jakarta')->toDateString()) {
+                $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh di masa depan.';
+            } else {
+                $kolom['tanggal_lhp'] = $tanggal;
+            }
         }
 
         return $kolom;

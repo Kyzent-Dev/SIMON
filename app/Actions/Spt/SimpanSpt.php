@@ -163,7 +163,7 @@ class SimpanSpt
 
     private function cekLampiran(?UploadedFile $f): void
     {
-        if ($f && (strtolower($f->getClientOriginalExtension()) !== 'pdf' || $f->getMimeType() !== 'application/pdf' || $f->getSize() > self::MAKS_LAMPIRAN)) {
+        if ($f && ! BerkasSpt::pdf($f, self::MAKS_LAMPIRAN)) {
             throw ValidationException::withMessages(['lampiran' => 'Lampiran harus PDF dan maksimal 5 MB.']);
         }
     }

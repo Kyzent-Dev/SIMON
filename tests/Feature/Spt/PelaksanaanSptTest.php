@@ -226,6 +226,59 @@ class PelaksanaanSptTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
+    public function test_berkas_dihapus_bila_insert_dokumen_gagal(): void
+    {
+        $spt = $this->spt();
+        SptDokumen::creating(fn () => throw new \RuntimeException('gagal'));
+
+        try {
+            $this->unggah($spt);
+            $this->fail('RuntimeException expected');
+        } catch (\RuntimeException) {
+            $this->assertSame([], Storage::disk('local')->allFiles());
+            $this->assertSame(0, $spt->riwayat()->count());
+        }
+    }
+
+    public function test_dokumen_baru_dapat_diunduh_sesuai_otorisasi(): void
+    {
+        $spt = $this->spt('KHUSUS');
+        $this->unggah($spt);
+        $this->selesai($spt, ['nomor_lhp' => 'LHP/1', 'tanggal_lhp' => '2026-03-22'], $this->pdf('cover.pdf'));
+        $opsional = $this->spt('LAIN_LAIN');
+        $this->selesai($opsional, [], $this->pdf('lap.pdf'));
+        $this->assertEqualsCanonicalizing(['final', 'cover_lhp'], $spt->dokumen()->pluck('jenis')->all());
+
+        foreach ([$spt, $opsional] as $s) {
+            foreach ($s->dokumen as $dok) {
+                $url = route('spt.dokumen', [$s, $dok]);
+                $this->app['auth']->forgetGuards();
+                $this->get($url)->assertRedirect(route('login'));
+                foreach ([$this->user, User::factory()->bagianUmum()->create(), User::factory()->pimpinan()->create()] as $boleh) {
+                    $this->actingAs($boleh)->get($url)->assertOk();
+                }
+                $this->actingAs($this->irbanUser(Irban::factory()->create()))->get($url)->assertForbidden();
+            }
+        }
+        $this->assertSame('laporan', $opsional->dokumen()->sole()->jenis);
+    }
+
+    public function test_berkas_selesai_melebihi_batas_ditolak(): void
+    {
+        $this->gagal(fn () => $this->selesai($this->spt('KHUSUS'), ['nomor_lhp' => 'LHP/1', 'tanggal_lhp' => '2026-03-22'], $this->pdf('besar.pdf', 11 * 1024)), 'berkas', 'Dokumen harus PDF dan maksimal 10 MB.');
+        $this->gagal(fn () => $this->selesai($this->spt('LAIN_LAIN'), [], $this->pdf('besar.pdf', 11 * 1024)), 'berkas', 'Dokumen harus PDF dan maksimal 10 MB.');
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_tanggal_lhp_tanpa_nol_ditolak(): void
+    {
+        $spt = $this->spt('LAIN_LAIN');
+        $this->gagal(fn () => $this->selesai($spt, ['tanggal_lhp' => '2026-3-1']), 'tanggal_lhp');
+        $this->gagal(fn () => $this->selesai($spt, ['tanggal_lhp' => '2026-3-5']), 'tanggal_lhp', 'Isi tanggal LHP.');
+        $this->selesai($spt, ['tanggal_lhp' => '2026-03-05']);
+        $this->assertSame('2026-03-05', $spt->fresh()->tanggal_lhp->toDateString());
+    }
+
     public function test_batas_ukuran_mengikuti_pengaturan(): void
     {
         $spt = $this->spt();
