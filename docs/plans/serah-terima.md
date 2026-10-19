@@ -5,7 +5,9 @@ Baca file ini sebelum menulis plan fase berikutnya. Perbarui di akhir setiap fas
 ## Status repo
 - Branch bertumpuk: `fase-0-fondasi` → `fase-1-autentikasi` → `fase-2-master-data` → `fase-3-pkpt` → `fase-4-pengajuan` → `fase-5-spt` (HEAD). `main` hanya berisi dokumen awal. Belum ada yang di-merge.
 - Repo belum punya remote dan `gh` belum login; `fase-3-pkpt` s.d. `fase-5-spt` belum di-push. Pengguna memilih "biarkan apa adanya" untuk Fase 3 dan 4. Untuk push/PR: pengguna menjalankan `gh auth login` dan `git remote add origin <url>` dulu.
-- Fase 5 selesai: 5 tugas + review akhir (`decisions/fase-5.md`), 458 test lulus. Data demo: `php artisan migrate:fresh --seed` membuat SPT Irban I di setiap status pelaksanaan (Pelaksanaan, Penyusunan Laporan, Terlambat, Selesai, Tidak Sesuai PKPT + kendala).
+- Fase 5 selesai: 5 tugas + review akhir (`decisions/fase-5.md`), 458 test lulus. Data demo: `php artisan migrate:fresh --seed` membuat SPT Irban I di setiap status pelaksanaan (Pelaksanaan, Penyusunan Laporan, Terlambat, Selesai, Tidak Sesuai PKPT + kendala). Setelah review akhir, controller mengecek sendiri di browser: detail SPT 9–13 di 360/768/1280 tanpa scroll horizontal, Lihat/Unduh 200 PDF, fokus empat modal, dan alur nyata Tandai Selesai; data demo lalu di-seed ulang.
+- Device sempat bluescreen di tengah Task 4; `git fsck` bersih dan commit "WIP on fase-*" yang yatim hanyalah sisa stash tes yang isinya sudah tercakup commit berikutnya (sudah dicocokkan). Tidak ada pekerjaan yang hilang.
+- Pengguna akan membuat repo GitHub dan menghubungkannya nanti; sampai saat itu cukup commit lokal, jangan push.
 - Fase berikutnya: **Fase 6 (Notifikasi)**, buat branch `fase-6-notifikasi` dari `fase-5-spt`. Sisa fase: 6–11 (PRD §12).
 
 ## Cara kerja yang dipakai
@@ -13,7 +15,7 @@ Baca file ini sebelum menulis plan fase berikutnya. Perbarui di akhir setiap fas
 - Keputusan dicatat di `decisions/fase-N.md` (lihat CLAUDE.md "Decisions log").
 - Graph dokumen: setelah ekstraksi semantik, simpan + rebuild dengan `scripts/rebuild_graph.py` (lihat docstring-nya). Jangan hapus file chunk sebelum skrip mencetak `wrote True`.
 - Model: Opus untuk konkurensi, form kompleks, dan review akhir; Sonnet untuk layar yang meniru pola yang ada dan review per tugas; Haiku untuk review ulang perbaikan kecil dan ekstraksi graphify.
-- Cek browser: `playwright-cli --config .playwright/cli.config.json` terhadap `php artisan serve`; screenshot ke folder scratchpad sesi yang sedang berjalan. Akun dev: `admin`, `pimpinan`, `irban1`, `bagianumum` (kata sandi `password`).
+- Cek browser: `playwright-cli --config .playwright/cli.config.json` terhadap `php artisan serve`; screenshot ke folder scratchpad sesi yang sedang berjalan. Halaman login di `/masuk`. Untuk skrip uji, tulis fungsi `async page => {...}` ke file lalu `playwright-cli run-code --filename <file>` (`run-code` tidak menerima `--config`; `open` menerimanya). Hentikan server lewat PID yang mendengar di port-nya (`netstat -ano`), bukan PID shell pembungkus. Akun dev: `admin`, `pimpinan`, `irban1`, `bagianumum` (kata sandi `password`).
 
 ## Jebakan yang sudah diketahui (salin ke Global Constraints setiap plan)
 Masing-masing pernah lolos ke review dan memakan satu putaran perbaikan.
