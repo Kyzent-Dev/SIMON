@@ -19,6 +19,11 @@ Before writing or changing anything visual — Blade views, Blade/Livewire compo
 
 3. If a page file conflicts with `DESIGN.md`, `DESIGN.md` wins. If either conflicts with `PRD` business rules, the PRD wins on behavior and data; `DESIGN.md` wins on visuals. Note the conflict in the current phase's decisions file (see "Decisions log" below).
 
+## Session handoff
+- Before writing the next phase's plan (or resuming work in a new session), read `docs/plans/serah-terima.md`: repo/branch status, working method, the "Jebakan yang sudah diketahui" list (copy it into every plan's Global Constraints), and items carried to later phases.
+- At the end of each phase, update that file: status, new pitfalls that cost a fix round, and deferred minors from the reviews.
+- To rebuild the graph after a semantic doc extraction, use `scripts/rebuild_graph.py` (see its docstring); delete the chunk file only after it prints `wrote True`.
+
 ## Decisions log (one file per phase)
 - Record every technical decision or deviation in `decisions/fase-N.md` for the phase being worked on (heading `# Keputusan Fase N`, sections `## Fase N, Task M`). Cross-phase deploy notes go in `decisions/catatan-deploy.md`.
 - `DECISIONS.md` is only an index: never add decisions to it. When starting a new phase, create `decisions/fase-N.md` and add one line to the index.
