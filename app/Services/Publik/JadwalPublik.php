@@ -33,9 +33,11 @@ class JadwalPublik
         $namaIrban = DB::table('irban')->whereIn('id', $item->pluck('irban_id')->unique())->pluck('nama', 'id');
         $selesai = $this->realisasi->basis()->whereIn('spt.pkpt_item_id', $ids)
             ->selectRaw('spt.pkpt_item_id, count(*) as jumlah')->groupBy('spt.pkpt_item_id')->pluck('jumlah', 'pkpt_item_id');
-        // Any accepted SPT of the item (not only public ones), always at kecamatan level.
+        // Accepted SPTs of a public klasifikasi only (PRD §9.4: KHUSUS never reaches the public site), at kecamatan level.
         $wilayah = $this->realisasi->labelWilayah($this->realisasi->objekSpt()
             ->join('spt', 'spt.id', '=', 'spt_objek.spt_id')
+            ->join('klasifikasi', 'klasifikasi.id', '=', 'spt.klasifikasi_id')
+            ->where('klasifikasi.tampil_publik', true)
             ->where('spt.status_pengajuan', StatusPengajuan::Diterima->value)
             ->whereIn('spt.pkpt_item_id', $ids)
             ->addSelect('spt.pkpt_item_id as kunci')->get(), false);

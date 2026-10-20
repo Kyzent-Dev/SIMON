@@ -10,6 +10,9 @@
 @endphp
 
 <x-layouts::public>
+    @if ($jumlah > 0)
+        <h1 class="sr-only">Inspektorat Daerah Kabupaten Muara Enim</h1>
+    @endif
     {{-- Hero. Text over photos always sits on the mint-950 scrim (≥8.12:1, DESIGN §3.4). --}}
     <section aria-label="Sorotan" aria-roledescription="carousel" data-motion="hero"
         @if ($jumlah > 1)
@@ -46,11 +49,7 @@
                             <div class="max-w-[640px]">
                                 <span class="block h-[3px] w-10 bg-accent-400" aria-hidden="true" {{ $hero }}></span>
                                 <p class="mt-4 {{ $overline }}" {{ $hero }}>INSPEKTORAT DAERAH</p>
-                                @if ($n === 0)
-                                    <h1 class="{{ $judul }}" data-hero-part>{{ $s['judul'] }}</h1>
-                                @else
-                                    <p class="{{ $judul }}">{{ $s['judul'] }}</p>
-                                @endif
+                                <h2 class="{{ $judul }}" {{ $hero }}>{{ $s['judul'] }}</h2>
                                 @if ($s['kutipan'] && $s['pemilik'])
                                     <figure class="mt-4" {{ $hero }}>
                                         <blockquote class="text-lg leading-7 text-mint-200"><p>{{ $s['kutipan'] }}</p></blockquote>

@@ -37,6 +37,15 @@ class BerandaTest extends TestCase
             ->assertDontSee('aria-label="Masuk"', false);
     }
 
+    /** Exactly one h1 with the given copy; with slides it is the permanent sr-only one, never inside a slide group. */
+    private function assertSingleH1OutsideSlides(string $html, string $teks, bool $srOnly): void
+    {
+        $this->assertSame(1, substr_count($html, '<h1'));
+        $this->assertMatchesRegularExpression('/<h1[^>]*>\s*'.preg_quote($teks, '/').'/', $html);
+        $this->assertSame($srOnly, str_contains($html, '<h1 class="sr-only">'));
+        $srOnly && $this->assertLessThan(strpos($html, 'aria-roledescription="slide"'), strpos($html, '<h1'));
+    }
+
     public function test_layout_landmarks_skip_link_nav_and_single_h1(): void
     {
         $html = $this->html();
@@ -63,8 +72,9 @@ class BerandaTest extends TestCase
         $html = $this->html();
         $this->assertStringNotContainsString('Slide Nonaktif', $html);
         $this->assertLessThan(strpos($html, 'Slide Kedua'), strpos($html, 'Slide Pertama'));
-        $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Slide Pertama/', $html);
-        $this->assertMatchesRegularExpression('/<p[^>]*>\s*Slide Kedua/', $html);
+        $this->assertMatchesRegularExpression('/<h2[^>]*>\s*Slide Pertama/', $html);
+        $this->assertMatchesRegularExpression('/<h2[^>]*>\s*Slide Kedua/', $html);
+        $this->assertSingleH1OutsideSlides($html, 'Inspektorat Daerah Kabupaten Muara Enim', true);
         $this->assertStringContainsString('srcset="'.$a->gambarUrl(960).' 960w, '.$a->gambarUrl(1920).' 1920w"', $html);
         $this->assertMatchesRegularExpression('/<img[^>]*slide\/aaa-1920\.webp"[^>]*alt="Foto kegiatan"[^>]*fetchpriority="high"/', $html);
         $this->assertMatchesRegularExpression('/<img[^>]*slide\/bbb-1920\.webp"[^>]*alt=""[^>]*loading="lazy"/', $html);
@@ -86,7 +96,8 @@ class BerandaTest extends TestCase
     {
         LandingSlide::factory()->create(['judul' => 'Satu-satunya']);
         $html = $this->html();
-        $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Satu-satunya/', $html);
+        $this->assertMatchesRegularExpression('/<h2[^>]*>\s*Satu-satunya/', $html);
+        $this->assertSingleH1OutsideSlides($html, 'Inspektorat Daerah Kabupaten Muara Enim', true);
         $this->assertStringNotContainsString('Jeda slide', $html);
         $this->assertStringNotContainsString('Slide berikutnya', $html);
         $this->assertStringNotContainsString('x-data="carousel(', $html);
@@ -97,6 +108,7 @@ class BerandaTest extends TestCase
         LandingSlide::factory()->create(['aktif' => false]);
         $html = $this->html();
         $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Mengawal akuntabilitas pemerintahan Kabupaten Muara Enim/', $html);
+        $this->assertSingleH1OutsideSlides($html, 'Mengawal akuntabilitas pemerintahan Kabupaten Muara Enim', false);
         $this->assertStringContainsString('INSPEKTORAT DAERAH', $html);
         $this->assertStringNotContainsString('<img', $html);
     }

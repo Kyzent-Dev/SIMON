@@ -127,15 +127,26 @@ class JadwalPublikTest extends TestCase
         ], $this->svc()->wilayah(2026));
     }
 
-    public function test_non_public_spt_adds_only_kecamatan_names_to_the_item_wilayah(): void
+    public function test_non_public_spt_never_feeds_the_item_wilayah(): void
     {
-        // A KHUSUS (non-public) accepted SPT on b1 with a desa: its kecamatan (Kec X) joins b1's label, the desa name never does,
-        // even with publik.tampilkan_nama_objek on. It is still not counted in selesaiSpt.
+        // PRD §9.4: a KHUSUS (non-public) accepted SPT on b1 with a desa under Kec X must leave no trace in b1's label
+        // (neither Kec X nor Desa X1), even with publik.tampilkan_nama_objek on. selesaiSpt is unaffected too.
         app(Settings::class)->set('publik.tampilkan_nama_objek', true);
         $this->spt('selesai', $this->b, $this->b1, $this->khusus, '2026-05-01', '2026-05-02', [$this->desaX1]);
 
         $b1 = collect($this->svc()->item(2026, null))->firstWhere('id', $this->b1->id);
-        $this->assertSame(['Dinas D, Kec X, Kec Y', 1], [$b1['wilayah'], $b1['selesaiSpt']]);
+        $this->assertSame(['Dinas D, Kec Y', 1], [$b1['wilayah'], $b1['selesaiSpt']]);
+        $this->assertStringNotContainsString('Kec X', $b1['wilayah']);
         $this->assertStringNotContainsString('Desa X1', json_encode($this->svc()->item(2026, null)));
+    }
+
+    public function test_item_with_only_a_non_public_spt_has_belum_ditentukan_wilayah(): void
+    {
+        $item = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,
+            'tanggal_mulai' => '2026-10-01', 'tanggal_selesai' => '2026-10-31']);
+        $this->spt('selesai', $this->c, $item, $this->khusus, '2026-10-05', '2026-10-06', [$this->kecX]);
+
+        $baris = collect($this->svc()->item(2026, null))->firstWhere('id', $item->id);
+        $this->assertSame(['Belum ditentukan', 0], [$baris['wilayah'], $baris['selesaiSpt']]);
     }
 }
