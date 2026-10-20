@@ -17,3 +17,9 @@
 - Notifikasi menyimpan string/skalar (bukan model) yang dihitung di konstruktor, supaya payload antrean kecil dan isi bel/email sama dengan saat kejadian. Rentang tanggal memakai `Tanggal::rentang` (contoh `2–20 Maret 2026`), bukan format `d F Y – d F Y` harfiah, agar konsisten dengan tampilan jadwal yang sudah ada.
 - `PengajuanDiputuskan` mengambil catatan dari alasan riwayat yang dikembalikan `putuskan()` (null untuk diterima); tiga action memakai trait yang sama sehingga satu titik kirim.
 - `CatatNomorManual` tidak mengirim notifikasi: PRD §7.10 tidak mencantumkan kejadian itu.
+
+## Fase 6, Task 3
+- `notifikasi:harian` sends `SptTerlambat` and `PengingatSptFinal` once per SPT (`terlambat_diberitahu_pada`, `pengingat_final_pada`). A date change that clears and later re-creates Terlambat does not resend.
+- Terlambat uses `PenandaSpt::untuk()` (no second implementation of the rule); the pengingat rule (today >= tanggal_mulai + 3 days, no `final` document) is evaluated in the command because `PenandaSpt` has no 3-day flag.
+- `RingkasanMingguan::hitung(CarbonImmutable $senin)` returns a plain array (keys `awal, akhir, nomor, selesai, menunggu_nomor, revisi, terlambat, daftar, lainnya`); the notification takes that array. The window is `[senin-7d 00.00, senin 00.00)` on `spt_riwayat.created_at` (Jakarta time); the terlambat list is oldest tanggal_selesai first, capped at 10.
+- Command classes are auto-discovered from `app/Console/Commands`; schedule entries live in `routes/console.php`.

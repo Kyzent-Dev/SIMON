@@ -33,6 +33,8 @@ class Spt extends Model
             'tanggal_lhp' => 'immutable_date',
             'diajukan_pada' => 'immutable_datetime',
             'ditandai_selesai_pada' => 'immutable_datetime',
+            'terlambat_diberitahu_pada' => 'immutable_datetime',
+            'pengingat_final_pada' => 'immutable_datetime',
         ];
     }
 
