@@ -7,12 +7,12 @@ use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\CatatNomorManual;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
-use App\Exports\ArrayExport;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\NomorCounter;
 use App\Models\Spt;
+use App\Services\Ekspor;
 use App\Services\Penomoran;
 use App\Services\RegisterNomor;
 use App\Services\Settings;
@@ -23,11 +23,10 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Register Nomor SPT (design/dashboard/bagian-umum.md "Register"): the digital stambook for one year, with Catat Nomor Manual,
- * Batalkan Nomor, Atur nomor awal and synchronous Excel/PDF export. Rows and exports come from App\Services\RegisterNomor.
+ * Batalkan Nomor, Atur nomor awal and Excel/PDF export through App\Services\Ekspor. Rows and exports come from App\Services\RegisterNomor.
  */
 #[Title('Register Nomor SPT')]
 class Register extends Component
@@ -171,17 +170,12 @@ class Register extends Component
         if (! in_array($format, ['xlsx', 'pdf'], true)) {
             return null;
         }
-        $nama = "register-nomor-spt-{$this->tahun}.{$format}";
-        $register = app(RegisterNomor::class);
-        $filter = $this->filter();
-
-        if ($format === 'xlsx') {
-            return Excel::download(new ArrayExport(RegisterNomor::KOLOM, $register->semua($filter), ['A']), $nama);
+        $unduhan = app(Ekspor::class)->minta(auth()->user(), 'register', $format, $this->filter());
+        if ($unduhan === null) {
+            $this->dispatch('toast', type: 'info', message: 'Ekspor sedang disiapkan. Anda akan menerima notifikasi saat file siap.');
         }
 
-        return response()->streamDownload(function () use ($register, $filter) {
-            echo $register->pdf($filter);
-        }, $nama, ['Content-Type' => 'application/pdf']);
+        return $unduhan;
     }
 
     private function filter(): array

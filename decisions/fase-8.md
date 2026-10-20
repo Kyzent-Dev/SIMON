@@ -12,3 +12,10 @@
 - `MonitoringSpt::filter()` memvalidasi semua filter (nilai tak dikenal kembali ke bawaan: tahun = tahun berjalan Jakarta, dibatasi 2000–2100; lainnya null); `irban`/`jenis` harus id yang ada. Status `berjalan` = diterima dan belum ditandai selesai (seluruh kelompok On Process). Hanya grup item yang punya baris SPT yang tampil; grup `Di luar PKPT` selalu terakhir. SPT dalam grup urut `tanggal_mulai` lalu id.
 - Kesesuaian baris: tanpa item = `non_pkpt`; penanda `tidak_sesuai_pkpt` = `tidak_sesuai`; selain itu `sesuai` (termasuk SPT beritem yang tanggalnya belum lengkap, karena penandanya tidak dinilai).
 - Tes status: baris matriks untuk SPT Dibatalkan dengan `ditandai_selesai_pada` lama (status Dibatalkan, `berstatus(Selesai)` tidak memuatnya) ditambahkan; perilaku sudah benar sebelumnya.
+
+## Fase 8, Task 2
+- Jalur ekspor tunggal `App\Services\Ekspor::minta()`; tiap jenis tabel adalah satu kelas `App\Services\Ekspor\Pembangun` (otorisasi, `filter()` yang memvalidasi dan membatasi per pengguna, `jumlah()`, `namaFile()`, `export()` berupa `ArrayExport`, `html()` untuk dompdf, `halaman()`). Monitoring dan Rekap cukup mendaftarkan satu kelas di `Ekspor::PEMBANGUN`. Jalur langsung dan job memakai pembangun yang sama.
+- `BuatEkspor` memanggil `Ekspor::tulis()`, yang memeriksa ulang otorisasi pengguna tersimpan dan memvalidasi ulang filter; kegagalan apa pun (termasuk otorisasi) menandai `gagal` dan mengirim `EksporGagal` (job tidak dilempar ulang, `tries = 1`).
+- File ditulis ke disk `local` (`storage/app/private/ekspor/{uuid}.{format}`). Unduh lewat `EksporController` (pemilik, status `selesai`, file ada; selain itu 404). `ekspor:bersihkan` (05.00 Asia/Jakarta) menghapus baris dan file yang `created_at`-nya lebih dari 7 hari.
+- Penerima `EksporSiap`/`EksporGagal` diambil dari `PenerimaNotifikasi::pengguna(User)`. Tombol email `Unduh` lewat metode `NotifikasiSimon::labelTombol()` yang bisa ditimpa.
+- Register (`ekspor()`) memakai jalur ini; perilaku <= 1000 baris tidak berubah. Tes memakai pembangun palsu (`jumlah()` ditimpa) untuk menguji batas 1000 tanpa membuat 1001 SPT.

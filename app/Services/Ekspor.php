@@ -1,0 +1,73 @@
+<?php
+
+namespace App\Services;
+
+use App\Jobs\BuatEkspor;
+use App\Models\Ekspor as EksporModel;
+use App\Models\User;
+use App\Services\Ekspor\Pembangun;
+use App\Services\Ekspor\PembangunRegister;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\Response;
+
+/** One export pipeline for every table: up to BATAS_LANGSUNG rows download at once, more are built by a queued job (_shared.md section 6). */
+class Ekspor
+{
+    public const BATAS_LANGSUNG = 1000;
+
+    /** Monitoring and Rekap register their builder here. */
+    private const PEMBANGUN = ['register' => PembangunRegister::class];
+
+    public function pembangun(string $jenis): Pembangun
+    {
+        return app(self::PEMBANGUN[$jenis] ?? abort(404));
+    }
+
+    /** @return Response|null the download, or null when the export was queued. */
+    public function minta(User $user, string $jenis, string $format, array $filter): ?Response
+    {
+        abort_unless(in_array($format, ['xlsx', 'pdf'], true), 422);
+        $p = $this->pembangun($jenis);
+        $p->otorisasi($user);
+        $filter = $p->filter($user, $filter);
+        $nama = $p->namaFile($user, $filter).".{$format}";
+
+        if ($p->jumlah($user, $filter) <= self::BATAS_LANGSUNG) {
+            return $format === 'xlsx'
+                ? Excel::download($p->export($user, $filter), $nama)
+                : response()->streamDownload(function () use ($p, $user, $filter) {
+                    echo $this->pdf($p, $user, $filter);
+                }, $nama, ['Content-Type' => 'application/pdf']);
+        }
+
+        BuatEkspor::dispatch(EksporModel::create([
+            'user_id' => $user->id, 'jenis' => $jenis, 'format' => $format, 'filter' => $filter, 'nama_file' => $nama, 'status' => 'menunggu',
+        ]));
+
+        return null;
+    }
+
+    /** Builds the file of a queued export on the private disk; the builder re-checks authorization and re-scopes the filter. */
+    public function tulis(EksporModel $ekspor): void
+    {
+        $user = $ekspor->user;
+        $p = $this->pembangun($ekspor->jenis);
+        $p->otorisasi($user);
+        $filter = $p->filter($user, $ekspor->filter);
+        $path = "ekspor/{$ekspor->id}.{$ekspor->format}";
+
+        if ($ekspor->format === 'xlsx') {
+            Excel::store($p->export($user, $filter), $path, 'local');
+        } else {
+            Storage::disk('local')->put($path, $this->pdf($p, $user, $filter));
+        }
+        $ekspor->update(['path' => $path, 'status' => 'selesai']);
+    }
+
+    private function pdf(Pembangun $p, User $user, array $filter): string
+    {
+        return Pdf::loadHTML($p->html($user, $filter))->setPaper('a4', 'landscape')->output();
+    }
+}

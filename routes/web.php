@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\EksporController;
 use App\Http\Controllers\SptDokumenController;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
@@ -45,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');
 
     Route::get('/notifikasi', NotifikasiDaftar::class)->name('notifikasi.index');
+    Route::get('/ekspor/{ekspor}', EksporController::class)->name('ekspor.unduh');
     Route::get('/spt/{spt}', SptDetail::class)->name('spt.show');
     Route::get('/spt/{spt}/dokumen/{dokumen}', SptDokumenController::class)->name('spt.dokumen');
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');

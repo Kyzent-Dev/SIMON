@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('notifikasi:harian')->dailyAt('06:00')->timezone('Asia/Jakarta')->withoutOverlapping();
+Schedule::command('ekspor:bersihkan')->dailyAt('05:00')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('notifikasi:ringkasan-mingguan')->weeklyOn(1, '07:00')->timezone('Asia/Jakarta')->withoutOverlapping();

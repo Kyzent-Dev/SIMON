@@ -72,6 +72,11 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
             ->subject('[SIMON-SPT] '.$this->subjek())
             ->markdown('mail.notifikasi', ['catatan' => $this->catatan()])
             ->lines($this->isi())
-            ->action(in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SIMON-SPT', url($this->url()));
+            ->action($this->labelTombol(), url($this->url()));
+    }
+
+    protected function labelTombol(): string
+    {
+        return in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SIMON-SPT';
     }
 }

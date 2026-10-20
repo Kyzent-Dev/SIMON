@@ -31,6 +31,12 @@ class PenerimaNotifikasi
         return $this->irban($komentar->spt->irban_id)->merge($penulis->get())->unique('id')->reject(fn (User $u) => $u->id === $komentar->user_id)->values();
     }
 
+    /** Only the requester of an export. @return Collection<int, User> */
+    public function pengguna(User $user): Collection
+    {
+        return User::whereKey($user->id)->get();
+    }
+
     /** @return Collection<int, User> */
     public function irban(int $irbanId): Collection
     {
