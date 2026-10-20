@@ -1,14 +1,6 @@
-{{-- Notification list page (_shared.md §2): cards (not a table), bulk select + per-item "Tandai dibaca". Icon tile tones use only the verified status-badge pairs (DESIGN §3.4/§3.6).
-     No animation on the list (DESIGN §7.5); `fokus-ke` moves focus to the h1 when a bulk action empties the view. --}}
-@use('App\Support\JenisNotifikasi')
+{{-- Notification list page (_shared.md §2): cards (not a table), bulk select + per-item "Tandai dibaca". Icon tile and item text come from x-app.notifikasi-ikon / -teks (shared with the bell).
+     No animation on the list (DESIGN §7.5); after any mark action `fokus-ke` moves focus to the item link, or to the h1 when the control or item is gone. --}}
 @php
-    $nada = [
-        'info' => 'bg-status-siap_dilaksanakan-bg text-status-siap_dilaksanakan-fg',
-        'success' => 'bg-status-selesai-bg text-status-selesai-fg',
-        'warning' => 'bg-status-menunggu_nomor-bg text-status-menunggu_nomor-fg',
-        'danger' => 'bg-status-ditolak-bg text-status-ditolak-fg',
-        'neutral' => 'bg-neutral-100 text-neutral-600',
-    ];
     $ids = $notifikasi->pluck('id')->all();
     $semuaKosong = $notifikasi->isEmpty();
 @endphp
@@ -51,9 +43,7 @@
                     @foreach ($notifikasi as $n)
                         @php
                             $d = $n->data;
-                            $ikon = JenisNotifikasi::ikon($d['jenis'] ?? '');
                             $baru = $n->read_at === null;
-                            $waktu = $n->created_at->setTimezone('Asia/Jakarta');
                         @endphp
                         <li wire:key="n-{{ $n->id }}" @class(['flex items-start gap-3 p-4', 'bg-mint-50' => $baru])>
                             <label class="-m-3 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center">
@@ -61,18 +51,10 @@
                                     class="size-5 rounded-sm border-border-strong text-mint-700 focus:ring-2 focus:ring-mint-600 focus:ring-offset-2">
                                 <span class="sr-only">Pilih: {{ $d['judul'] ?? '' }}</span>
                             </label>
-                            <span class="flex size-10 shrink-0 items-center justify-center rounded-lg {{ $nada[$ikon['nada']] }}" aria-hidden="true">{{ svg('heroicon-o-'.$ikon['ikon'], 'size-6') }}</span>
+                            <x-app.notifikasi-ikon :jenis="$d['jenis'] ?? ''" />
                             <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                 <a id="notif-{{ $n->id }}" href="{{ $d['url'] ?? '#' }}" x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.buka('{{ $n->id }}')" class="block min-w-0 rounded-sm text-sm">
-                                    <span class="flex items-start gap-2">
-                                        <span class="font-semibold text-neutral-900">{{ $d['judul'] ?? '' }}</span>
-                                        @if ($baru)
-                                            <span class="mt-1.5 size-2 shrink-0 rounded-full bg-mint-700" aria-hidden="true"></span><span class="sr-only">Belum dibaca</span>
-                                        @endif
-                                    </span>
-                                    @if (! empty($d['konteks']))<span class="mt-0.5 block break-words tabular-nums text-neutral-600">{{ $d['konteks'] }}</span>@endif
-                                    @if (! empty($d['catatan']))<span class="mt-0.5 line-clamp-2 block break-words text-neutral-600">Catatan: {{ $d['catatan'] }}</span>@endif
-                                    <time datetime="{{ $waktu->toIso8601String() }}" title="{{ $waktu->translatedFormat('d F Y H.i') }} WIB" class="mt-1 block text-xs font-medium text-neutral-500">{{ $n->created_at->diffForHumans() }}</time>
+                                    <x-app.notifikasi-teks :n="$n" />
                                 </a>
                                 @if ($baru)
                                     <x-ui.button variant="ghost" type="button" wire:click="tandaiDibaca('{{ $n->id }}')" class="shrink-0 self-start max-sm:-ml-3">

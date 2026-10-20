@@ -85,7 +85,7 @@
     @endpersist
 
     <div class="flex min-w-0 flex-1 flex-col">
-        <header class="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
+        <header class="relative flex h-16 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
             <div class="flex min-w-0 items-center gap-2">
                 <button type="button" x-data x-on:click="$store.nav.open = true" aria-label="Buka menu" aria-controls="sidebar"
                     aria-expanded="false" x-bind:aria-expanded="$store.nav.open.toString()"
@@ -111,8 +111,9 @@
                     </nav>
                 @endif
             </div>
-            {{-- Year switcher is deferred (decisions/fase-2.md); the bell arrives in Fase 6 Task 5. --}}
+            {{-- Year switcher is deferred (decisions/fase-2.md). --}}
             <div class="flex min-w-0 items-center gap-3">
+                <livewire:notifikasi.lonceng />
                 <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $user->initials() }}</span>
                 <div class="min-w-0 leading-tight">
                     <p title="{{ $user->name }}" class="max-w-[6.5rem] truncate text-sm font-medium text-neutral-900 sm:max-w-xs">{{ $user->name }}</p>

@@ -16,7 +16,7 @@ class PengajuanBaru extends NotifikasiSimon
     public function __construct(Spt $spt)
     {
         $this->irban = $spt->irban->nama;
-        $this->konteks = $spt->jenisPenugasan?->nama.' · '.Str::limit((string) $spt->uraian_untuk, 60);
+        $this->konteks = collect([$spt->jenisPenugasan?->nama, Str::limit((string) $spt->uraian_untuk, 60)])->filter()->implode(' · ');
         $this->sptId = $spt->id;
     }
 

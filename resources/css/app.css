@@ -47,9 +47,11 @@
   --ease-exit:cubic-bezier(.4,0,1,1);
   --animate-shimmer: shimmer 1.4s linear infinite;
   --animate-bell: bell 600ms ease-in-out 1;
+  --animate-badge-pop: badge-pop var(--dur-base) var(--ease-emphasized) 1; /* DESIGN §7.2 bell-ring: count badge scale .6→1 */
 }
 @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
 @keyframes bell { 0%,100%{rotate:0} 20%{rotate:14deg} 40%{rotate:-12deg} 60%{rotate:8deg} 80%{rotate:-4deg} }
+@keyframes badge-pop { from{scale:.6} to{scale:1} }
 :root { color-scheme: light; }
 body { @apply bg-neutral-25 text-neutral-900 font-sans antialiased; }
 
