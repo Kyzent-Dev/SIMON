@@ -115,4 +115,22 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | Notification emails use the "simon" theme and the customised components
+    | in resources/views/vendor/mail (DESIGN.md, design/dashboard/_shared.md §2).
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'simon',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];

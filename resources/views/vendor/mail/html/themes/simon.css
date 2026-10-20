@@ -1,0 +1,248 @@
+/*
+ * SIMON-SPT email theme (design/dashboard/_shared.md §2).
+ * Emails cannot use Tailwind, so the hex values are copied from the DESIGN.md §13 tokens:
+ * mint-950 #082B23, mint-700 #17735B, mint-800 #145C4A, mint-50 #F0FBF7, accent-400 #F2C14E,
+ * neutral-25 #F7FAF9, neutral-200 #D5DEDB, neutral-600 #4B5955, neutral-900 #151C1A.
+ * Pairs used (DESIGN.md §3.4): white/mint-950, neutral-900/white, neutral-900/mint-50,
+ * white/mint-700, mint-700/white, neutral-600/white, neutral-600/neutral-25.
+ */
+
+/* Base */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #F7FAF9;
+    color: #151C1A;
+    height: 100%;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.5;
+    text-align: start;
+}
+
+a {
+    color: #17735B;
+}
+
+a img {
+    border: none;
+}
+
+/* Typography */
+
+h1 {
+    color: #151C1A;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 0;
+    text-align: start;
+}
+
+h2,
+h3 {
+    color: #151C1A;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 0;
+    text-align: start;
+}
+
+p {
+    color: #151C1A;
+    font-size: 16px;
+    line-height: 24px;
+    margin-top: 0;
+    text-align: left;
+}
+
+blockquote {
+    background-color: #F0FBF7;
+    border-left: 4px solid #17735B;
+    margin: 0 0 16px;
+    padding: 12px 16px;
+}
+
+blockquote p {
+    color: #151C1A;
+    margin: 0;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Layout */
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F7FAF9;
+    margin: 0;
+    padding: 24px 0 0;
+    width: 100%;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* Header: mint-950 band, white wordmark, 3px accent-400 rule */
+
+.header-wrap {
+    padding: 0;
+}
+
+.header {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 600px;
+    margin: 0 auto;
+    width: 600px;
+}
+
+.header-cell {
+    background-color: #082B23;
+    border-bottom: 3px solid #F2C14E;
+    border-radius: 8px 8px 0 0;
+    padding: 20px 32px;
+    text-align: left;
+}
+
+.header a {
+    color: #FFFFFF;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+}
+
+/* Body */
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F7FAF9;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 600px;
+    background-color: #FFFFFF;
+    border: 1px solid #D5DEDB;
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+    margin: 0 auto;
+    padding: 0;
+    width: 600px;
+}
+
+.inner-body a {
+    word-break: break-all;
+}
+
+/* Subcopy */
+
+.subcopy {
+    border-top: 1px solid #D5DEDB;
+    margin-top: 24px;
+    padding-top: 24px;
+}
+
+.subcopy p {
+    color: #4B5955;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* Footer */
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 600px;
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+    width: 600px;
+}
+
+.footer p {
+    color: #4B5955;
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.footer a {
+    color: #4B5955;
+    text-decoration: underline;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 32px;
+}
+
+/* Button: bulletproof, mint-700 on the cell and the link, 8px radius */
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 24px auto 8px;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+    float: unset;
+}
+
+.button-cell {
+    background-color: #17735B;
+    border-radius: 8px;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    background-color: #17735B;
+    border: 1px solid #17735B;
+    border-radius: 8px;
+    color: #FFFFFF;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 24px;
+    padding: 12px 24px;
+    text-decoration: none;
+}
+
+/* Utilities */
+
+.break-all {
+    word-break: break-all;
+}

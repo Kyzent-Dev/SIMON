@@ -23,6 +23,20 @@ class User extends Authenticatable
         return $this->belongsTo(Irban::class);
     }
 
+    /**
+     * Irban: the irban's primary address (fallback: own email) plus its tembusan (PRD §5); others: own email.
+     *
+     * @return list<string>|null null when there is no address, so the mail channel is skipped
+     */
+    public function routeNotificationForMail(): ?array
+    {
+        $alamat = $this->role === Role::Irban && $this->irban
+            ? [$this->irban->email_notifikasi ?: $this->email, ...($this->irban->email_tembusan ?? [])]
+            : [$this->email];
+
+        return array_values(array_unique(array_filter($alamat))) ?: null;
+    }
+
     public function initials(): string
     {
         return collect(preg_split('/\s+/', trim($this->name)))->filter()->take(2)
