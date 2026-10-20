@@ -14,6 +14,7 @@ use App\Services\PenandaSpt;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PenandaSptTest extends TestCase
@@ -127,6 +128,36 @@ class PenandaSptTest extends TestCase
         $this->hari('2026-04-30');
         $this->assertSame(['tidak_sesuai_pkpt', 'terlambat', 'spt_final_belum_diupload'], $this->penanda($this->spt(['pkpt_item_id' => $item->id], final: false)));
         $this->assertSame(['non_pkpt', 'terlambat', 'spt_final_belum_diupload'], $this->penanda($this->spt(final: false)));
+    }
+
+    public function test_untuk_banyak_runs_a_constant_number_of_queries(): void
+    {
+        $this->hari('2026-04-30');
+        $buat = function (int $n): void {
+            $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-05']);
+            PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-31']);
+            $user = User::factory()->create();
+            for ($i = 0; $i < $n; $i++) {
+                $this->spt(['pkpt_item_id' => $i % 2 ? $item->id : null, 'dibuat_oleh' => $user->id], final: $i % 3 === 0);
+            }
+        };
+        $hitung = function (): int {
+            $spts = Spt::all();
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            app(PenandaSpt::class)->untukBanyak($spts);
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $buat(5);
+        $hitung(); // settings cache warm-up
+        $lima = $hitung();
+        $buat(45);
+        $this->assertSame(50, Spt::count());
+        $this->assertSame($lima, $hitung());
+        $this->assertLessThanOrEqual(4, $lima);
     }
 
     public function test_kendala_relation(): void

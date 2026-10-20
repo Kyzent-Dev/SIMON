@@ -41,10 +41,15 @@ class PkptItem extends Model
         return $this->hasMany(PkptItemRevisi::class);
     }
 
-    /** Latest approved revision (by diputuskan_pada, then id); queried fresh so it is never stale. */
+    /** Approved revisions, latest first (by diputuskan_pada, then id). */
+    public function revisiDisetujui()
+    {
+        return $this->revisi()->where('status', StatusRevisi::Disetujui)->orderByDesc('diputuskan_pada')->orderByDesc('id');
+    }
+
+    /** Latest approved revision; queried fresh so it is never stale, unless a batch caller eager-loaded `revisiDisetujui`. */
     public function revisiDisetujuiTerakhir(): ?PkptItemRevisi
     {
-        return $this->revisi()->where('status', StatusRevisi::Disetujui)
-            ->orderByDesc('diputuskan_pada')->orderByDesc('id')->first();
+        return $this->relationLoaded('revisiDisetujui') ? $this->revisiDisetujui->first() : $this->revisiDisetujui()->first();
     }
 }

@@ -100,6 +100,8 @@ class StatusSptTest extends TestCase
             '23.30 WIB hari selesai' => [$d, '2026-03-10', '2026-03-20', false, $jkt('2026-03-20 23:30'), StatusSpt::Pelaksanaan],
             '00.30 WIB hari mulai (UTC kemarin)' => [$d, '2026-03-10', '2026-03-20', false, '2026-03-09 17:30 UTC', StatusSpt::Pelaksanaan],
             '00.30 WIB setelah selesai (UTC kemarin)' => [$d, '2026-03-10', '2026-03-20', false, '2026-03-20 17:30 UTC', StatusSpt::PenyusunanLaporan],
+            // BU can cancel the number of an SPT that was already Selesai: the old ditandai_selesai_pada must not make it Selesai.
+            'dibatalkan setelah selesai' => [StatusPengajuan::Dibatalkan, '2026-03-10', '2026-03-20', true, $jkt('2026-03-25 12:00'), StatusSpt::Dibatalkan],
         ];
         foreach ([StatusPengajuan::Draf, StatusPengajuan::MenungguNomor, StatusPengajuan::PerluRevisi, StatusPengajuan::Ditolak, StatusPengajuan::Dibatalkan] as $p) {
             foreach (['2026-03-09', '2026-03-15', '2026-03-25'] as $hari) {
