@@ -19,6 +19,7 @@
                     </span>
                 </a>
             </li>
+            <li class="flex"><x-ui.stat-card class="w-full" label="Slide aktif" :value="$slideAktif" :subtext="'dari '.number_format($slideTotal, 0, ',', '.').' slide'" :href="route('admin.slide')" /></li>
         </ul>
     </section>
 

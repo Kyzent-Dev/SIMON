@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\Role;
+use App\Models\LandingSlide;
 use App\Models\Pegawai;
 use App\Models\Pkpt;
 use App\Models\User;
@@ -12,8 +13,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Dasbor Admin (admin.md "Dashboard"): health cards Pengguna aktif, Pegawai, PKPT {tahun} + quick links from the sidebar definition.
- * Slide aktif, Impor terakhir and Aktivitas terbaru come with Fase 9/10 (no placeholders). No motion.
+ * Dasbor Admin (admin.md "Dashboard"): health cards Pengguna aktif, Pegawai, PKPT {tahun}, Slide aktif + quick links from the sidebar definition.
+ * Impor terakhir and Aktivitas terbaru come with Fase 10 (no placeholders). No motion.
  */
 #[Title('Dasbor Admin')]
 class Dasbor extends Component
@@ -34,6 +35,8 @@ class Dasbor extends Component
             'pengguna' => User::count(),
             'pegawai' => Pegawai::where('aktif', true)->count(),
             'pkpt' => Pkpt::where('tahun', $tahun)->first(),
+            'slideAktif' => LandingSlide::where('aktif', true)->count(),
+            'slideTotal' => LandingSlide::count(),
             'links' => collect(Navigation::groups(Role::Admin))->pluck('items')->flatten(1)->reject(fn ($i) => $i['route'] === 'admin.dashboard')->values()->all(),
         ]);
     }

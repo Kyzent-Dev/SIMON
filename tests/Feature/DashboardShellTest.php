@@ -23,7 +23,7 @@ class DashboardShellTest extends TestCase
     private function fakeMasterDataRoutes(): void
     {
         Route::middleware(['web', 'auth', 'role:admin'])->group(function () {
-            Route::get('/admin/slide', fn () => 'ok')->name('admin.slide');
+            Route::get('/admin/impor', fn () => 'ok')->name('admin.impor');
             Route::get('/admin/pengaturan', fn () => 'ok')->name('admin.pengaturan');
         });
         Route::getRoutes()->refreshNameLookups();
@@ -37,7 +37,7 @@ class DashboardShellTest extends TestCase
         $html = $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertSee('aria-label="Navigasi utama"', false)
             ->assertSee('Master Data')
-            ->assertSee('href="'.route('admin.slide').'"', false)
+            ->assertSee('href="'.route('admin.impor').'"', false)
             ->assertSee('Pengaturan Sistem')
             ->assertSee('Ciutkan menu')
             ->assertSee('aria-label="Buka menu"', false)
@@ -46,8 +46,7 @@ class DashboardShellTest extends TestCase
         // aria-current only on the Dasbor link.
         $this->assertSame(1, substr_count($html, 'aria-current="page"'));
         $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('admin.dashboard'), '#').'"[^>]*aria-current="page"#', $html);
-        // Items without a route never render, and neither does their group label.
-        $this->assertStringNotContainsString('Kontak & Footer', $html);
+        // Items without a route never render.
         $this->assertStringNotContainsString('Log Aktivitas', $html);
     }
 
@@ -55,14 +54,15 @@ class DashboardShellTest extends TestCase
     {
         $groups = Navigation::groups(Role::Admin);
         $labels = array_column($groups, 'label');
-        // Master Data survives because admin.klasifikasi exists; its missing siblings (e.g. admin.slide) are filtered out.
+        // Master Data survives because admin.klasifikasi exists; missing items (e.g. admin.impor, Fase 10) are filtered out.
         $this->assertContains('Master Data', $labels);
         $routes = array_column(array_merge(...array_column($groups, 'items')), 'route');
         $this->assertContains('admin.klasifikasi', $routes);
-        $this->assertNotContains('admin.slide', $routes);
-        // Konten Beranda has no existing route yet, so the whole group (label included) is dropped.
-        $this->assertFalse(Route::has('admin.slide'));
-        $this->assertNotContains('Konten Beranda', $labels);
+        $this->assertNotContains('admin.impor', $routes);
+        $this->assertFalse(Route::has('admin.impor'));
+        // Pengguna has no route yet, so its whole group is dropped (no group is ever left empty, checked below).
+        $this->assertFalse(Route::has('admin.pengguna'));
+        $this->assertNotContains('admin.pengguna', $routes);
         foreach ($groups as $group) {
             $this->assertNotEmpty($group['items']);
             foreach ($group['items'] as $item) {
@@ -81,7 +81,7 @@ class DashboardShellTest extends TestCase
             $this->actingAs($user)->get($path)->assertOk()
                 ->assertSee('Dasbor')
                 ->assertDontSee('Master Data')
-                ->assertDontSee(route('admin.slide'));
+                ->assertDontSee(route('admin.impor'));
         }
         foreach ([Role::Pimpinan, Role::Irban, Role::BagianUmum] as $role) {
             $this->assertSame(['Dasbor'], array_column(Navigation::groups($role)[0]['items'], 'label'));
@@ -95,13 +95,13 @@ class DashboardShellTest extends TestCase
     public function test_admin_dashboard_quick_links_come_from_navigation(): void
     {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/slide'));
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/impor'));
 
         $this->fakeMasterDataRoutes();
         $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertSee('<h1', false)
             ->assertSee('Akses cepat')
-            ->assertSeeInOrder(['Akses cepat', url('/admin/slide'), 'Pengaturan Sistem'], false);
+            ->assertSeeInOrder(['Akses cepat', 'Pengaturan Sistem', url('/admin/impor')], false);
     }
 
     public function test_breadcrumbs_render_when_passed(): void

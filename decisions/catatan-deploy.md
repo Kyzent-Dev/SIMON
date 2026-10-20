@@ -15,3 +15,7 @@
 - File ekspor ditulis ke disk privat `storage/app/private/ekspor/{uuid}.{xlsx|pdf}` dan hanya diunduh lewat rute `ekspor.unduh` (pemilik saja). Pastikan folder itu dapat ditulis oleh proses worker dan web, dan tidak berada di bawah `public/`.
 - Ekspor PDF > 200 baris (dan xlsx > 1.000) diantrekan. Job menaikkan `memory_limit` ke 512M dan batas waktu ke 570 detik selama membangun file; pastikan host/worker mengizinkan `ini_set('memory_limit')` (tidak di `disable_functions`, bukan `php_admin_value` yang lebih rendah) dan RAM cukup untuk ±512 MB per worker ekspor. dompdf butuh ±0,26 MB per baris.
 - `ekspor:bersihkan` dijadwalkan setiap hari 05.00 WIB (`routes/console.php`) dan menghapus file serta barisnya yang berumur > 7 hari; butuh cron `schedule:run` yang sama.
+
+## Konten beranda (Fase 9)
+- Jalankan `php artisan storage:link` sekali di server: gambar slide disimpan di `storage/app/public/slide/` dan dilayani lewat `public/storage`. Tanpa tautan ini gambar hero dan thumbnail Admin tidak tampil. Di shared hosting tanpa symlink, salin/arahkan `public/storage` ke `storage/app/public`.
+- PHP butuh ekstensi GD dengan dukungan WebP (`imagewebp`). `upload_max_filesize` dan `post_max_size` minimal 6M agar gambar slide 5 MB bisa diunggah (batas unggahan sementara Livewire 12 MB). Pemrosesan menaikkan `memory_limit` ke 512M (lihat catatan ekspor tentang `ini_set`).

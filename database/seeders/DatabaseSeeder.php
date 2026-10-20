@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             $this->call(SptSeeder::class);
             $this->call(KomentarSeeder::class);
             $this->call(NotifikasiSeeder::class);
+            $this->call(LandingSeeder::class);
         }
     }
 }

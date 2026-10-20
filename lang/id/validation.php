@@ -19,6 +19,7 @@ return [
     'uploaded' => 'Gagal mengunggah :attribute.',
     'integer' => ':attribute harus berupa bilangan bulat.',
     'string' => ':attribute harus berupa teks.',
+    'regex' => 'Format :attribute tidak valid.',
     'array' => ':attribute tidak valid.',
     'boolean' => ':attribute harus berupa ya atau tidak.',
     'distinct' => ':attribute tidak boleh sama dengan yang lain.',
@@ -39,5 +40,6 @@ return [
         'berkas' => 'berkas',
         'lampiran' => 'lampiran draf',
         'file' => 'berkas',
+        'gambar' => 'gambar slide',
     ],
 ];

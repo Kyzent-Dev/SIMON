@@ -26,6 +26,11 @@ class Settings
         'publik.tampilkan_nama_objek' => false,
         'upload.maks_mb' => 10,
         'kendala.kategori' => ['Jadwal PKPT belum disahkan', 'Bentrok penugasan lain', 'Personel tidak tersedia', 'Objek tidak siap', 'Lainnya'],
+        'kontak.telepon' => '',
+        'kontak.email' => '',
+        'kontak.instagram' => '',
+        'kontak.alamat' => '',
+        'kontak.peta_url' => '',
     ];
 
     /** Settings page card => the keys it owns. */
@@ -37,7 +42,11 @@ class Settings
         'publik' => ['publik.tampilkan_nomor_spt', 'publik.tampilkan_nama_objek'],
         'unggahan' => ['upload.maks_mb'],
         'kendala' => ['kendala.kategori'],
+        // Edited only on admin.kontak (Kontak & Footer); the Pengaturan page has no card for it.
+        'kontak' => ['kontak.telepon', 'kontak.email', 'kontak.instagram', 'kontak.alamat', 'kontak.peta_url'],
     ];
+
+    public const PETA_PREFIX = 'https://www.google.com/maps/embed?';
 
     private const CACHE_KEY = 'settings.all';
 
@@ -70,7 +79,7 @@ class Settings
         return $nested;
     }
 
-    /** Trim text input of one card before validation, so "Lainnya " still counts as "Lainnya". */
+    /** Trim text input of one card before validation, so "Lainnya " still counts as "Lainnya"; Instagram drops a leading @. */
     public static function sanitize(string $group, array $nested): array
     {
         foreach (self::groupKeys($group) as $key) {
@@ -80,6 +89,9 @@ class Settings
             } elseif (is_array($value)) {
                 Arr::set($nested, $key, array_map(fn ($v) => is_string($v) ? trim($v) : $v, $value));
             }
+        }
+        if ($group === 'kontak') {
+            Arr::set($nested, 'kontak.instagram', ltrim((string) Arr::get($nested, 'kontak.instagram'), '@'));
         }
 
         return $nested;
@@ -109,6 +121,7 @@ class Settings
                 is_bool($default) => (bool) $value,
                 is_int($default) => (int) $value,
                 is_array($default) => array_values(array_map('trim', (array) $value)),
+                is_string($default) => (string) $value,
                 default => $value,
             });
         }
@@ -134,6 +147,15 @@ class Settings
             'kendala.kategori' => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
                 if (! in_array('Lainnya', (array) $value, true)) {
                     $fail('Kategori "Lainnya" wajib ada.');
+                }
+            }],
+            'kontak.telepon' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]*$/'],
+            'kontak.email' => ['nullable', 'email', 'max:100'],
+            'kontak.instagram' => ['nullable', 'string', 'regex:/^[A-Za-z0-9._]{0,30}$/'],
+            'kontak.alamat' => ['nullable', 'string', 'max:300'],
+            'kontak.peta_url' => ['nullable', 'string', 'max:2000', function ($attribute, $value, $fail) {
+                if (! str_starts_with((string) $value, self::PETA_PREFIX) || filter_var($value, FILTER_VALIDATE_URL) === false) {
+                    $fail('Gunakan tautan sematan Google Maps (https://www.google.com/maps/embed?...).');
                 }
             }],
             default => ['boolean'],
