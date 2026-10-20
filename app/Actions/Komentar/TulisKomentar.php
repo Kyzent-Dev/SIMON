@@ -7,7 +7,10 @@ use App\Enums\StatusPermintaan;
 use App\Models\Komentar;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\KomentarBaru;
+use App\Services\PenerimaNotifikasi;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -29,9 +32,12 @@ class TulisKomentar
         }
         $minta = filter_var($data['minta_penjelasan'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        return $spt->komentar()->create([
+        $komentar = $spt->komentar()->create([
             'user_id' => $user->id, 'isi' => $isi, 'minta_penjelasan' => $minta,
             'status_permintaan' => $minta ? StatusPermintaan::Terbuka : null,
         ]);
+        Notification::send(app(PenerimaNotifikasi::class)->utasKomentar($komentar), new KomentarBaru($komentar));
+
+        return $komentar;
     }
 }

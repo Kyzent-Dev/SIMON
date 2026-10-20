@@ -7,8 +7,12 @@ use App\Enums\Role;
 use App\Models\Komentar;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\BalasanPenjelasan;
+use App\Notifications\KomentarBaru;
+use App\Services\PenerimaNotifikasi;
 use App\Support\DiinputOleh;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -46,6 +50,13 @@ class BalasKomentar
         if ($irban) {
             DiinputOleh::ingat($user, $diinput);
         }
+
+        $penerima = app(PenerimaNotifikasi::class)->utasKomentar($balasan);
+        if ($induk->minta_penjelasan && $induk->user_id !== $user->id) {
+            Notification::send($penerima->where('id', $induk->user_id), new BalasanPenjelasan($balasan));
+            $penerima = $penerima->reject(fn (User $u) => $u->id === $induk->user_id);
+        }
+        Notification::send($penerima, new KomentarBaru($balasan));
 
         return $balasan;
     }

@@ -16,6 +16,7 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
     private const JENIS_SPT = [
         'pengajuan_baru', 'pengajuan_diterima', 'pengajuan_perlu_revisi', 'pengajuan_ditolak',
         'nomor_dibatalkan', 'spt_terlambat', 'pengingat_spt_final',
+        'komentar_baru', 'minta_penjelasan', 'balasan_penjelasan',
     ];
 
     abstract public function jenis(): string;

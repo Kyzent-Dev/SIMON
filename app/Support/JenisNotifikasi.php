@@ -16,6 +16,9 @@ class JenisNotifikasi
         'revisi_jadwal_ditolak' => ['ikon' => 'calendar-days', 'nada' => 'danger'],
         'spt_terlambat' => ['ikon' => 'clock', 'nada' => 'danger'],
         'pengingat_spt_final' => ['ikon' => 'document-arrow-up', 'nada' => 'warning'],
+        'komentar_baru' => ['ikon' => 'chat-bubble-left-ellipsis', 'nada' => 'info'],
+        'minta_penjelasan' => ['ikon' => 'question-mark-circle', 'nada' => 'warning'],
+        'balasan_penjelasan' => ['ikon' => 'chat-bubble-left-right', 'nada' => 'success'],
         'ringkasan_mingguan' => ['ikon' => 'chart-bar', 'nada' => 'neutral'],
     ];
 
