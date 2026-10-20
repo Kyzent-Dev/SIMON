@@ -15,7 +15,6 @@
 - `catatan` memakai `Str::limit($isi, 200)`, jadi panjang maksimal 203 karakter dengan tanda `...`
 - Notifikasi dikirim dari aksi setelah komentar tersimpan (aksi tulis tidak memakai `DB::transaction`, jadi tidak ada yang terkirim bila validasi atau policy melempar)
 - Properti `NotifikasiKomentar` bertipe `protected`: serialisasi antrian (`SerializesModels`) melewatkan properti `private` milik kelas induk sehingga payload kosong saat dikirim sungguhan
-- UI (Task 3) dan `KomentarSeeder` (Task 4) belum dikerjakan
 
 ## Fase 7, Task 3
 - Bagian Komentar adalah komponen anak `App\Livewire\Spt\Komentar` (bukan bagian dari `Detail`), dibungkus `order-6 lg:order-none` setelah Dokumen di kolom kiri. Akarnya `<section aria-labelledby="judul-komentar">`: kartu `x-ui.card` langsung sebagai akar gagal karena penanda `<!--[if BLOCK]>` di awal HTML membuat Livewire tidak menemukan tag akar
@@ -25,3 +24,7 @@
 - Keterangan `Menunggu balasan Irban` dan tombol `Tutup permintaan` sama-sama diturunkan dari `TutupPermintaan::bisa()` untuk root Terbuka (null = tombol untuk pimpinan; selain null = keterangan), tanpa menghitung ulang aturan di komponen
 - Tombol `Balas` berfungsi sebagai toggle (`aria-expanded`): ditekan saat formulirnya terbuka sama dengan `Batal`
 - Tidak ada dialog konfirmasi untuk `Tutup permintaan` (keputusan pengendali)
+
+## Fase 7, Task 4
+- `KomentarSeeder` (dev saja, dipanggil `DatabaseSeeder` setelah `SptSeeder` dan sebelum `NotifikasiSeeder`, idempoten: berhenti bila dua SPT demo sudah punya komentar) menulis baris langsung tanpa notifikasi, dengan waktu berurutan. Memakai dua SPT Diterima bernomor pertama milik Irban I: SPT pertama berisi utas biasa (pimpinan, balasan Irban dengan "Diinput oleh" anggota Irban I, balasan Bagian Umum) dan satu Minta Penjelasan Terbuka tanpa balasan Irban; SPT kedua berisi Minta Penjelasan Selesai (dibalas Irban, ditutup pimpinan)
+- Catatan: sebuah butir Task 1 sebelumnya menulis seeder ditunda ke "Task 3"; yang benar Task 4 (sudah dikerjakan di sini)
