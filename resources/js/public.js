@@ -3,11 +3,13 @@ import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.e
 import { initMotion } from './motion';
 import carousel from './carousel';
 import countUp from './countup';
+import jadwal from './jadwal';
 import { grafikRealisasi } from './grafik';
 
 // Livewire's bundled Alpine already includes intersect, focus and sort; do not register them again.
 Alpine.data('carousel', carousel);
 Alpine.data('countUp', countUp);
+Alpine.data('jadwal', jadwal);
 Alpine.data('grafikRealisasi', grafikRealisasi);
 
 Livewire.start();

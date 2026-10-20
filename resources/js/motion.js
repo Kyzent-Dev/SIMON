@@ -3,8 +3,9 @@ import { animate, inView, stagger } from "motion";
 const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const css = (name, fallback) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-const ms = (v) => parseFloat(v) / 1000; // "400ms" -> 0.4 (motion uses seconds)
-const bezier = (v) => v.match(/[\d.-]+/g).map(Number); // "cubic-bezier(0,0,.2,1)" -> [0,0,.2,1]
+// "400ms" -> 0.4 (motion uses seconds); Chrome reports the token as ".4s", so accept both units.
+const ms = (v) => (v.endsWith("ms") ? parseFloat(v) / 1000 : parseFloat(v));
+const bezier = (v) => v.match(/-?[\d.]+/g).map(Number); // "cubic-bezier(0,0,.2,1)" -> [0,0,.2,1] (skips the "-" in the name)
 
 const T = () => ({
   slow: ms(css("--dur-slow", "400ms")),
@@ -48,6 +49,8 @@ export function initMotion(root = document) {
     const preset = presets[el.dataset.motion];
     if (!preset || reduce()) { finish(el); return; }
     inView(el, () => {
+      // initMotion runs on DOMContentLoaded and on Livewire's initial livewire:navigated; inView also re-fires on re-entry.
+      if (el.hasAttribute("data-motion-done")) return;
       el.dataset.motionDone = "";
       preset(el);
     }, { amount: 0.2 });

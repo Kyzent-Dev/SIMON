@@ -1,9 +1,14 @@
 {{-- DESIGN §8 x-ui.drawer from the right: sm 400 / md 560 / lg 720 (default; create/edit forms, admin.md Layout).
      Same open/close contract as x-ui.modal: `wire:model` (x-modelable) or the `open-modal` / `close-modal` window events with {name}.
-     Slot `footer` is the sticky action bar. --}}
-@props(['name', 'title', 'size' => 'lg'])
+     Slot `footer` is the sticky action bar. `posisi="bawah"`: bottom sheet (public filters below 768, DESIGN §11). --}}
+@props(['name', 'title', 'size' => 'lg', 'posisi' => 'kanan'])
 
-@php $width = ['sm' => 'max-w-[400px]', 'md' => 'max-w-[560px]', 'lg' => 'max-w-[720px]'][$size]; @endphp
+@php
+    $width = ['sm' => 'max-w-[400px]', 'md' => 'max-w-[560px]', 'lg' => 'max-w-[720px]'][$size];
+    $bawah = $posisi === 'bawah';
+    $panel = $bawah ? 'absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-xl bg-white shadow-lg' : ['absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-lg', $width];
+    $geser = $bawah ? 'translate-y-full' : 'translate-x-full';
+@endphp
 
 <div x-data="{ open: false }" x-modelable="open" {{ $attributes->whereStartsWith('wire:model') }}
     x-on:open-modal.window="if ($event.detail?.name === @js($name)) open = true"
@@ -14,9 +19,9 @@
                 x-transition:enter="transition-opacity duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="opacity-0"
                 x-transition:leave="transition-opacity duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="opacity-0"></div>
             <div x-show="open" x-trap.noscroll="open" role="dialog" aria-modal="true" aria-labelledby="{{ $name }}-title"
-                x-transition:enter="transition duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="translate-x-full"
-                x-transition:leave="transition duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="translate-x-full"
-                {{ $attributes->whereDoesntStartWith('wire:model')->class(['absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-lg', $width]) }}>
+                x-transition:enter="transition duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="{{ $geser }}"
+                x-transition:leave="transition duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="{{ $geser }}"
+                {{ $attributes->whereDoesntStartWith('wire:model')->class($panel) }}>
                 <div class="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-4 lg:px-5">
                     <h2 id="{{ $name }}-title" class="truncate font-display text-[22px] leading-[30px] font-bold text-neutral-900">{{ $title }}</h2>
                     <button type="button" x-on:click="open = false" aria-label="Tutup"

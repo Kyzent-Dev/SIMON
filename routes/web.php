@@ -34,11 +34,13 @@ use App\Livewire\Notifikasi\Daftar as NotifikasiDaftar;
 use App\Livewire\Pimpinan\Dasbor as PimpinanDasbor;
 use App\Livewire\Pimpinan\Monitoring;
 use App\Livewire\Pimpinan\RevisiJadwal;
+use App\Livewire\Publik\Jadwal as PublikJadwal;
 use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail as SptDetail;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', BerandaController::class)->name('beranda');
+Route::get('/jadwal', PublikJadwal::class)->name('publik.jadwal');
 
 Route::middleware('guest')->group(function () {
     Route::get('/masuk', [LoginController::class, 'create'])->name('login');
