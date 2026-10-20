@@ -23,6 +23,7 @@ use App\Livewire\BagianUmum\Register as BagianUmumRegister;
 use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
 use App\Livewire\Irban\SptSaya;
+use App\Livewire\Notifikasi\Daftar as NotifikasiDaftar;
 use App\Livewire\Pimpinan\RevisiJadwal;
 use App\Livewire\Spt\Detail as SptDetail;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/perbarui-kata-sandi', [ForcedPasswordController::class, 'edit'])->name('password.force.edit');
     Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');
 
+    Route::get('/notifikasi', NotifikasiDaftar::class)->name('notifikasi.index');
     Route::get('/spt/{spt}', SptDetail::class)->name('spt.show');
     Route::get('/spt/{spt}/dokumen/{dokumen}', SptDokumenController::class)->name('spt.dokumen');
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');

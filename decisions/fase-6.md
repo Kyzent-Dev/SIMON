@@ -23,3 +23,12 @@
 - Terlambat uses `PenandaSpt::untuk()` (no second implementation of the rule); the pengingat rule (today >= tanggal_mulai + 3 days, no `final` document) is evaluated in the command because `PenandaSpt` has no 3-day flag.
 - `RingkasanMingguan::hitung(CarbonImmutable $senin)` returns a plain array (keys `awal, akhir, nomor, selesai, menunggu_nomor, revisi, terlambat, daftar, lainnya`); the notification takes that array. The window is `[senin-7d 00.00, senin 00.00)` on `spt_riwayat.created_at` (Jakarta time); the terlambat list is oldest tanggal_selesai first, capped at 10.
 - Command classes are auto-discovered from `app/Console/Commands`; schedule entries live in `routes/console.php`.
+
+## Fase 6, Task 4
+- Shared read logic lives in `App\Support\NotifikasiPengguna` (`tandaiDibaca`, `tandaiSemua`, `buka`, all through `$user->notifications()`), so the bell in Task 5 reuses it and the list component holds no query rules.
+- Page uses `#[Layout('layouts::app', ['breadcrumbs' => ['Dasbor' => null, 'Notifikasi' => null]])]`; "Dasbor" is plain text (not a link) because each role's dashboard route differs. No sidebar item was added (the bell is the entry point).
+- `x-ui.page-header` gained an optional `titleId` prop (h1 gets `id` + `tabindex="-1"`) so focus can move to the heading after a bulk action empties the view.
+- `x-ui.pagination` per-page options are 20/50/100 here (default 20 per the plan) instead of 25/50/100.
+- Icon tile tones reuse the already verified status-badge token pairs: info = siap_dilaksanakan, success = selesai, warning = menunggu_nomor, danger = ditolak, neutral = neutral-100/neutral-700 (no new color pairs).
+- Selection (`terpilih`) is cleared on page change; header checkbox and the bulk button are driven by Alpine `$wire.terpilih`, the bulk button is disabled with none selected. A bulk action that marks 0 rows toasts info `Tidak ada notifikasi yang perlu ditandai dibaca` (no false success).
+- Item link has a real `href` (works without JS) and `wire:click.prevent="buka(id)"` to mark read before navigating.

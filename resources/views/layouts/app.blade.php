@@ -111,7 +111,7 @@
                     </nav>
                 @endif
             </div>
-            {{-- Bell and year switcher are deferred (DECISIONS.md). --}}
+            {{-- Year switcher is deferred (decisions/fase-2.md); the bell arrives in Fase 6 Task 5. --}}
             <div class="flex min-w-0 items-center gap-3">
                 <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $user->initials() }}</span>
                 <div class="min-w-0 leading-tight">
