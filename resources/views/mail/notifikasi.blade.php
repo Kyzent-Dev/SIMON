@@ -5,7 +5,8 @@
 
 @endforeach
 @if (filled($catatan))
-> Catatan: {{ str_replace(["\r\n", "\n", "\r"], ' ', $catatan) }}
+{{-- User text: backslash-escape Markdown punctuation so it never becomes links or formatting (< > & are left to HTML escaping). --}}
+> Catatan: {{ preg_replace('/[\\\\`*_{}\[\]()#+!|~:-]/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $catatan)) }}
 
 @endif
 @isset($actionText)

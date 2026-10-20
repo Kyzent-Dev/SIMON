@@ -10,6 +10,8 @@
 - `TutupPermintaan::bisa(Komentar $root): ?string` menerima root. `handle()` mencari komentar lewat `$spt->komentar()->whereKey($komentar_id)` (id dari klien selalu dibatasi pada SPT); id tidak ditemukan memberi galat `komentar`: `Permintaan penjelasan tidak ditemukan.` (untuk balasan pesannya `Komentar yang dibalas tidak ditemukan.`). Komentar yang bukan root dianggap "bukan permintaan penjelasan"
 - `BalasKomentar` hanya menerima `parent_id` berupa root (`parent_id` null) pada SPT yang sama; balasan atas balasan atau id dari SPT lain ditolak. Input "Diinput oleh" diabaikan (disimpan null) untuk peran selain Irban
 - Test Policy "pimpinan tidak bisa mengubah data SPT": ke-10 aksi tulis SPT dipanggil sebagai pimpinan pada SPT berstatus yang relevan, semuanya melempar `AuthorizationException` (tidak ada yang melempar `ValidationException` lebih dulu) dan baris `spt` serta jumlah riwayat, dokumen, kendala, personel tidak berubah. `CatatNomorManual` tidak menerima SPT (hanya `kelolaNomor` pada kelas), jadi dipanggil dengan data penugasan baru
+
+## Fase 7, Task 2
 - `KomentarBaru` dan `BalasanPenjelasan` berbagi `NotifikasiKomentar` (abstrak, turunan `NotifikasiSimon`) yang menyimpan nilai (penulis, konteks, url, catatan) saat dibuat, sehingga email berantrian tidak membaca ulang utas
 - `PenerimaNotifikasi::utasKomentar` mengecualikan hanya penulis komentar (berdasar id); akun Irban milik SPT selalu menjadi pihak utas. Peminta hanya menerima `BalasanPenjelasan` (tidak juga `KomentarBaru`) atas balasan orang lain di utas Minta Penjelasan miliknya; balasan peminta sendiri hanya mengirim `KomentarBaru`
 - `catatan` memakai `Str::limit($isi, 200)`, jadi panjang maksimal 203 karakter dengan tanda `...`
@@ -27,4 +29,9 @@
 
 ## Fase 7, Task 4
 - `KomentarSeeder` (dev saja, dipanggil `DatabaseSeeder` setelah `SptSeeder` dan sebelum `NotifikasiSeeder`, idempoten: berhenti bila dua SPT demo sudah punya komentar) menulis baris langsung tanpa notifikasi, dengan waktu berurutan. Memakai dua SPT Diterima bernomor pertama milik Irban I: SPT pertama berisi utas biasa (pimpinan, balasan Irban dengan "Diinput oleh" anggota Irban I, balasan Bagian Umum) dan satu Minta Penjelasan Terbuka tanpa balasan Irban; SPT kedua berisi Minta Penjelasan Selesai (dibalas Irban, ditutup pimpinan)
-- Catatan: sebuah butir Task 1 sebelumnya menulis seeder ditunda ke "Task 3"; yang benar Task 4 (sudah dikerjakan di sini)
+
+## Fase 7, Final review
+- Teks `catatan` di email (`resources/views/mail/notifikasi.blade.php`, semua jenis notifikasi) diberi backslash pada tanda baca Markdown (`\ ` * _ { } [ ] ( ) # + ! | ~ : -`) sehingga tautan dan format buatan pengguna tidak jadi aktif; `< > &` cukup lewat escape HTML Blade. Bagian teks polos dirender dari HTML, jadi tidak ada backslash yang tampak (dites). `:` ikut di-escape agar URL telanjang tidak diubah menjadi tautan otomatis (GFM autolink)
+- Balasan pimpinan/Bagian Umum kedua atas permintaan penjelasan tetap mengirim `BalasanPenjelasan` ke peminta ("Balasan atas permintaan penjelasan dari {nama}") walau penulisnya bukan Irban. Perilaku ini diketahui dan dipertahankan sesuai plan (routing berdasarkan penulis balasan, bukan perannya)
+- `blokirTutup` di `App\Livewire\Spt\Komentar` hanya dihitung bila pengguna boleh `tutupPermintaan` dan untuk root Terbuka; aturannya tetap di `TutupPermintaan::bisa()`
+- Alur PRD §14 butir 5 dites utuh di `AlurPenjelasanTest` (kanal database dan mailer array sungguhan, antrean sinkron), ditambah penolakan menutup dengan id balasan

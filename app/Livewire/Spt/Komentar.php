@@ -6,6 +6,7 @@ use App\Actions\Komentar\BalasKomentar;
 use App\Actions\Komentar\TulisKomentar;
 use App\Actions\Komentar\TutupPermintaan;
 use App\Enums\Role;
+use App\Enums\StatusPermintaan;
 use App\Models\Spt;
 use App\Support\DiinputOleh;
 use Illuminate\Support\Facades\Gate;
@@ -145,14 +146,15 @@ class Komentar extends Component
         $utas = $spt->komentar()->whereNull('parent_id')->oldest('id')
             ->with(['penulis', 'diinputOleh', 'ditutupOleh', 'balasan.penulis', 'balasan.diinputOleh'])->get();
         $bisaBalas = $user->can('balasKomentar', $spt);
+        $bisaTutup = $user->can('tutupPermintaan', $spt);
 
         return view('livewire.spt.komentar', [
             'utas' => $utas,
             'jumlah' => $utas->count() + $utas->sum(fn ($r) => $r->balasan->count()),
-            'blokirTutup' => $utas->where('minta_penjelasan', true)->mapWithKeys(fn ($r) => [$r->id => $tutup->bisa($r)]),
+            'blokirTutup' => $bisaTutup ? $utas->where('minta_penjelasan', true)->where('status_permintaan', StatusPermintaan::Terbuka)->mapWithKeys(fn ($r) => [$r->id => $tutup->bisa($r)]) : collect(),
             'bisaKomentari' => $user->can('komentari', $spt),
             'bisaBalas' => $bisaBalas,
-            'bisaTutup' => $user->can('tutupPermintaan', $spt),
+            'bisaTutup' => $bisaTutup,
             'irban' => $user->role === Role::Irban,
             'penginput' => $bisaBalas && $this->balasUntuk && $user->role === Role::Irban ? DiinputOleh::pilihan($user) : collect(),
         ]);

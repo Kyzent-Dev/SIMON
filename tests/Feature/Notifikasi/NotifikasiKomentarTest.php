@@ -15,6 +15,7 @@ use App\Notifications\KomentarBaru;
 use App\Support\JenisNotifikasi;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -198,5 +199,21 @@ class NotifikasiKomentarTest extends TestCase
         $this->assertSame(['ikon' => 'chat-bubble-left-ellipsis', 'nada' => 'info'], JenisNotifikasi::ikon('komentar_baru'));
         $this->assertSame(['ikon' => 'question-mark-circle', 'nada' => 'warning'], JenisNotifikasi::ikon('minta_penjelasan'));
         $this->assertSame(['ikon' => 'chat-bubble-left-right', 'nada' => 'success'], JenisNotifikasi::ikon('balasan_penjelasan'));
+    }
+
+    public function test_catatan_is_plain_text_in_the_email(): void
+    {
+        $k = app(TulisKomentar::class)->handle($this->pimpinan, $this->spt, ['isi' => "Lihat [Reset sandi](https://e.test) - *tebal* (ok) https://b.test\nbaris dua"]);
+        $mail = (new KomentarBaru($k))->toMail($this->irban);
+
+        $html = (string) $mail->render();
+        $this->assertStringNotContainsString('href="https://e.test"', $html);
+        $this->assertStringNotContainsString('<strong>', $html);
+        $this->assertStringNotContainsString('href="https://b.test"', $html);
+        $this->assertStringContainsString('[Reset sandi](https://e.test) - *tebal* (ok) https://b.test baris dua', html_entity_decode(strip_tags($html)));
+
+        $text = (string) app(Markdown::class)->renderText($mail->markdown, $mail->data());
+        $this->assertStringContainsString('Reset sandi', $text);
+        $this->assertStringNotContainsString('\\', $text); // no visible backslashes
     }
 }
