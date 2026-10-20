@@ -7,7 +7,7 @@
         'success' => 'bg-status-selesai-bg text-status-selesai-fg',
         'warning' => 'bg-status-menunggu_nomor-bg text-status-menunggu_nomor-fg',
         'danger' => 'bg-status-ditolak-bg text-status-ditolak-fg',
-        'neutral' => 'bg-neutral-100 text-neutral-700',
+        'neutral' => 'bg-neutral-100 text-neutral-600',
     ];
     $ids = $notifikasi->pluck('id')->all();
     $semuaKosong = $notifikasi->isEmpty();
@@ -63,7 +63,7 @@
                             </label>
                             <span class="flex size-10 shrink-0 items-center justify-center rounded-lg {{ $nada[$ikon['nada']] }}" aria-hidden="true">{{ svg('heroicon-o-'.$ikon['ikon'], 'size-6') }}</span>
                             <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                                <a href="{{ $d['url'] ?? '#' }}" wire:click.prevent="buka('{{ $n->id }}')" class="block min-w-0 rounded-sm text-sm">
+                                <a id="notif-{{ $n->id }}" href="{{ $d['url'] ?? '#' }}" x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.buka('{{ $n->id }}')" class="block min-w-0 rounded-sm text-sm">
                                     <span class="flex items-start gap-2">
                                         <span class="font-semibold text-neutral-900">{{ $d['judul'] ?? '' }}</span>
                                         @if ($baru)

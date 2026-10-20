@@ -130,4 +130,20 @@ class DaftarNotifikasiTest extends TestCase
 
         Livewire::actingAs($user)->test(Daftar::class)->set('tab', 'aneh')->assertSee('Sudah C');
     }
+
+    public function test_marking_moves_focus_to_a_stable_target_on_both_tabs(): void
+    {
+        $user = User::factory()->bagianUmum()->create();
+        $a = $this->buat($user);
+        $this->buat($user);
+
+        $c = Livewire::actingAs($user)->test(Daftar::class)->call('tandaiDibaca', $a->id)
+            ->assertDispatched('fokus-ke', id: 'notif-'.$a->id);
+        $c->call('tandaiSemua')->assertDispatched('fokus-ke', id: 'judul-notifikasi');
+        $c->set('terpilih', [$a->id])->call('tandaiTerpilih')->assertDispatched('fokus-ke', id: 'judul-notifikasi');
+
+        $b = $this->buat($user);
+        Livewire::actingAs($user)->test(Daftar::class)->set('tab', 'belum')->call('tandaiDibaca', $b->id)
+            ->assertDispatched('fokus-ke', id: 'judul-notifikasi');
+    }
 }

@@ -65,7 +65,8 @@ class Daftar extends Component
 
     public function tandaiDibaca(string $id): void
     {
-        $this->selesai(NotifikasiPengguna::tandaiDibaca($this->pengguna(), [$id]));
+        // The clicked button disappears; keep focus on the item's link (it stays on the Semua tab).
+        $this->selesai(NotifikasiPengguna::tandaiDibaca($this->pengguna(), [$id]), 'notif-'.$id);
     }
 
     public function tandaiTerpilih(): void
@@ -89,13 +90,12 @@ class Daftar extends Component
         }
     }
 
-    private function selesai(int $n): void
+    private function selesai(int $n, string $fokus = 'judul-notifikasi'): void
     {
         $this->dispatch('toast', type: $n ? 'success' : 'info', message: $n ? "{$n} notifikasi ditandai dibaca" : 'Tidak ada notifikasi yang perlu ditandai dibaca');
-        // The marked rows leave the "Belum dibaca" view; when nothing is left, focus must not fall to body.
-        if ($this->tab === 'belum' && ! $this->query()->exists()) {
-            $this->dispatch('fokus-ke', id: 'judul-notifikasi');
-        }
+        // The clicked control disappears or gets disabled after any mark action, so focus always moves to a stable target;
+        // the item link is gone from the "Belum dibaca" tab, so the h1 is used there.
+        $this->dispatch('fokus-ke', id: $this->tab === 'belum' ? 'judul-notifikasi' : $fokus);
     }
 
     private function query()
