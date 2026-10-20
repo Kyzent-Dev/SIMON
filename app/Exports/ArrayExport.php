@@ -6,13 +6,17 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-/** Headings + rows; $textColumns (e.g. ['B']) are formatted as text so long numbers like NIP survive. Strings that could be read as formulas are always stored as text. */
-class ArrayExport extends DefaultValueBinder implements FromArray, WithColumnFormatting, WithCustomValueBinder, WithHeadings
+/**
+ * Headings + rows; $textColumns (e.g. ['B']) are formatted as text so long numbers like NIP survive. Strings that could be read as formulas are always stored as text.
+ * Strict null comparison: a 0 is written as 0, not as an empty cell (rekap counts).
+ */
+class ArrayExport extends DefaultValueBinder implements FromArray, WithColumnFormatting, WithCustomValueBinder, WithHeadings, WithStrictNullComparison
 {
     public function __construct(private array $headings, private array $rows, private array $textColumns = []) {}
 

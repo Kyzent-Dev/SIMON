@@ -131,6 +131,28 @@ class HalamanRekapTest extends TestCase
         $this->halaman($this->pimpinan, ['irban' => (string) $this->a->id])->call('ekspor', 'xlsx')->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'.xlsx');
     }
 
+    /** PRD §14 butir 6: for tw=1 every numeric row the page shows (Per Irban and Gabungan tabs) is in the xlsx for the same filter. */
+    public function test_export_xlsx_tw1_equals_the_page_cells(): void
+    {
+        $halaman = [];
+        foreach (['irban', 'gabungan'] as $tab) {
+            $halaman = [...$halaman, ...array_filter($this->baris($this->halaman($this->pimpinan, ['tahun' => '2026', 'tw' => '1', 'tab' => $tab])->html()), fn ($r) => preg_match('/\d/', $r))];
+        }
+        $this->assertContains('TW I 2 1 50', $halaman); // Gabungan TW I (hand-computed in the Gabungan test above)
+        $this->assertNotContains('TW II 3 2 67', $halaman);
+
+        $r = app(Ekspor::class)->minta($this->pimpinan, 'rekap', 'xlsx', ['tahun' => '2026', 'tw' => '1']);
+        $file = array_map(fn ($row) => implode(' ', array_filter($row, fn ($c) => $c !== null && $c !== '')), IOFactory::load($r->getFile()->getPathname())->getActiveSheet()->toArray());
+        $this->assertSame('Rekap Triwulanan 2026 TW I', $file[0]);
+        $this->assertFalse(collect($file)->contains(fn ($x) => str_contains($x, 'TW II')));
+
+        // Page row "{label} {cells}" ↔ file row "{label|irban} {periode} {cells}": the cells must match exactly at the row end.
+        foreach ($halaman as $baris) {
+            [$label, $sel] = preg_match('/^(TW I|Total)\s(.*)$/', $baris, $m) ? [$m[1], $m[2]] : [preg_replace('/\s[\d–\s]+$/u', '', $baris), trim(substr($baris, strlen(preg_replace('/\s[\d–\s]+$/u', '', $baris))))];
+            $this->assertTrue(collect($file)->contains(fn ($x) => str_contains($x, $label) && str_ends_with($x, ' '.$sel)), $baris);
+        }
+    }
+
     public function test_export_pdf(): void
     {
         $r = TestResponse::fromBaseResponse(app(Ekspor::class)->minta($this->pimpinan, 'rekap', 'pdf', ['tahun' => '2026']));

@@ -157,7 +157,7 @@ class HalamanMonitoringTest extends TestCase
     {
         $this->halaman(['penanda' => 'terlambat', 'penjelasan' => 'terbuka'])
             ->assertSee(['Terlambat', 'Permintaan Penjelasan Terbuka', 'Atur ulang'])
-            ->assertSeeHtml('aria-label="Hapus filter Terlambat"')
+            ->assertSeeHtml('aria-label="Hapus filter Terlambat (semua tahun)"')
             ->call('aturUlang')
             ->assertSet('penanda', '')->assertSet('penjelasan', '')->assertSet('tahun', '2026');
     }

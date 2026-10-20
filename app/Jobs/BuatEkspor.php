@@ -26,12 +26,21 @@ class BuatEkspor implements ShouldQueue
     public function handle(Ekspor $layanan, PenerimaNotifikasi $penerima): void
     {
         $e = $this->ekspor;
+        // A large PDF needs far more than the web 128M; raise the limits for this job only (time below $timeout), then restore them for the worker.
+        [$memori, $waktu] = [ini_get('memory_limit'), (int) ini_get('max_execution_time')];
+        if ($memori !== '-1' && ini_parse_quantity($memori) < 512 * 1024 * 1024) {
+            ini_set('memory_limit', '512M');
+        }
+        set_time_limit(570);
         try {
             $layanan->tulis($e);
         } catch (Throwable $ex) {
             $this->failed($ex);
 
             return;
+        } finally {
+            ini_set('memory_limit', $memori);
+            set_time_limit($waktu);
         }
         Notification::send($penerima->pengguna($e->user), new EksporSiap($e));
     }

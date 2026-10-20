@@ -52,13 +52,13 @@ class SptPolicy
         return $user->role === Role::BagianUmum;
     }
 
-    /** Monitoring SPT page and its export: Pimpinan only (PRD §5, read-only). */
     /** Rekap Triwulanan (Pimpinan) and Rekap Saya (Irban with an irban); read-only. */
     public function rekap(User $user): bool
     {
         return $user->role === Role::Pimpinan || ($user->role === Role::Irban && $user->irban_id !== null);
     }
 
+    /** Monitoring SPT page and its export: Pimpinan only (PRD §5, read-only). */
     public function monitoring(User $user): bool
     {
         return $user->role === Role::Pimpinan;

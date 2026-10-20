@@ -38,8 +38,12 @@ class Spt extends Model
         ];
     }
 
-    /** Computed from status_pengajuan and today in Asia/Jakarta (PRD §9.2); no cron. */
-    public function status(): StatusSpt
+    /**
+     * Computed from status_pengajuan and today in Asia/Jakarta (PRD §9.2); no cron.
+     *
+     * @param  ?string  $hariIni  today in Jakarta as Y-m-d, passed by batch callers (PenandaSpt, MonitoringSpt); default now.
+     */
+    public function status(?string $hariIni = null): StatusSpt
     {
         return match ($this->status_pengajuan ?? StatusPengajuan::Draf) {
             StatusPengajuan::Draf => StatusSpt::Draf,
@@ -47,16 +51,15 @@ class Spt extends Model
             StatusPengajuan::PerluRevisi => StatusSpt::PerluRevisi,
             StatusPengajuan::Ditolak => StatusSpt::Ditolak,
             StatusPengajuan::Dibatalkan => StatusSpt::Dibatalkan,
-            StatusPengajuan::Diterima => $this->statusBerjalan(),
+            StatusPengajuan::Diterima => $this->statusBerjalan($hariIni ?? now('Asia/Jakarta')->toDateString()),
         };
     }
 
-    private function statusBerjalan(): StatusSpt
+    private function statusBerjalan(string $hariIni): StatusSpt
     {
         if ($this->ditandai_selesai_pada !== null) {
             return StatusSpt::Selesai;
         }
-        $hariIni = now('Asia/Jakarta')->toDateString();
         if ($this->tanggal_mulai === null || $hariIni < $this->tanggal_mulai->toDateString()) {
             return StatusSpt::SiapDilaksanakan;
         }

@@ -88,6 +88,7 @@ class PembangunRekap implements Pembangun
         ])->render();
     }
 
+    /** Only used by a failed queued export; rekap is never queued (jumlah() = 0), so the Irban page (irban.rekap) is not reachable here. */
     public function halaman(): string
     {
         return route('pimpinan.rekap', absolute: false);

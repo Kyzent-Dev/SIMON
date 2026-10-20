@@ -5,7 +5,7 @@
     use App\Support\Tanggal;
     $terbuka = $filterAktif > 0;
     $periode = fn ($g) => $g['mulai'] ? Tanggal::rentang($g['mulai'], $g['selesai']) : null;
-    $chip = ['penanda' => 'Terlambat', 'penjelasan' => 'Permintaan Penjelasan Terbuka'];
+    $chip = ['penanda' => 'Terlambat (semua tahun)', 'penjelasan' => 'Permintaan Penjelasan Terbuka'];
 @endphp
 <div>
     <x-ui.page-header title="Monitoring SPT" description="Realisasi SPT per item PKPT.">
@@ -97,9 +97,9 @@
                                         <span class="tabular-nums">{{ $p }}</span>
                                     @endif
                                     @if ($g['irban'])
-                                        <span class="font-normal text-neutral-600">{{ $g['irban'] }}</span>
+                                        <span class="font-normal text-neutral-500">{{ $g['irban'] }}</span>
                                     @endif
-                                    <span class="ml-auto shrink-0 pr-2 font-normal text-neutral-600 tabular-nums">{{ number_format(count($g['spt']), 0, ',', '.') }} SPT</span>
+                                    <span class="ml-auto shrink-0 pr-2 font-normal text-neutral-500 tabular-nums">{{ number_format(count($g['spt']), 0, ',', '.') }} SPT</span>
                                 </div>
                             </th>
                         </tr>

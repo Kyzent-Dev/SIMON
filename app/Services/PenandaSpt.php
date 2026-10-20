@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
 use App\Models\Spt;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -16,8 +17,14 @@ class PenandaSpt
     /** @return list<string> */
     public function untuk(Spt $spt): array
     {
+        return $this->hitung($spt, now('Asia/Jakarta')->startOfDay(), $this->settings->get('penanda.batas_terlambat_hari'));
+    }
+
+    /** The flag rules; today and the late threshold are read once by the caller (untukBanyak reads them once per batch). */
+    private function hitung(Spt $spt, CarbonInterface $hariIni, int $batas): array
+    {
         $diterima = $spt->status_pengajuan === StatusPengajuan::Diterima;
-        $hariIni = now('Asia/Jakarta')->startOfDay();
+        $tanggal = $hariIni->toDateString();
         $penanda = [];
 
         if ($spt->pkpt_item_id === null && $spt->status_pengajuan !== StatusPengajuan::Draf) {
@@ -26,11 +33,10 @@ class PenandaSpt
         if ($this->tidakSesuaiPkpt($spt)) {
             $penanda[] = 'tidak_sesuai_pkpt';
         }
-        if ($spt->status() === StatusSpt::PenyusunanLaporan
-            && $spt->tanggal_selesai->startOfDay()->diffInDays($hariIni) > $this->settings->get('penanda.batas_terlambat_hari')) {
+        if ($spt->status($tanggal) === StatusSpt::PenyusunanLaporan && $spt->tanggal_selesai->startOfDay()->diffInDays($hariIni) > $batas) {
             $penanda[] = 'terlambat';
         }
-        if ($diterima && $spt->tanggal_mulai !== null && $hariIni->toDateString() > $spt->tanggal_mulai->toDateString()
+        if ($diterima && $spt->tanggal_mulai !== null && $tanggal > $spt->tanggal_mulai->toDateString()
             && ! $this->adaFinal($spt)) {
             $penanda[] = 'spt_final_belum_diupload';
         }
@@ -49,8 +55,9 @@ class PenandaSpt
         $spts = new EloquentCollection($spts->all());
         $spts->loadMissing('pkptItem.revisiDisetujui');
         $spts->loadExists(['dokumen as final_ada' => fn ($q) => $q->where('jenis', 'final')]);
+        [$hariIni, $batas] = [now('Asia/Jakarta')->startOfDay(), $this->settings->get('penanda.batas_terlambat_hari')];
 
-        return $spts->mapWithKeys(fn (Spt $spt) => [$spt->id => $this->untuk($spt)])->all();
+        return $spts->mapWithKeys(fn (Spt $spt) => [$spt->id => $this->hitung($spt, $hariIni, $batas)])->all();
     }
 
     public function perluKendala(Spt $spt): bool

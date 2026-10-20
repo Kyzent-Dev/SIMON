@@ -13,6 +13,7 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Services\MonitoringSpt;
 use App\Services\RekapTriwulan;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -22,7 +23,8 @@ use Tests\TestCase;
  * accepted SPT (s11 too, although its dates are in 2025), so the year-scoped cards see s1–s6, s9–s11 minus s7 (Dibatalkan):
  *   Berjalan  = s2, s9, s10                            = 3
  *   Selesai   = s1, s3, s4, s5, s6, s11                = 6
- *   Terlambat = s2 (31 Mar), s9 (20 Agu), s10 (5 Nov): Penyusunan Laporan and > 14 days past the end = 3
+ *   Terlambat (all years) = s2 (31 Mar), s9 (20 Agu), s10 (5 Nov) + $lama (tahun 2025, 5 Jun 2025):
+ *               Penyusunan Laporan and > 14 days past the end = 4
  *   Tidak Sesuai PKPT = s11 (Des 2025 vs item b1 Mei–Jun 2026)    = 1
  *   Permintaan Penjelasan Terbuka (all years) = open on s10 + open on an SPT of tahun 2025 = 2 (a closed one and a reply do not count)
  *   Revisi Jadwal Menunggu = the pending revision of b2 = 1
@@ -77,7 +79,7 @@ class DasborPimpinanTest extends TestCase
 
         $this->assertSame(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka', 'Revisi Jadwal Menunggu'],
             array_column($h->viewData('kartu'), 'label'));
-        $this->assertSame([3, 6, 3, 1, 2, 1], array_column($h->viewData('kartu'), 'nilai'));
+        $this->assertSame([3, 6, 4, 1, 2, 1], array_column($h->viewData('kartu'), 'nilai'));
         $this->assertSame(route('pimpinan.revisi-jadwal'), $kartu['Revisi Jadwal Menunggu']['href']);
         $this->assertTrue($kartu['Terlambat']['alert']);
         $this->assertTrue($kartu['Revisi Jadwal Menunggu']['alert']);
@@ -105,14 +107,34 @@ class DasborPimpinanTest extends TestCase
         $this->assertStringContainsString('penjelasan=terbuka', $kartu['Permintaan Penjelasan Terbuka']['href']);
     }
 
-    public function test_year_scoped_cards_follow_the_tahun_filter_but_permintaan_counts_all_years(): void
+    public function test_year_scoped_cards_follow_the_tahun_filter_but_terlambat_and_permintaan_count_all_years(): void
     {
-        // tahun 2025: only $lama (diterima, berjalan, ended Juni 2025 → Terlambat) is accepted with spt.tahun 2025.
+        // tahun 2025: only $lama (diterima, berjalan, ended Juni 2025) is accepted with spt.tahun 2025; Terlambat stays 4 (all years).
         $kartu = $this->kartu($this->halaman(['tahun' => 2025]));
         $this->assertSame(1, $kartu['Berjalan']['nilai']);
         $this->assertSame(0, $kartu['Selesai']['nilai']);
-        $this->assertSame(1, $kartu['Terlambat']['nilai']);
+        $this->assertSame(4, $kartu['Terlambat']['nilai']);
         $this->assertSame(2, $kartu['Permintaan Penjelasan Terbuka']['nilai']);
+    }
+
+    /** PRD §14 butir 4: an SPT of last year ending 20 Desember 2025 is Terlambat from day 15 after its end, on the default (current-year) dashboard. */
+    public function test_terlambat_from_last_year_appears_on_day_15_not_14(): void
+    {
+        $spt = Spt::factory()->diterima()->create(['irban_id' => $this->a->id, 'tanggal_mulai' => '2025-12-01', 'tanggal_selesai' => '2025-12-20']);
+        $spt->forceFill(['tahun' => 2025])->save();
+        $terlambat = function (string $hari) use ($spt) {
+            $this->travelTo(CarbonImmutable::parse("{$hari} 10:00", 'Asia/Jakarta'));
+            $k = $this->kartu($this->halaman())['Terlambat'];
+            parse_str(parse_url($k['href'], PHP_URL_QUERY), $query);
+            $ids = array_merge(...array_map(fn ($g) => array_column($g['spt'], 'id'), app(MonitoringSpt::class)->baris($query)));
+
+            return [$k['nilai'], in_array($spt->id, $ids, true), $query['tahun']];
+        };
+
+        // 3 Januari 2026 = selesai + 14: not counted. Only $lama (Juni 2025) is late; the 2026 SPT of the fixture have not ended yet.
+        $this->assertSame([1, false, '2026'], $terlambat('2026-01-03'));
+        // 4 Januari 2026 = selesai + 15: counted, and the monitoring rows behind the link include it.
+        $this->assertSame([2, true, '2026'], $terlambat('2026-01-04'));
     }
 
     public function test_revisi_card_is_alert_only_when_something_waits(): void

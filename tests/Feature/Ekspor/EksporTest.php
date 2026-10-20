@@ -79,6 +79,56 @@ class EksporTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    /** dompdf needs about 0,26 MB per row, so a PDF has its own lower direct-download threshold; xlsx keeps BATAS_LANGSUNG. */
+    public function test_pdf_has_its_own_lower_direct_threshold(): void
+    {
+        Queue::fake();
+        $this->assertSame(200, Ekspor::BATAS_LANGSUNG_PDF);
+
+        $this->jumlahPalsu(200);
+        $this->assertNotNull(app(Ekspor::class)->minta($this->bu, 'register', 'pdf', ['tahun' => 2026]));
+        $this->assertSame(0, EksporModel::count());
+
+        $this->jumlahPalsu(201);
+        $this->assertNotNull(app(Ekspor::class)->minta($this->bu, 'register', 'xlsx', ['tahun' => 2026]));
+        $this->assertSame(0, EksporModel::count());
+        Queue::assertNothingPushed();
+
+        $this->assertNull(app(Ekspor::class)->minta($this->bu, 'register', 'pdf', ['tahun' => 2026]));
+        $this->assertSame('pdf', EksporModel::sole()->format);
+        Queue::assertPushed(BuatEkspor::class, 1);
+    }
+
+    public function test_job_raises_memory_and_time_limits_while_building_and_restores_them(): void
+    {
+        Notification::fake();
+        $e = $this->buatRow('xlsx');
+        $selama = new \ArrayObject;
+        $this->app->bind(PembangunRegister::class, fn () => new class($selama) extends PembangunRegister
+        {
+            public function __construct(private \ArrayObject $selama) {}
+
+            public function export(User $u, array $f): ArrayExport
+            {
+                $this->selama->exchangeArray([ini_get('memory_limit'), ini_get('max_execution_time')]);
+
+                return parent::export($u, $f);
+            }
+        });
+        $memori = ini_get('memory_limit');
+        ini_set('memory_limit', '128M');
+
+        try {
+            app()->call([new BuatEkspor($e), 'handle']);
+            $this->assertSame(['512M', '570'], $selama->getArrayCopy());
+            $this->assertSame(['128M', '0'], [ini_get('memory_limit'), ini_get('max_execution_time')]);
+        } finally {
+            ini_set('memory_limit', $memori);
+            set_time_limit(0);
+        }
+        $this->assertSame('selesai', $e->fresh()->status);
+    }
+
     public function test_above_limit_stores_row_and_pushes_job_with_toast(): void
     {
         Queue::fake();

@@ -1,5 +1,5 @@
 {{-- _shared.md §6 split button "Ekspor": the main button exports Excel, the chevron opens a menu with "Excel (.xlsx)" and "PDF"; subtext "Mengikuti filter aktif".
-     Calls the host's `ekspor('xlsx'|'pdf')` (synchronous download, Fase 4). Menu: Esc/outside click close, focus trap, arrow keys move between items. No animation. --}}
+     Calls the host's `ekspor('xlsx'|'pdf')` (App\Services\Ekspor: direct download up to its threshold, queued with a notification above it). Menu: Esc/outside click close, focus trap, arrow keys move between items. No animation. --}}
 @props(['label' => 'Ekspor'])
 
 <div x-data="{ open: false, top: 0, left: 0,

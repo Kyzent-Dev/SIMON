@@ -15,7 +15,8 @@ class EksporBersihkan extends Command
     public function handle(): int
     {
         $jumlah = 0;
-        Ekspor::where('created_at', '<', now()->subDays(7))->each(function (Ekspor $e) use (&$jumlah) {
+        // lazyById: deleting inside offset chunks would skip rows.
+        Ekspor::where('created_at', '<', now()->subDays(7))->lazyById()->each(function (Ekspor $e) use (&$jumlah) {
             if ($e->path) {
                 Storage::disk('local')->delete($e->path);
             }

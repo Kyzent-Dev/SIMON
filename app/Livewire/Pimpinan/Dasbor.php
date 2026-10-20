@@ -83,6 +83,7 @@ class Dasbor extends Component
             'Terlambat' => ['penanda' => 'terlambat'],
             'Tidak Sesuai PKPT' => ['kesesuaian' => 'tidak_sesuai'],
         ] as $label => $filter) {
+            // Terlambat counts every year inside MonitoringSpt (its link carries the tahun, which that filter does not apply).
             $filter = ['tahun' => $tahun, ...$filter];
             $kartu[] = ['label' => $label, 'nilai' => $monitoring->jumlah($filter), 'href' => route('pimpinan.monitoring', $filter), 'alert' => $label === 'Terlambat'];
         }

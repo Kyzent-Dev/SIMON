@@ -14,10 +14,13 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
-/** One export pipeline for every table: up to BATAS_LANGSUNG rows download at once, more are built by a queued job (_shared.md section 6). */
+/** One export pipeline for every table: up to BATAS_LANGSUNG rows (BATAS_LANGSUNG_PDF for pdf) download at once, more are built by a queued job (_shared.md section 6). */
 class Ekspor
 {
     public const BATAS_LANGSUNG = 1000;
+
+    /** dompdf needs about 0,26 MB per row, so a direct PDF must stay well inside a 128M web request. */
+    public const BATAS_LANGSUNG_PDF = 200;
 
     private const PEMBANGUN = ['register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class, 'rekap' => PembangunRekap::class];
 
@@ -35,7 +38,7 @@ class Ekspor
         $filter = $p->filter($user, $filter);
         $nama = $p->namaFile($user, $filter).".{$format}";
 
-        if ($p->jumlah($user, $filter) <= self::BATAS_LANGSUNG) {
+        if ($p->jumlah($user, $filter) <= ($format === 'pdf' ? self::BATAS_LANGSUNG_PDF : self::BATAS_LANGSUNG)) {
             return $format === 'xlsx'
                 ? Excel::download($p->export($user, $filter), $nama)
                 : response()->streamDownload(function () use ($p, $user, $filter) {
