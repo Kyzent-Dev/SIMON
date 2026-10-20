@@ -51,6 +51,16 @@ Masing-masing pernah lolos ke review dan memakan satu putaran perbaikan.
 - **PDF dompdf ±0,26 MB per baris:** ekspor PDF besar lewat antrean (`Ekspor::BATAS_LANGSUNG_PDF = 200`); jangan membangun PDF ratusan baris di request web (128M). Ditemukan di review akhir Fase 8.
 - **Teks pengguna di view email Markdown:** wajib di-escape (backslash pada tanda baca Markdown), kalau tidak dirender sebagai tautan/format (`[x](url)` menjadi `<a>` di email resmi); lihat `resources/views/mail/notifikasi.blade.php`. Ini memakan satu gelombang perbaikan di Fase 7.
 
+## Catatan deploy (ringkasan; rincian di `decisions/catatan-deploy.md`)
+- **Cache:** `CACHE_STORE=database` atau `redis` (bukan `array`/`file` per server); `Cache::lock` per tahun hanya melindungi bila cache dipakai bersama.
+- **Scheduler:** cron `* * * * * cd /path/ke/aplikasi && php artisan schedule:run >> /dev/null 2>&1`. Jadwal: `ekspor:bersihkan` 05.00, `notifikasi:harian` 06.00, `notifikasi:ringkasan-mingguan` Senin 07.00 (semua WIB).
+- **Antrean:** `QUEUE_CONNECTION=database` dan `php artisan queue:work` berjalan terus (supervisor, atau cron `queue:work --stop-when-empty` di shared hosting). Tanpa worker: email tidak terkirim dan ekspor besar tetap `menunggu` tanpa notifikasi.
+- **`DB_QUEUE_RETRY_AFTER` ≥ 660** (di atas timeout job ekspor 600 detik); `.env` lama bernilai 90 membuat ekspor besar dijalankan ulang di tengah jalan.
+- **Worker ekspor:** host harus mengizinkan `ini_set('memory_limit')` (job menaikkan ke 512M, batas waktu 570 detik); siapkan RAM ±512 MB per worker. PDF > 200 baris dan xlsx > 1.000 baris diantrekan.
+- **Penyimpanan:** `storage/app/private/ekspor` (dan `storage/app/private/spt` untuk dokumen SPT) dapat ditulis oleh proses web dan worker, tidak di bawah `public/`.
+- **Email:** SMTP di `.env` (`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`); `APP_URL` wajib URL produksi.
+- **Sebelum scheduler pertama kali aktif** di database yang sudah berisi SPT: isi kolom idempotensi (`terlambat_diberitahu_pada`, `pengingat_final_pada`) untuk SPT yang sudah Terlambat/lewat 3 hari, kalau tidak semuanya menerima notifikasi sekaligus (contoh SQL di `decisions/catatan-deploy.md`).
+
 ## Dibawa ke fase berikutnya
 ### Untuk Fase 9 (Landing page publik) dan sesudahnya
 - Pengganti tahun di header dan menu pengguna ("Profil", "Ubah kata sandi") masih ditunda (decisions/fase-2.md, decisions/fase-8.md); setiap halaman punya filter Tahun sendiri. Belum dijadwalkan.
