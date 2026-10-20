@@ -25,6 +25,7 @@ use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
 use App\Livewire\Irban\SptSaya;
 use App\Livewire\Notifikasi\Daftar as NotifikasiDaftar;
+use App\Livewire\Pimpinan\Dasbor as PimpinanDasbor;
 use App\Livewire\Pimpinan\Monitoring;
 use App\Livewire\Pimpinan\RevisiJadwal;
 use App\Livewire\Rekap;
@@ -69,7 +70,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pkpt/{pkpt}', PkptDetail::class)->name('admin.pkpt.show');
         Route::get('/pkpt/{pkpt}/impor', PkptImpor::class)->name('admin.pkpt.impor');
     });
-    Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
+    Route::get('/pimpinan', PimpinanDasbor::class)->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::get('/pimpinan/monitoring', Monitoring::class)->name('pimpinan.monitoring')->middleware('role:pimpinan');
     Route::get('/pimpinan/rekap', Rekap::class)->name('pimpinan.rekap')->middleware('role:pimpinan');
     Route::get('/pimpinan/revisi-jadwal', RevisiJadwal::class)->name('pimpinan.revisi-jadwal')->middleware('role:pimpinan');

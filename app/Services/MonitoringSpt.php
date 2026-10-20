@@ -76,6 +76,12 @@ class MonitoringSpt
         return array_values($grup);
     }
 
+    /** Number of SPT rows baris() returns for this filter (dashboard stat cards), through the same filtering code. */
+    public function jumlah(array $filter): int
+    {
+        return count($this->spt($this->filter($filter)));
+    }
+
     /** @return list<array{0: Spt, 1: array}> SPT in scope after every filter, ordered by tanggal_mulai then id */
     private function spt(array $f): array
     {
