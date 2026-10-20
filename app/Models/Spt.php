@@ -158,6 +158,11 @@ class Spt extends Model
         return $this->hasOne(SptKendala::class);
     }
 
+    public function komentar()
+    {
+        return $this->hasMany(Komentar::class);
+    }
+
     public function ditandaiSelesaiOleh()
     {
         return $this->belongsTo(User::class, 'ditandai_selesai_oleh');

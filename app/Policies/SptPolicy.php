@@ -51,4 +51,22 @@ class SptPolicy
     {
         return $user->role === Role::BagianUmum;
     }
+
+    /** Pimpinan starts a thread (optionally Minta Penjelasan) on any SPT they can view. Never changes SPT data. */
+    public function komentari(User $user, Spt $spt): bool
+    {
+        return $user->role === Role::Pimpinan && $this->view($user, $spt);
+    }
+
+    /** Pimpinan, Bagian Umum or the owning Irban reply in a thread. Admin is view-only. */
+    public function balasKomentar(User $user, Spt $spt): bool
+    {
+        return $this->view($user, $spt) && ($user->role === Role::Pimpinan || $user->role === Role::BagianUmum || $this->milik($user, $spt));
+    }
+
+    /** Any pimpinan may close (Inspektur and Sekretaris share oversight), not only the requester. */
+    public function tutupPermintaan(User $user, Spt $spt): bool
+    {
+        return $user->role === Role::Pimpinan && $this->view($user, $spt);
+    }
 }
