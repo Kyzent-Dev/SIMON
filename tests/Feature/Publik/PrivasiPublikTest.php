@@ -63,21 +63,25 @@ class PrivasiPublikTest extends TestCase
         $out = [];
         foreach (['/', '/jadwal', '/jadwal?tampilan=bulanan', '/realisasi', '/realisasi?tahun=2026&tw=1&bulan=2&jenis='.$this->j1->id.'&urut=asc'] as $url) {
             $out[$url] = $this->get($url)->assertOk()->getContent();
+            $this->assertStringContainsString($url === '/' ? 'dari 3 SPT yang direncanakan' : ($url[1] === 'j' ? 'Jenis Satu, Irban A, Kec X' : 'Jenis Satu'), $out[$url], "halaman kosong: $url");
         }
 
-        $semua = fn ($c) => $c->html().json_encode($c->snapshot).json_encode($c->effects);
+        $json = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE; // default escaping turns '/' into '\/' and would hide the nomor marker
+        $semua = fn ($c) => $c->html().json_encode($c->snapshot, $json).json_encode($c->effects, $json);
         $r = Livewire::test(Realisasi::class);
         foreach ([
             ['tahun', '2026'], ['tw', '1'], ['bulan', '2'], ['irban', (string) $this->a->id], ['wilayah', (string) $this->kecX->id],
             ['jenis', (string) $this->j1->id], ['urut', 'asc'], ['perIrban', true], ['proporsi', 'jenis'], ['twGrafik', '2'],
         ] as [$prop, $nilai]) {
             $out["realisasi set $prop"] = $semua($r->set($prop, $nilai));
+            $r->assertSee('Realisasi Pengawasan');
         }
         $out['realisasi page 2'] = $semua($r->call('setPage', 2));
 
         $j = Livewire::test(Jadwal::class);
         foreach ([['tahun', '2026'], ['irban', (string) $this->a->id], ['wilayahTab', '1']] as [$prop, $nilai]) {
             $out["jadwal set $prop"] = $semua($j->set($prop, $nilai));
+            $j->assertSee('Jadwal PKPT');
         }
 
         return $out;
