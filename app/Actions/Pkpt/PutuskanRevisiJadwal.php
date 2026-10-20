@@ -5,8 +5,11 @@ namespace App\Actions\Pkpt;
 use App\Enums\StatusRevisi;
 use App\Models\PkptItemRevisi;
 use App\Models\User;
+use App\Notifications\RevisiJadwalDiputuskan;
+use App\Services\PenerimaNotifikasi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class PutuskanRevisiJadwal
@@ -17,7 +20,7 @@ class PutuskanRevisiJadwal
         Gate::forUser($user)->authorize('decide', $revisi);
         $komentar = trim((string) $komentar);
 
-        return DB::transaction(function () use ($user, $revisi, $setujui, $komentar) {
+        $locked = DB::transaction(function () use ($user, $revisi, $setujui, $komentar) {
             $locked = PkptItemRevisi::whereKey($revisi->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== StatusRevisi::Menunggu) {
                 throw ValidationException::withMessages(['revisi' => 'Revisi ini sudah diputuskan.']);
@@ -36,5 +39,9 @@ class PutuskanRevisiJadwal
 
             return $locked;
         });
+
+        Notification::send(app(PenerimaNotifikasi::class)->irban($locked->item->irban_id), new RevisiJadwalDiputuskan($locked));
+
+        return $locked;
     }
 }

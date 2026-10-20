@@ -6,8 +6,11 @@ use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\NomorDibatalkan;
+use App\Services\PenerimaNotifikasi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /** Cancels an issued number. Only the status changes: the number stays in the register and the counter never decrements (PRD §9.1). */
@@ -24,7 +27,7 @@ class BatalkanNomor
             throw ValidationException::withMessages(['alasan' => 'Alasan pembatalan maksimal 1000 karakter.']);
         }
 
-        return DB::transaction(function () use ($user, $spt, $alasan) {
+        $spt = DB::transaction(function () use ($user, $spt, $alasan) {
             $spt = Spt::whereKey($spt->id)->lockForUpdate()->firstOrFail();
             if ($spt->status_pengajuan !== StatusPengajuan::Diterima || $spt->nomor_urut === null) {
                 throw ValidationException::withMessages(['spt' => 'Hanya nomor yang sudah terbit yang dapat dibatalkan.']);
@@ -37,5 +40,9 @@ class BatalkanNomor
 
             return $spt;
         });
+
+        Notification::send(app(PenerimaNotifikasi::class)->irban($spt->irban_id), new NomorDibatalkan($spt, $alasan));
+
+        return $spt;
     }
 }

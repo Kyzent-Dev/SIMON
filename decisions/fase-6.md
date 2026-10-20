@@ -11,3 +11,9 @@
 - Label tombol `Buka SPT` untuk jenis `pengajuan_*`, `nomor_dibatalkan`, `spt_terlambat`, `pengingat_spt_final`; `Buka SIMON-SPT` untuk revisi jadwal dan ringkasan mingguan. Daftar ada di konstanta `NotifikasiSimon::JENIS_SPT`.
 - `isi()` dimasukkan lewat `MailMessage::lines()` sebelum `action()`, karena baris yang ditambahkan setelah `action()` menjadi outro (di bawah tombol).
 - `PenerimaNotifikasi` adalah service instance (`app(PenerimaNotifikasi::class)`) mengikuti pola `PenandaSpt`, mengembalikan Eloquent `Collection<User>`. Tidak ada filter akun nonaktif karena tabel `users` tidak punya kolom status.
+
+## Fase 6, Task 2
+- Notifikasi dikirim dari action setelah `DB::transaction` selesai, lewat `Notification::send(app(PenerimaNotifikasi::class)->...)`. `SimpanSpt` mengirim `PengajuanBaru` setiap mode `ajukan`: hanya Draf/Perlu Revisi yang bisa disimpan, jadi setiap ajukan adalah transisi ke `menunggu_nomor` (pengajuan pertama dan ajukan ulang); simpan draf atau ubah draf tidak mengirim.
+- Notifikasi menyimpan string/skalar (bukan model) yang dihitung di konstruktor, supaya payload antrean kecil dan isi bel/email sama dengan saat kejadian. Rentang tanggal memakai `Tanggal::rentang` (contoh `2–20 Maret 2026`), bukan format `d F Y – d F Y` harfiah, agar konsisten dengan tampilan jadwal yang sudah ada.
+- `PengajuanDiputuskan` mengambil catatan dari alasan riwayat yang dikembalikan `putuskan()` (null untuk diterima); tiga action memakai trait yang sama sehingga satu titik kirim.
+- `CatatNomorManual` tidak mengirim notifikasi: PRD §7.10 tidak mencantumkan kejadian itu.

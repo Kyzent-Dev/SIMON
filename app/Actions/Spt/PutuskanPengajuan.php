@@ -5,9 +5,12 @@ namespace App\Actions\Spt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\PengajuanDiputuskan;
+use App\Services\PenerimaNotifikasi;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /** Shared core of the Bagian Umum decisions: lock the SPT, require menunggu_nomor (else the conflict message), authorize, apply, write riwayat. */
@@ -20,7 +23,7 @@ trait PutuskanPengajuan
     {
         Gate::forUser($user)->authorize('kelolaNomor', Spt::class);
 
-        return DB::transaction(function () use ($user, $spt, $ubah) {
+        [$spt, $alasan] = DB::transaction(function () use ($user, $spt, $ubah) {
             $spt = Spt::whereKey($spt->id)->lockForUpdate()->first();
             if ($spt?->status_pengajuan !== StatusPengajuan::MenungguNomor) {
                 throw ValidationException::withMessages(['spt' => self::KONFLIK]);
@@ -34,8 +37,12 @@ trait PutuskanPengajuan
                 'nilai_baru' => ['status_pengajuan' => $status->value] + $extra, 'alasan' => $alasan, 'oleh' => $user->id,
             ]);
 
-            return $spt;
+            return [$spt, $alasan];
         }, attempts: 3);
+
+        Notification::send(app(PenerimaNotifikasi::class)->irban($spt->irban_id), new PengajuanDiputuskan($spt, $alasan));
+
+        return $spt;
     }
 
     private function catatan(string $catatan): string

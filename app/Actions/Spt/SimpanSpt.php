@@ -13,7 +13,9 @@ use App\Models\Pegawai;
 use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\PengajuanBaru;
 use App\Services\KesesuaianPkpt;
+use App\Services\PenerimaNotifikasi;
 use App\Services\Settings;
 use App\Support\BerkasSpt;
 use App\Support\DiinputOleh;
@@ -22,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -116,7 +119,13 @@ class SimpanSpt
         }
         DiinputOleh::ingat($user, $kolom['diinput_oleh']);
 
-        return $spt->refresh();
+        $spt->refresh();
+        // Only draf / perlu revisi can be saved, so every submit is the transition into menunggu_nomor.
+        if ($ajukan) {
+            Notification::send(app(PenerimaNotifikasi::class)->bagianUmum(), new PengajuanBaru($spt));
+        }
+
+        return $spt;
     }
 
     /**

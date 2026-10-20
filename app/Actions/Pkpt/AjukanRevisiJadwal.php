@@ -8,10 +8,13 @@ use App\Enums\StatusRevisi;
 use App\Models\PkptItem;
 use App\Models\PkptItemRevisi;
 use App\Models\User;
+use App\Notifications\RevisiJadwalDiajukan;
 use App\Services\KesesuaianPkpt;
+use App\Services\PenerimaNotifikasi;
 use App\Support\DiinputOleh;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class AjukanRevisiJadwal
@@ -48,7 +51,7 @@ class AjukanRevisiJadwal
             throw ValidationException::withMessages($errors);
         }
 
-        return DB::transaction(function () use ($user, $item, $dates, $alasan, $diinput) {
+        $revisi = DB::transaction(function () use ($user, $item, $dates, $alasan, $diinput) {
             // The item row lock serializes concurrent submits, so only one pending revision can exist.
             PkptItem::whereKey($item->id)->lockForUpdate()->first();
             if ($item->revisi()->where('status', StatusRevisi::Menunggu)->exists()) {
@@ -66,5 +69,9 @@ class AjukanRevisiJadwal
                 'alasan' => $alasan, 'diajukan_oleh' => $user->id, 'diinput_oleh' => $diinput,
             ]);
         });
+
+        Notification::send(app(PenerimaNotifikasi::class)->pimpinan(), new RevisiJadwalDiajukan($revisi));
+
+        return $revisi;
     }
 }
