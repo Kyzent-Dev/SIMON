@@ -7,6 +7,7 @@ use App\Models\Objek;
 use App\Models\PkptItem;
 use App\Models\PkptItemRevisi;
 use App\Services\Publik\JadwalPublik;
+use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -124,5 +125,17 @@ class JadwalPublikTest extends TestCase
             ['irban' => 'Irban B', 'daftar' => ['Kecamatan' => [], 'Dinas/Badan' => [], 'BUMD' => []]],
             ['irban' => 'Irban C', 'daftar' => ['Kecamatan' => [], 'Dinas/Badan' => [], 'BUMD' => []]],
         ], $this->svc()->wilayah(2026));
+    }
+
+    public function test_non_public_spt_adds_only_kecamatan_names_to_the_item_wilayah(): void
+    {
+        // A KHUSUS (non-public) accepted SPT on b1 with a desa: its kecamatan (Kec X) joins b1's label, the desa name never does,
+        // even with publik.tampilkan_nama_objek on. It is still not counted in selesaiSpt.
+        app(Settings::class)->set('publik.tampilkan_nama_objek', true);
+        $this->spt('selesai', $this->b, $this->b1, $this->khusus, '2026-05-01', '2026-05-02', [$this->desaX1]);
+
+        $b1 = collect($this->svc()->item(2026, null))->firstWhere('id', $this->b1->id);
+        $this->assertSame(['Dinas D, Kec X, Kec Y', 1], [$b1['wilayah'], $b1['selesaiSpt']]);
+        $this->assertStringNotContainsString('Desa X1', json_encode($this->svc()->item(2026, null)));
     }
 }

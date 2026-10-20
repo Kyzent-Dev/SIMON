@@ -243,5 +243,6 @@ class AdminPkptTest extends TestCase
         $this->assertSame('3–21 Februari 2026', Tanggal::rentang($d('2026-02-03'), $d('2026-02-21')));
         $this->assertSame('28 Februari – 3 Maret 2026', Tanggal::rentang($d('2026-02-28'), $d('2026-03-03')));
         $this->assertSame('30 Desember 2026 – 2 Januari 2027', Tanggal::rentang($d('2026-12-30'), $d('2027-01-02')));
+        $this->assertSame('1 April 2026', Tanggal::rentang($d('2026-04-01'), $d('2026-04-01')));
     }
 }

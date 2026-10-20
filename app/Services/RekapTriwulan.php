@@ -48,12 +48,10 @@ class RekapTriwulan
             ->when($irbanId, fn ($q) => $q->where('irban_id', $irbanId))
             ->get();
         foreach ($items as $item) {
-            $dasar = $this->triwulan->tanggalDasarItem($item);
-            if ($dasar->year !== $tahun) {
+            if (! $rencana = $this->rencanaItem($item, $tahun)) {
                 continue;
             }
-            $tw = $this->triwulan->dari($dasar);
-            $target = $item->target_spt ?? 1; // one item plans at least one SPT
+            [$tw, $target] = $rencana;
             if (isset($perIrban[$item->irban_id])) {
                 $perIrban[$item->irban_id][$tw]['rencana'] += $target;
             }
@@ -97,6 +95,22 @@ class RekapTriwulan
             'klasifikasi' => $this->denganTotal($klasifikasi->map(fn ($k) => ['id' => $k->id, 'nama' => $k->nama, ...$this->tabel($perKlasifikasi[$k->id])])->all(), $kl),
             'jenis' => $this->denganTotal($barisJenis, $jn),
         ];
+    }
+
+    /**
+     * The rencana rule for one item (shared with the public pages): [tw, target_spt with null = 1] by the item's basis
+     * date (Triwulan::tanggalDasarItem), or null when that date falls in another year.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    public function rencanaItem(PkptItem $item, int $tahun): ?array
+    {
+        $dasar = $this->triwulan->tanggalDasarItem($item);
+        if ($dasar->year !== $tahun) {
+            return null;
+        }
+
+        return [$this->triwulan->dari($dasar), $item->target_spt ?? 1]; // one item plans at least one SPT
     }
 
     /** @param array<int, array<string, int>> $tw raw counts per quarter → {tw, total} with persen where the cell has rencana */

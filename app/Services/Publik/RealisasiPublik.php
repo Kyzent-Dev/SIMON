@@ -7,6 +7,7 @@ use App\Enums\StatusPengajuan;
 use App\Enums\StatusPkpt;
 use App\Models\PkptItem;
 use App\Services\Ekspor\PembangunRekap;
+use App\Services\RekapTriwulan;
 use App\Services\Settings;
 use App\Services\Triwulan;
 use App\Support\Tanggal;
@@ -25,7 +26,7 @@ class RealisasiPublik
 {
     public const PER_HALAMAN = 25;
 
-    public function __construct(private Triwulan $triwulan, private Settings $settings) {}
+    public function __construct(private Triwulan $triwulan, private Settings $settings, private RekapTriwulan $rekap) {}
 
     /**
      * Public SPT (one rule): klasifikasi tampil_publik, diterima + marked Selesai, with a PKPT item whose PKPT is Disahkan,
@@ -145,7 +146,7 @@ class RealisasiPublik
             $g['label'][] = $i->nama;
             $g['rencana'][] = $r;
             $g['realisasi'][] = $s;
-            $g['persen'][] = $r > 0 ? (int) round($s / $r * 100) : null; // as RekapTriwulan
+            $g['persen'][] = $r > 0 ? (int) round($s / $r * 100) : null; // integer, as the Pimpinan chart (RekapTriwulan)
         }
 
         return $g;
@@ -244,14 +245,14 @@ class RealisasiPublik
         }, $per);
     }
 
-    /** @return array<int, int> irban_id => sum of target_spt (null = 1) of items whose basis date is in $tahun (and $tw) */
+    /** @return array<int, int> irban_id => planned SPT (RekapTriwulan::rencanaItem) of items in $tahun (and $tw) */
     private function rencanaPerIrban(Collection $item, int $tahun, ?int $tw): array
     {
         $rencana = [];
         foreach ($item as $i) {
-            $dasar = $this->triwulan->tanggalDasarItem($i);
-            if ($dasar->year === $tahun && ($tw === null || $this->triwulan->dari($dasar) === $tw)) {
-                $rencana[$i->irban_id] = ($rencana[$i->irban_id] ?? 0) + ($i->target_spt ?? 1); // as RekapTriwulan
+            [$itemTw, $target] = $this->rekap->rencanaItem($i, $tahun) ?? [null, 0];
+            if ($itemTw !== null && ($tw === null || $itemTw === $tw)) {
+                $rencana[$i->irban_id] = ($rencana[$i->irban_id] ?? 0) + $target;
             }
         }
 
