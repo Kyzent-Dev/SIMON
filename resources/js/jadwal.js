@@ -1,5 +1,5 @@
 // Public Jadwal PKPT (design/public/jadwal.md): Linimasa/Bulanan toggle kept in ?tampilan=, legend highlight, detail panel
-// (popover anchored to the trigger ≥768, bottom sheet <768). Focus return is handled by x-trap on the panel.
+// (popover anchored to the trigger ≥768, bottom sheet <768). tutup() returns focus to the trigger.
 const TAMPILAN = ['linimasa', 'bulanan'];
 
 export default () => ({
@@ -18,6 +18,12 @@ export default () => ({
             history.replaceState(history.state, '', url);
             this.aktif = null;
         });
+        // Alpine state survives Livewire morphs: after a filter change drop a highlight whose jenis is no longer rendered,
+        // and let the legend re-measure its rows.
+        this.$wire.$hook('morphed', () => this.$nextTick(() => {
+            if (this.sorot !== null && !this.$root.querySelector(`[data-jenis="${this.sorot}"]`)) this.sorot = null;
+            window.dispatchEvent(new CustomEvent('jadwal-dirender'));
+        }));
     },
 
     sorotJenis(id) {
@@ -34,8 +40,21 @@ export default () => ({
         this.$nextTick(() => this.posisi());
     },
 
-    tutup() {
+    // Focus goes to `fokus`, else back to the trigger of the detail open now (x-trap.noreturn: x-trap alone would return to
+    // the first trigger after moving from bar A to bar B, and Safari does not focus buttons on click).
+    tutup(fokus = null) {
+        if (this.aktif === null) return;
+        const sasaran = fokus ?? this.pemicu;
         this.aktif = null;
+        this.$nextTick(() => (sasaran?.isConnected ? sasaran : document.getElementById('judul-jadwal'))?.focus());
+    },
+
+    // Outside click: a click on another trigger opens that one instead; a click on a control keeps focus there (the trap
+    // bounced it back at mousedown), anywhere else focus returns to the trigger, never to <body>.
+    luar(e) {
+        if (e.target.closest('[data-pemicu]')) return;
+        const kontrol = e.target.closest('a[href], button, input, select, textarea, [tabindex]');
+        this.tutup(kontrol && kontrol.tabIndex >= 0 ? kontrol : null);
     },
 
     // Fixed position under the trigger (above it when there is no room), kept inside the viewport.

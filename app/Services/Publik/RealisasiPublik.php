@@ -193,6 +193,8 @@ class RealisasiPublik
         return [
             'tahun' => $tahun ?: [$sekarang],
             'tahunDefault' => in_array($sekarang, $tahun, true) ? $sekarang : ($tahun[0] ?? $sekarang),
+            // false: `tahun` is only the current-year fallback (no Disahkan PKPT at all).
+            'adaDisahkan' => $tahun !== [],
             'irban' => $this->irban(null)->map(fn ($i) => ['id' => $i->id, 'nama' => $i->nama])->all(),
             'wilayah' => DB::table('objek')->where('jenis', JenisObjek::Kecamatan->value)->orderBy('nama')->get(['id', 'nama'])->map(fn ($o) => (array) $o)->all(),
             'jenis' => DB::table('jenis_penugasan')->orderBy('nama')->get(['id', 'nama', 'warna', 'warna_teks'])->map(fn ($j) => (array) $j)->all(),

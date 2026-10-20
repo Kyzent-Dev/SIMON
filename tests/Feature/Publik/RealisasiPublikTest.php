@@ -240,6 +240,7 @@ class RealisasiPublikTest extends TestCase
         $o = $this->svc()->opsi();
         $this->assertSame([2026, 2024], $o['tahun']); // 2027 is Draf
         $this->assertSame(2026, $o['tahunDefault']);
+        $this->assertTrue($o['adaDisahkan']);
         $this->assertSame(['Irban A', 'Irban B', 'Irban C'], array_column($o['irban'], 'nama'));
         $this->assertSame(['id', 'nama'], array_keys($o['irban'][0]));
         $this->assertSame(['Kec X', 'Kec Y'], array_column($o['wilayah'], 'nama'));
@@ -248,6 +249,7 @@ class RealisasiPublikTest extends TestCase
         Pkpt::where('tahun', 2026)->update(['status' => 'draf']);
         $this->assertSame([[2024], 2024], [$this->svc()->opsi()['tahun'], $this->svc()->opsi()['tahunDefault']]); // latest when current is absent
         Pkpt::where('tahun', 2024)->update(['status' => 'draf']);
+        $this->assertFalse($this->svc()->opsi()['adaDisahkan']); // the year list below is only a fallback
         $this->assertSame([[2026], 2026], [$this->svc()->opsi()['tahun'], $this->svc()->opsi()['tahunDefault']]); // none → current year
     }
 }

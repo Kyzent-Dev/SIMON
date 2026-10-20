@@ -11,7 +11,8 @@
         .$i['mulai']->translatedFormat($i['mulai']->year === $i['selesai']->year ? 'j F' : 'j F Y').'–'.$penuh($i['selesai']);
     $jenis = collect($item)->pluck('jenis')->unique('id')->values();
     $hariIni = $linimasa['hariIni'] ?? null;
-    $namaIrban = $irban !== '' ? collect($opsi['irban'])->firstWhere('id', (int) $irban)['nama'] ?? null : null;
+    // The irban-specific empty title only when the year really has a Disahkan PKPT (opsi.tahun is clamped to Disahkan years).
+    $namaIrban = $irban !== '' && $opsi['adaDisahkan'] ? collect($opsi['irban'])->firstWhere('id', (int) $irban)['nama'] ?? null : null;
     $tahunOpsi = collect($opsi['tahun'])->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
     $irbanOpsi = collect($opsi['irban'])->mapWithKeys(fn ($i) => [$i['id'] => $i['nama']])->all();
 @endphp
@@ -71,7 +72,7 @@
             {{-- Legend: toggle buttons; beyond 2 rows it collapses into "Lihat legenda (n)". --}}
             <div class="mt-6" x-data="{ lebih: false, semua: false,
                     ukur() { const ul = this.$refs.chips, d = ul.style.display; ul.style.display = ''; this.lebih = new Set([...ul.children].map(c => c.offsetTop)).size > 2; ul.style.display = d } }"
-                x-init="ukur()" x-on:resize.window.debounce.150ms="ukur()">
+                x-init="ukur()" x-on:resize.window.debounce.150ms="ukur()" x-on:jadwal-dirender.window="ukur()">
                 <button type="button" x-show="lebih && ! semua" x-cloak x-on:click="semua = true; $nextTick(() => $refs.chips.querySelector('button')?.focus())" aria-expanded="false"
                     class="inline-flex min-h-11 items-center gap-1 rounded-md text-sm font-medium text-mint-700 hover:underline">
                     Lihat legenda ({{ $jenis->count() }}) {{ svg('heroicon-m-chevron-down', 'size-5', ['aria-hidden' => 'true']) }}
@@ -79,7 +80,7 @@
                 <ul x-ref="chips" x-show="! lebih || semua" role="list" aria-label="Legenda jenis penugasan" class="flex flex-wrap gap-2">
                     @foreach ($jenis as $j)
                         <li>
-                            <button type="button" aria-pressed="false" x-bind:aria-pressed="(sorot === {{ $j['id'] }}).toString()" x-on:click="sorotJenis({{ $j['id'] }})"
+                            <button type="button" data-jenis="{{ $j['id'] }}" aria-pressed="false" x-bind:aria-pressed="(sorot === {{ $j['id'] }}).toString()" x-on:click="sorotJenis({{ $j['id'] }})"
                                 x-bind:class="sorot === {{ $j['id'] }} ? 'border-mint-700 bg-mint-50' : 'border-neutral-200 bg-white hover:bg-neutral-50'"
                                 class="inline-flex min-h-11 items-center rounded-md border border-neutral-200 bg-white px-3 lg:min-h-9">
                                 <x-app.type-chip :color="$j['warna']" :label="$j['nama']" />
@@ -136,14 +137,14 @@
                                         @foreach ($lajur as $bar)
                                             @php $i = $bar['item']; @endphp
                                             @if ($bar['semula'])
-                                                <span data-semula aria-hidden="true" x-bind:class="redup({{ $i['jenis']['id'] }}) && 'opacity-25'"
+                                                <span data-semula aria-hidden="true" x-bind:class="{ 'opacity-25': redup({{ $i['jenis']['id'] }}) }"
                                                     class="h-[22px] self-center rounded-md border-2 border-dashed border-[color-mix(in_srgb,var(--type)_70%,transparent)] transition-opacity duration-[var(--dur-fast)]"
                                                     style="{{ $gaya($i['jenis']) }} grid-row: {{ $n + 1 }}; grid-column: {{ $bar['semula'][0] + 1 }} / {{ $bar['semula'][1] + 2 }}"></span>
                                             @endif
                                             {{-- Label inside only when ≥96 px: 8 columns ≈ 107 px at the 1040 px minimum width (240 + 60 × 13.3). --}}
                                             @php $berlabel = $bar['selesai'] - $bar['mulai'] + 1 >= 8; @endphp
                                             <button type="button" data-bar data-pemicu aria-label="{{ $label($i) }}" @unless ($berlabel) title="{{ $i['irban'] }} · {{ $i['wilayah'] }}" @endunless
-                                                x-on:click="buka({{ $i['id'] }}, $el)" x-bind:class="redup({{ $i['jenis']['id'] }}) && 'opacity-25'"
+                                                x-on:click="buka({{ $i['id'] }}, $el)" x-bind:class="{ 'opacity-25': redup({{ $i['jenis']['id'] }}) }"
                                                 class="relative z-[1] h-[22px] min-w-0 self-center truncate rounded-md bg-[var(--type)] px-2 text-left text-xs font-semibold text-[var(--type-fg)] transition-opacity duration-[var(--dur-fast)]"
                                                 style="{{ $gaya($i['jenis']) }} grid-row: {{ $n + 1 }}; grid-column: {{ $bar['mulai'] + 1 }} / {{ $bar['selesai'] + 2 }}">@if ($berlabel){{ $i['irban'] }} · {{ $i['wilayah'] }}@endif</button>
                                         @endforeach
@@ -175,7 +176,7 @@
                                     <ul role="list">
                                         @foreach ($daftar as $i)
                                             <li>
-                                                <button type="button" data-pemicu x-on:click="buka({{ $i['id'] }}, $el)" x-bind:class="redup({{ $i['jenis']['id'] }}) && 'opacity-25'"
+                                                <button type="button" data-pemicu x-on:click="buka({{ $i['id'] }}, $el)" x-bind:class="{ 'opacity-25': redup({{ $i['jenis']['id'] }}) }"
                                                     style="{{ $gaya($i['jenis']) }}" class="flex w-full gap-3 rounded-md py-2 pr-2 text-left transition-opacity duration-[var(--dur-fast)] hover:bg-neutral-50">
                                                     <span aria-hidden="true" class="w-1 shrink-0 self-stretch rounded-full bg-[var(--type)]"></span>
                                                     <span class="min-w-0">
@@ -228,11 +229,11 @@
                 </div>
             </div>
 
-            {{-- Detail: popover anchored to the trigger ≥768, bottom sheet <768. x-trap returns focus to the trigger on close. --}}
+            {{-- Detail: popover anchored to the trigger ≥768, bottom sheet <768. tutup() returns focus to the open trigger (x-trap.noreturn, so an outside click on a control keeps its focus). --}}
             <div x-show="aktif !== null" x-cloak x-on:click="tutup()" aria-hidden="true" class="fixed inset-0 z-[60] bg-scrim md:hidden"></div>
-            <div x-ref="detail" x-show="aktif !== null" x-cloak x-trap="aktif !== null" role="dialog" aria-modal="true" x-bind:aria-labelledby="'detail-' + aktif"
+            <div x-ref="detail" x-show="aktif !== null" x-cloak x-trap.noreturn="aktif !== null" role="dialog" aria-modal="true" x-bind:aria-labelledby="'detail-' + aktif"
                 x-bind:style="gayaDetail" x-on:keydown.escape.window="aktif !== null && tutup()" x-on:resize.window="posisi()" x-on:scroll.window.passive="posisi()"
-                x-on:click.outside="if (! $event.target.closest('[data-pemicu]')) tutup()"
+                x-on:click.outside="luar($event)"
                 class="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-xl bg-white p-5 shadow-lg md:inset-x-auto md:bottom-auto md:z-50 md:w-80 md:rounded-lg md:border md:border-neutral-200 md:p-4 md:shadow-md">
                 @foreach ($item as $i)
                     <div x-show="aktif === {{ $i['id'] }}">

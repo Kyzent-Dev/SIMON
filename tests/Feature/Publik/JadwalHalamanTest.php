@@ -142,6 +142,18 @@ class JadwalHalamanTest extends TestCase
             ->assertDontSee('data-bar', false);
     }
 
+    public function test_empty_state_with_an_irban_filter(): void
+    {
+        // Irban C has no item in the Disahkan PKPT 2026: the irban-specific title.
+        $this->get('/jadwal?irban='.$this->c->id)->assertSee('Belum ada jadwal Irban C pada tahun 2026')
+            ->assertDontSee('Belum ada PKPT yang disahkan');
+
+        // No Disahkan PKPT at all: the specified copy, even with an irban selected.
+        Pkpt::query()->update(['status' => 'draf']);
+        $this->get('/jadwal?irban='.$this->a->id)->assertSee('Belum ada PKPT yang disahkan untuk tahun 2026')
+            ->assertDontSee('Belum ada jadwal Irban');
+    }
+
     public function test_error_state_when_the_service_fails(): void
     {
         $this->mock(JadwalPublik::class)->shouldReceive('item')->andThrow(new \RuntimeException('db down'));
