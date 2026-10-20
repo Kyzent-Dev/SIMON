@@ -1,0 +1,131 @@
+<?php
+
+namespace Tests\Feature\Publik;
+
+use App\Livewire\Publik\Jadwal;
+use App\Livewire\Publik\Realisasi;
+use App\Models\Komentar;
+use App\Models\Pegawai;
+use App\Models\SptDokumen;
+use App\Models\User;
+use App\Services\Settings;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+/**
+ * Fase 9 completion criterion (PRD §9.6, §14 butir 7): no never-public field reaches any public response.
+ * Every forbidden field of the visible SPT v1 (and v2) carries its own unique marker; the fixture's excluded SPT
+ * (KHUSUS, berjalan, tanpa item, dibatalkan, PKPT draf, belum ditandai) must not show either (Jenis/irban/dates are allowed
+ * data of the visible ones, so exclusion is proven by their counts in PublikFixture-based tests; here by their markers).
+ */
+class PrivasiPublikTest extends TestCase
+{
+    use PublikFixture {
+        setUp as protected siapkanFixture;
+    }
+    use RefreshDatabase;
+
+    private const NOMOR = 'MK-NOMOR-7741/INSP/2026';
+
+    private const DESA = 'MK-DESA-Sukamaju';
+
+    /** Private marker => planted field. */
+    private const RAHASIA = [
+        'MK-PEGAWAI-Budi', '199001012020011001', 'MK-PERIODE-2025', 'MK-URAIAN-pemeriksaan', 'MK-CATATAN-bu', 'MK-LHP-900',
+        'MK-KETERANGAN-item', 'MK-KENDALA-hujan', 'MK-KOMENTAR-tanya', 'MK-DOKUMEN-final.pdf', 'MK-USER-Penginput',
+    ];
+
+    protected function setUp(): void
+    {
+        $this->siapkanFixture();
+
+        $this->desaX1->forceFill(['nama' => self::DESA])->save();
+        DB::table('pkpt_item')->update(['keterangan' => 'MK-KETERANGAN-item']);
+        DB::table('spt')->update([
+            'periode_diperiksa' => 'MK-PERIODE-2025', 'uraian_untuk' => 'MK-URAIAN-pemeriksaan', 'catatan_bagian_umum' => 'MK-CATATAN-bu',
+            'nomor_lhp' => 'MK-LHP-900',
+        ]);
+        DB::table('spt')->where('id', $this->v1->id)->update(['nomor_lengkap' => self::NOMOR]);
+        Pegawai::query()->update(['nama_bergelar' => 'MK-PEGAWAI-Budi']);
+        DB::table('spt_kendala')->update(['uraian' => 'MK-KENDALA-hujan']);
+
+        $user = User::factory()->pimpinan()->create(['name' => 'MK-USER-Penginput']);
+        Komentar::factory()->create(['spt_id' => $this->v1->id, 'user_id' => $user->id, 'isi' => 'MK-KOMENTAR-tanya']);
+        SptDokumen::create(['spt_id' => $this->v1->id, 'jenis' => 'final', 'path' => 'spt/1/x.pdf', 'nama_asli' => 'MK-DOKUMEN-final.pdf',
+            'ukuran' => 10, 'sha256' => str_repeat('a', 64), 'diunggah_oleh' => $user->id]);
+    }
+
+    /** @return array<string, string> label => response text, including Livewire updates and their snapshots. */
+    private function respons(): array
+    {
+        $out = [];
+        foreach (['/', '/jadwal', '/jadwal?tampilan=bulanan', '/realisasi', '/realisasi?tahun=2026&tw=1&bulan=2&jenis='.$this->j1->id.'&urut=asc'] as $url) {
+            $out[$url] = $this->get($url)->assertOk()->getContent();
+        }
+
+        $semua = fn ($c) => $c->html().json_encode($c->snapshot).json_encode($c->effects);
+        $r = Livewire::test(Realisasi::class);
+        foreach ([
+            ['tahun', '2026'], ['tw', '1'], ['bulan', '2'], ['irban', (string) $this->a->id], ['wilayah', (string) $this->kecX->id],
+            ['jenis', (string) $this->j1->id], ['urut', 'asc'], ['perIrban', true], ['proporsi', 'jenis'], ['twGrafik', '2'],
+        ] as [$prop, $nilai]) {
+            $out["realisasi set $prop"] = $semua($r->set($prop, $nilai));
+        }
+        $out['realisasi page 2'] = $semua($r->call('setPage', 2));
+
+        $j = Livewire::test(Jadwal::class);
+        foreach ([['tahun', '2026'], ['irban', (string) $this->a->id], ['wilayahTab', '1']] as [$prop, $nilai]) {
+            $out["jadwal set $prop"] = $semua($j->set($prop, $nilai));
+        }
+
+        return $out;
+    }
+
+    public function test_no_private_field_appears_on_any_public_response(): void
+    {
+        foreach ($this->respons() as $label => $isi) {
+            foreach ([...self::RAHASIA, self::NOMOR, self::DESA] as $marker) {
+                $this->assertStringNotContainsString($marker, $isi, "$marker bocor di $label");
+            }
+        }
+    }
+
+    public function test_allowed_fields_of_the_visible_spt_appear(): void
+    {
+        $html = $this->get('/realisasi?tahun=2026')->assertOk()->getContent();
+        foreach (['Jenis Satu', 'Irban A', 'Kec X', '3–20 Februari 2026', 'Jenis Dua', 'Irban B', 'Dinas D, Kec Y', '28 Mei – 2 Juni 2026'] as $teks) {
+            $this->assertStringContainsString($teks, $html);
+        }
+        // 2 visible SPT only: the six excluded ones (KHUSUS, berjalan, tanpa item, dibatalkan, PKPT draf, belum ditandai) are not counted.
+        $this->assertStringContainsString('2 SPT selesai dari 3 SPT yang direncanakan', preg_replace('/\s+/', ' ', strip_tags($html)));
+    }
+
+    public function test_nomor_and_object_names_appear_on_realisasi_only_when_the_settings_are_on(): void
+    {
+        app(Settings::class)->set('publik.tampilkan_nomor_spt', true);
+        app(Settings::class)->set('publik.tampilkan_nama_objek', true);
+
+        $html = $this->get('/realisasi?tahun=2026')->assertOk()->getContent();
+        $this->assertStringContainsString(self::NOMOR, $html);
+        $this->assertStringContainsString(self::DESA, $html);
+
+        foreach (['/', '/jadwal', '/jadwal?tampilan=bulanan'] as $url) {
+            $isi = $this->get($url)->assertOk()->getContent();
+            $this->assertStringNotContainsString(self::NOMOR, $isi, $url);
+            $this->assertStringNotContainsString(self::DESA, $isi, $url);
+        }
+
+        // Everything else stays private even with both settings on.
+        foreach ($this->respons() as $label => $isi) {
+            foreach (self::RAHASIA as $marker) {
+                $this->assertStringNotContainsString($marker, $isi, "$marker bocor di $label");
+            }
+            if (! str_contains($label, 'realisasi')) {
+                $this->assertStringNotContainsString(self::NOMOR, $isi, $label);
+                $this->assertStringNotContainsString(self::DESA, $isi, $label);
+            }
+        }
+    }
+}
