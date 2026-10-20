@@ -3,15 +3,11 @@
 namespace Tests\Feature\Rekap;
 
 use App\Models\Irban;
-use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\Pkpt;
-use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Services\RekapTriwulan;
 use App\Services\Settings;
-use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,65 +39,7 @@ use Tests\TestCase;
 class RekapTriwulanTest extends TestCase
 {
     use RefreshDatabase;
-
-    private Irban $a;
-
-    private Irban $b;
-
-    private JenisPenugasan $j1;
-
-    private JenisPenugasan $j2;
-
-    private int $r;
-
-    private int $k;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->travelTo(CarbonImmutable::parse('2026-12-15 12:00', 'Asia/Jakarta'));
-
-        $this->a = Irban::factory()->create(['nama' => 'Irban A']);
-        $this->b = Irban::factory()->create(['nama' => 'Irban B']);
-        $this->j1 = JenisPenugasan::factory()->create(['nama' => 'Jenis Satu']);
-        $this->j2 = JenisPenugasan::factory()->create(['nama' => 'Jenis Dua']);
-        $this->r = Klasifikasi::where('kode', 'REGULER')->value('id');
-        $this->k = Klasifikasi::where('kode', 'KHUSUS')->value('id');
-
-        $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
-        $item = fn (Irban $i, JenisPenugasan $j, string $m, string $s, ?int $t) => PkptItem::factory()->create(
-            ['pkpt_id' => $pkpt->id, 'irban_id' => $i->id, 'jenis_penugasan_id' => $j->id, 'tanggal_mulai' => $m, 'tanggal_selesai' => $s, 'target_spt' => $t]);
-        $a1 = $item($this->a, $this->j1, '2026-01-10', '2026-03-31', 2);
-        $a2 = $item($this->a, $this->j2, '2026-03-20', '2026-04-01', null);
-        $a3 = $item($this->a, $this->j1, '2026-07-01', '2026-07-31', 3);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $a3->id, 'tanggal_mulai' => '2026-10-01', 'tanggal_selesai' => '2026-10-20']);
-        $b1 = $item($this->b, $this->j2, '2026-05-01', '2026-06-30', 2);
-        $b2 = $item($this->b, $this->j1, '2026-08-01', '2026-09-30', null);
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $b2->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-20']);
-        $draf = Pkpt::factory()->create(['tahun' => 2027]);
-        PkptItem::factory()->create(['pkpt_id' => $draf->id, 'irban_id' => $this->a->id, 'jenis_penugasan_id' => $this->j1->id,
-            'tanggal_mulai' => '2026-02-01', 'tanggal_selesai' => '2026-02-28', 'target_spt' => 5]);
-
-        $spt = function (string $state, Irban $i, ?PkptItem $it, JenisPenugasan $j, int $kl, string $m, string $s) {
-            $f = Spt::factory();
-            $f = $state === 'draf' ? $f : $f->{$state}();
-
-            return $f->create(['irban_id' => $i->id, 'pkpt_item_id' => $it?->id, 'jenis_penugasan_id' => $j->id, 'klasifikasi_id' => $kl,
-                'tanggal_mulai' => $m, 'tanggal_selesai' => $s]);
-        };
-        $spt('selesai', $this->a, $a1, $this->j1, $this->r, '2026-02-01', '2026-02-10');
-        $spt('diterima', $this->a, $a1, $this->j1, $this->r, '2026-03-25', '2026-03-31');
-        $spt('selesai', $this->a, $a2, $this->j2, $this->r, '2026-03-28', '2026-04-01');
-        $spt('selesai', $this->a, null, $this->j1, $this->k, '2026-05-05', '2026-05-06');
-        $spt('selesai', $this->a, $a3, $this->j1, $this->r, '2026-10-05', '2026-10-15');
-        $spt('selesai', $this->b, $b1, $this->j2, $this->r, '2026-06-01', '2026-06-15');
-        $spt('selesai', $this->b, $b1, $this->j2, $this->r, '2026-06-20', '2026-06-25')->forceFill(['status_pengajuan' => 'dibatalkan'])->save();
-        $spt('ditolak', $this->b, $b2, $this->j1, $this->r, '2026-09-01', '2026-09-10');
-        $spt('diterima', $this->b, $b2, $this->j1, $this->r, '2026-08-10', '2026-08-20');
-        $spt('diterima', $this->b, null, $this->j2, $this->k, '2026-11-01', '2026-11-05');
-        $spt('selesai', $this->b, $b1, $this->j2, $this->r, '2025-12-01', '2025-12-10');
-        $spt('draf', $this->a, $a1, $this->j1, $this->r, '2026-02-01', '2026-02-10');
-    }
+    use RekapFixture;
 
     /** @param list<array{0:int,1:int,2:?int}> $tw rencana, realisasi, persen per TW I–IV */
     private function rr(array $tw, array $total): array

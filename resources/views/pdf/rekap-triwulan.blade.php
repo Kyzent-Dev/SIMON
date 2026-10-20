@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Rekap Triwulanan {{ $tahun }}</title>
+<style>
+    @page { margin: 28px 32px; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #151C1A; }
+    h1 { font-size: 15px; margin: 0 0 4px; }
+    h2 { font-size: 12px; margin: 16px 0 0; }
+    h3 { font-size: 10px; margin: 8px 0 0; }
+    p { margin: 0 0 3px; color: #4B5955; }
+    table { width: 60%; border-collapse: collapse; margin-top: 4px; }
+    th { background: #F1F5F4; text-align: left; font-weight: bold; }
+    th, td { border: 1px solid #D5DEDB; padding: 4px 5px; }
+    td.n, th.n { text-align: right; }
+    tr.total td, tr.total th { font-weight: bold; border-top: 2px solid #B8C4C0; }
+    tr { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+    <h1>Rekap Triwulanan {{ $tahun }}</h1>
+    <p>{{ $tw }}{{ $irban ? ' · Irban: '.$irban : '' }}</p>
+    <p>Dibuat {{ $dibuat }}</p>
+    @unless ($pkptDisahkan)
+        <p>PKPT {{ $tahun }} belum disahkan; rencana belum dapat dihitung.</p>
+    @endunless
+    @foreach ($bagian as $i => $s)
+        <h2>{{ $s['judul'] }}</h2>
+        @foreach ($s['tabel'] as $t)
+            @if ($t['judul'])<h3>{{ $t['judul'] }}</h3>@endif
+            <table>
+                <thead><tr><th>{{ $i === 0 ? 'Triwulan' : ($i === 1 ? 'Klasifikasi' : 'Jenis Penugasan') }}</th>@foreach ($s['kolom'] as $k)<th class="n">{{ $k }}</th>@endforeach</tr></thead>
+                <tbody>
+                    @foreach ($t['baris'] as $b)
+                        <tr @class(['total' => $b['total']])><th>{{ $i === 0 ? $b['periode'] : $b['label'] }}</th>@foreach ($b['sel'] as $n)<td class="n">{{ $n }}</td>@endforeach</tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
+    @endforeach
+</body>
+</html>

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Ekspor\Pembangun;
 use App\Services\Ekspor\PembangunMonitoring;
 use App\Services\Ekspor\PembangunRegister;
+use App\Services\Ekspor\PembangunRekap;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -18,8 +19,7 @@ class Ekspor
 {
     public const BATAS_LANGSUNG = 1000;
 
-    /** Rekap registers its builder here. */
-    private const PEMBANGUN = ['register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class];
+    private const PEMBANGUN = ['register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class, 'rekap' => PembangunRekap::class];
 
     public function pembangun(string $jenis): Pembangun
     {

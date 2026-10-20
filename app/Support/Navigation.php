@@ -19,6 +19,7 @@ class Navigation
                 $item('SPT Saya', 'irban.spt', 'document-text', ['spt.show']),
                 $item('Ajukan Nomor SPT', 'irban.spt.ajukan', 'plus-circle'),
                 $item('Jadwal PKPT', 'irban.pkpt', 'calendar-days'),
+                $item('Rekap Saya', 'irban.rekap', 'chart-bar'),
             ]]],
             Role::BagianUmum => [...$dasbor, ['label' => null, 'items' => [
                 $item('Kotak Masuk Pengajuan', 'bagian-umum.pengajuan', 'inbox'),
@@ -26,6 +27,7 @@ class Navigation
             ]]],
             Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [
                 $item('Monitoring SPT', 'pimpinan.monitoring', 'table-cells'),
+                $item('Rekap Triwulanan', 'pimpinan.rekap', 'chart-bar'),
                 $item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path'),
             ]]],
             Role::Admin => [...$dasbor,

@@ -27,6 +27,7 @@ use App\Livewire\Irban\SptSaya;
 use App\Livewire\Notifikasi\Daftar as NotifikasiDaftar;
 use App\Livewire\Pimpinan\Monitoring;
 use App\Livewire\Pimpinan\RevisiJadwal;
+use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail as SptDetail;
 use Illuminate\Support\Facades\Route;
 
@@ -70,10 +71,12 @@ Route::middleware('auth')->group(function () {
     });
     Route::view('/pimpinan', 'dashboard.pimpinan')->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::get('/pimpinan/monitoring', Monitoring::class)->name('pimpinan.monitoring')->middleware('role:pimpinan');
+    Route::get('/pimpinan/rekap', Rekap::class)->name('pimpinan.rekap')->middleware('role:pimpinan');
     Route::get('/pimpinan/revisi-jadwal', RevisiJadwal::class)->name('pimpinan.revisi-jadwal')->middleware('role:pimpinan');
     Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');
     Route::middleware('role:irban')->prefix('irban')->group(function () {
         Route::get('/pkpt', IrbanPkpt::class)->name('irban.pkpt');
+        Route::get('/rekap', Rekap::class)->name('irban.rekap');
         Route::get('/spt', SptSaya::class)->name('irban.spt');
         Route::get('/spt/ajukan', SptForm::class)->name('irban.spt.ajukan');
         Route::get('/spt/{spt}/ubah', SptForm::class)->name('irban.spt.ubah');
