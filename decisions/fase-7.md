@@ -16,3 +16,12 @@
 - Notifikasi dikirim dari aksi setelah komentar tersimpan (aksi tulis tidak memakai `DB::transaction`, jadi tidak ada yang terkirim bila validasi atau policy melempar)
 - Properti `NotifikasiKomentar` bertipe `protected`: serialisasi antrian (`SerializesModels`) melewatkan properti `private` milik kelas induk sehingga payload kosong saat dikirim sungguhan
 - UI (Task 3) dan `KomentarSeeder` (Task 4) belum dikerjakan
+
+## Fase 7, Task 3
+- Bagian Komentar adalah komponen anak `App\Livewire\Spt\Komentar` (bukan bagian dari `Detail`), dibungkus `order-6 lg:order-none` setelah Dokumen di kolom kiri. Akarnya `<section aria-labelledby="judul-komentar">`: kartu `x-ui.card` langsung sebagai akar gagal karena penanda `<!--[if BLOCK]>` di awal HTML membuat Livewire tidak menemukan tag akar
+- Pemindahan fokus memakai event `fokus-ke` yang didengar oleh akar `Detail` (listener `.window`), sehingga komponen anak tidak menambah listener sendiri
+- Galat `isi` dari `BalasKomentar` ditampilkan pada kolom `balasan` (id textarea balasan), agar tidak bentrok dengan kolom `isi` milik composer di halaman yang sama
+- `balasUntuk` (root yang formulir balasnya terbuka) sengaja tidak `#[Locked]`: nilainya berubah dari klien; aksi `BalasKomentar` memeriksa ulang terhadap SPT ini, dan `bukaBalas()` mencarinya lewat `$spt->komentar()->whereNull('parent_id')`
+- Keterangan `Menunggu balasan Irban` dan tombol `Tutup permintaan` sama-sama diturunkan dari `TutupPermintaan::bisa()` untuk root Terbuka (null = tombol untuk pimpinan; selain null = keterangan), tanpa menghitung ulang aturan di komponen
+- Tombol `Balas` berfungsi sebagai toggle (`aria-expanded`): ditekan saat formulirnya terbuka sama dengan `Batal`
+- Tidak ada dialog konfirmasi untuk `Tutup permintaan` (keputusan pengendali)

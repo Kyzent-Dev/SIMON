@@ -1,7 +1,7 @@
 {{-- Shared SPT detail page (_shared.md §7). Header (h1 nomor + copy, status + flags, type/klasifikasi/irban, actions), perlu-kendala alert,
-     ≥1024 an 8/4 grid; below that the two columns dissolve (`contents`) and `order-*` gives the mobile order Ringkasan, Riwayat, Kendala, Personel, Dokumen.
-     Komentar and Log Aktivitas are later phases (no placeholders). No animation (§7.5) apart from the modal/toast transitions.
-     Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` moves focus when a modal's trigger is gone after success. --}}
+     ≥1024 an 8/4 grid; below that the two columns dissolve (`contents`) and `order-*` gives the mobile order Ringkasan, Riwayat, Kendala, Personel, Dokumen, Komentar.
+     Komentar is the child component livewire:spt.komentar (last in DOM and visually); Log Aktivitas is Fase 10 (no placeholder). No animation (§7.5) apart from the modal/toast transitions.
+     Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` (also dispatched by the Komentar child) moves focus when a trigger is gone after an action. --}}
 @use('App\Support\Tanggal')
 @use('App\Enums\KejadianSpt')
 @php
@@ -177,6 +177,10 @@
                     </ul>
                 @endif
             </x-ui.card>
+
+            <div class="order-6 lg:order-none">
+                <livewire:spt.komentar :spt="$spt" :key="'komentar-'.$spt->id" />
+            </div>
         </div>
 
         <div class="contents lg:col-span-4 lg:flex lg:flex-col lg:gap-6">
