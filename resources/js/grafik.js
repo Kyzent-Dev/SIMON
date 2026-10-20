@@ -2,8 +2,15 @@
 // DESIGN §9/§13 tokens, because Chart.js draws on a canvas and cannot read Tailwind classes. Chart.js loads lazily, so pages
 // without a chart never download it. Each component is destroyed on livewire:navigating.
 export const WARNA = {
-    neutral100: '#E6ECEA', neutral600: '#4B5955', neutral900: '#151C1A', borderStrong: '#7D8B87', mint700: '#17735B',
+    neutral100: '#E6ECEA', neutral600: '#4B5955', neutral900: '#151C1A', borderStrong: '#7D8B87', mint700: '#17735B', putih: '#FFFFFF',
+    lainnya: '#5A6B7B', // cat-other, donut "Lainnya"
 };
+
+// Irban series (DESIGN §9): colour + pointStyle + borderDash, so a series never relies on colour alone. Index = irban order by name.
+const SERI_IRBAN = [
+    ['#145C4A', 'circle', []], ['#C77C00', 'rect', [6, 4]], ['#6A3D9A', 'triangle', [2, 3]],
+    ['#CC6677', 'rectRot', [10, 4, 2, 4]], ['#146C8F', 'crossRot', [4, 4]],
+];
 
 // Status badge fill/border (DESIGN §3.6), in the order of the grafikStatus labels: Draf, Menunggu Nomor, Perlu Revisi, Berjalan (blue), Selesai.
 const WARNA_STATUS = [
@@ -149,4 +156,76 @@ export const grafikStatus = (data) => grafik(data, (d) => ({
 }), (chart, d) => {
     chart.data.labels = [`SPT ${d.tahun}`];
     chart.data.datasets.forEach((ds, i) => { ds.data = [d.nilai[i]]; });
+});
+
+/** SPT selesai per bulan (DESIGN §9 Line): one mint-700 series (width 2.5, points 3px), or one per irban with its own colour, marker and dash. */
+const seriGaris = (d) => d.seri.map((s) => {
+    if (s.warna === null) {
+        return { label: s.nama, data: s.data, borderColor: WARNA.mint700, backgroundColor: WARNA.mint700, borderWidth: 2.5, pointRadius: 3 };
+    }
+    const [warna, titik, garis] = SERI_IRBAN[s.warna % SERI_IRBAN.length];
+    return { label: s.nama, data: s.data, borderColor: warna, backgroundColor: warna, borderWidth: 2, borderDash: garis, pointStyle: titik, pointRadius: 4 };
+});
+
+export const grafikGaris = (data) => grafik(data, (d) => ({
+    type: 'line',
+    data: { labels: d.bulan, datasets: seriGaris(d) },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } },
+        plugins: {
+            legend: { display: d.seri.length > 1, position: 'bottom' },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${angka(c.raw)} SPT` } },
+        },
+    },
+}), (chart, d) => {
+    chart.data.labels = d.bulan;
+    chart.data.datasets = seriGaris(d);
+    chart.options.plugins.legend.display = d.seri.length > 1;
+});
+
+const persen = (p) => `${p.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+// Slice colour: jenis hex from the database, irban index into the series colours, null = Lainnya.
+const warnaIrisan = (s) => (s.warna === null ? WARNA.lainnya : typeof s.warna === 'number' ? SERI_IRBAN[s.warna % SERI_IRBAN.length][0] : s.warna);
+const isiDonat = (d) => ({
+    labels: d.irisan.map((s) => s.label),
+    datasets: [{
+        data: d.irisan.map((s) => s.jumlah), persen: d.irisan.map((s) => s.persen),
+        backgroundColor: d.irisan.map(warnaIrisan), borderColor: WARNA.putih, borderWidth: 2,
+    }],
+});
+
+// Centre label "128 SPT" (DESIGN §9 Donut).
+const labelTengah = {
+    id: 'labelTengah',
+    afterDraw(chart) {
+        const { ctx, chartArea: a } = chart;
+        const total = chart.data.datasets[0].data.reduce((x, y) => x + y, 0);
+        ctx.save();
+        ctx.font = '700 20px "Plus Jakarta Sans", Inter, system-ui, sans-serif';
+        ctx.fillStyle = WARNA.neutral900;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${angka(total)} SPT`, (a.left + a.right) / 2, (a.top + a.bottom) / 2);
+        ctx.restore();
+    },
+};
+
+/** Proporsi (DESIGN §9 Donut): cutout 62%, white 2px separators, ≤6 slices + Lainnya, centre total; the text legend is HTML beside it. */
+export const grafikDonat = (data) => grafik(data, (d) => ({
+    type: 'doughnut',
+    data: isiDonat(d),
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (c) => `${c.label}: ${angka(c.raw)} SPT (${persen(c.dataset.persen[c.dataIndex])})` } },
+        },
+    },
+    plugins: [labelTengah],
+}), (chart, d) => {
+    chart.data = isiDonat(d);
 });

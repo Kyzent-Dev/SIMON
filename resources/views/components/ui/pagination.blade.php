@@ -1,5 +1,6 @@
 {{-- DESIGN §8 x-ui.pagination for Livewire components using WithPagination and a public `$perPage` (name via `perPageModel`).
-     "Menampilkan 1–25 dari 312", per-page 25/50/100, page buttons call gotoPage/previousPage/nextPage. --}}
+     "Menampilkan 1–25 dari 312", per-page 25/50/100, page buttons call gotoPage/previousPage/nextPage.
+     `:per-page-options="[]"` hides the per-page select (fixed page size, public Realisasi). --}}
 @props(['paginator', 'perPageModel' => 'perPage', 'perPageOptions' => [25, 50, 100]])
 
 @php
@@ -14,6 +15,7 @@
 <div {{ $attributes->class('flex flex-col gap-3 text-sm text-neutral-600 sm:flex-row sm:items-center sm:justify-between') }}>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p class="tabular-nums">Menampilkan {{ $paginator->total() ? $n($paginator->firstItem()).'–'.$n($paginator->lastItem()) : '0' }} dari {{ $n($paginator->total()) }}</p>
+        @if ($perPageOptions)
         <div class="flex items-center gap-2">
             <label for="{{ $perPageId }}">Baris per halaman</label>
             <select id="{{ $perPageId }}" wire:model.live="{{ $perPageModel }}"
@@ -23,6 +25,7 @@
                 @endforeach
             </select>
         </div>
+        @endif
     </div>
 
     @if ($paginator->hasPages())
