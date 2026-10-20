@@ -4,7 +4,8 @@
 
 @php
     $classes = [
-        'block rounded-lg border border-neutral-200 p-4 lg:p-5',
+        'block border border-neutral-200 p-4 lg:p-5',
+        $lift ? 'rounded-xl' : 'rounded-lg', // DESIGN §5: radius-xl for landing cards
         $variant === 'mint' ? 'bg-mint-50' : 'bg-white',
         'hover:border-mint-700' => $href && $variant === 'mint',
         'hover:bg-mint-50' => $href && $variant !== 'mint',

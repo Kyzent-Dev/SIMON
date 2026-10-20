@@ -72,6 +72,12 @@ body { @apply bg-neutral-25 text-neutral-900 font-sans antialiased; }
   .ken-burns { transform: none !important; }
 }
 
+/* DESIGN §7.2 hero-crossfade + ken-burns (landing hero; CSS, not motion, so they stay pausable). Reduced motion: instant, no Ken Burns (above). */
+.hero-slide { transition: opacity var(--dur-hero) var(--ease-standard, cubic-bezier(.2,0,0,1)); }
+@keyframes ken-burns { from { transform: scale(1); } to { transform: scale(1.06) translate(-1%, -1%); } }
+.ken-burns { animation: ken-burns var(--dur-kenburns) linear forwards; }
+.hero-jeda .ken-burns { animation-play-state: paused; }
+
 html.motion-ready [data-motion="stagger"]:not([data-motion-done]) > *,
 html.motion-ready [data-motion="fade-up"]:not([data-motion-done]),
 html.motion-ready [data-motion="hero"]:not([data-motion-done]) [data-hero-part] { opacity: 0; }

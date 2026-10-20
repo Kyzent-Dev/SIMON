@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\EksporController;
+use App\Http\Controllers\Publik\BerandaController;
 use App\Http\Controllers\SptDokumenController;
 use App\Livewire\Admin\Dasbor as AdminDasbor;
 use App\Livewire\Admin\Irban;
@@ -37,7 +38,7 @@ use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail as SptDetail;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'placeholder.public');
+Route::get('/', BerandaController::class)->name('beranda');
 
 Route::middleware('guest')->group(function () {
     Route::get('/masuk', [LoginController::class, 'create'])->name('login');

@@ -15,11 +15,11 @@ class LayoutPlaceholderTest extends TestCase
         return file_get_contents(base_path($path));
     }
 
-    public function test_public_placeholder_is_visible_without_js(): void
+    public function test_public_home_is_visible_without_js(): void
     {
         $html = $this->withoutVite()->get('/')->assertOk()
-            ->assertSee('data-motion="fade-up"', false)
-            ->assertSee('Halaman publik (placeholder)')
+            ->assertSee('data-motion="hero"', false)
+            ->assertSee('data-motion="stagger"', false)
             ->getContent();
 
         preg_match('/<html[^>]*>/', $html, $m);
