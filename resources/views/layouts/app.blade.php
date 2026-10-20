@@ -6,7 +6,7 @@
     $tip = "collapsed && 'lg:absolute lg:left-full lg:z-[90] lg:ml-3 lg:rounded-md lg:bg-mint-950 lg:px-2 lg:py-1 lg:text-xs lg:text-white lg:opacity-0 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-focus-visible:opacity-100'";
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-pt-16">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,7 +19,8 @@
 
     {{-- _shared.md §1 sidebar: 264/72px ≥1024, off-canvas drawer from the left below 1024. --}}
     @persist('sidebar')
-    <div x-data="{ collapsed: $persist(false).as('sidebar-ciut') }" class="lg:shrink-0">
+    {{-- Sticky goes here, not on the aside: @persist's own div is the flex item that spans the page, this one is only as tall as the aside. --}}
+    <div x-data="{ collapsed: $persist(false).as('sidebar-ciut') }" class="lg:sticky lg:top-0 lg:z-40 lg:h-dvh lg:shrink-0">
         <div x-show="$store.nav.open" x-cloak x-on:click="$store.nav.open = false" aria-hidden="true"
             x-transition:enter="transition-opacity duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="opacity-0"
             x-transition:leave="transition-opacity duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="opacity-0"
@@ -85,7 +86,7 @@
     @endpersist
 
     <div class="flex min-w-0 flex-1 flex-col">
-        <header class="relative flex h-16 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
+        <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 md:px-6 lg:px-8">
             <div class="flex min-w-0 items-center gap-2">
                 <button type="button" x-data x-on:click="$store.nav.open = true" aria-label="Buka menu" aria-controls="sidebar"
                     aria-expanded="false" x-bind:aria-expanded="$store.nav.open.toString()"

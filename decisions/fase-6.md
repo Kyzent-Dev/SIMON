@@ -58,3 +58,8 @@
 - Diterima: deteksi notifikasi baru melewatkan item baru bila ada item lain yang ditandai dibaca dalam interval poll yang sama (selisih hitungan nol atau negatif).
 - Belum ditegakkan: beberapa akun irban untuk satu irban masing-masing memicu salinan email irban (PRD §5 menyebut satu akun per irban); ditunda ke fase manajemen pengguna/hardening.
 - Diterima: kolom idempotensi (`terlambat_diberitahu_pada`, `pengingat_final_pada`) tetap diisi walau irban tidak punya akun penerima.
+
+## Fase 6, Perbaikan shell: sidebar dan header menempel
+- Sidebar ≥1024 ikut ter-scroll: `lg:sticky` ada di `<aside>`, padahal induknya (`div` di dalam `@persist`) hanya setinggi aside, sehingga sticky tidak punya ruang. Sticky dipindah ke div pembungkus (`lg:sticky lg:top-0 lg:z-40 lg:h-dvh`); div `x-persist` milik Livewire adalah item flex yang setinggi halaman.
+- Header (`_shared.md` §1 tidak menyebut sticky) dibuat `sticky top-0 z-30` di semua lebar. `DESIGN.md` §5 tidak punya lapisan z untuk header dasbor; dipakai 30 (sama dengan header publik), di bawah sidebar 40 agar tooltip sidebar ciut tetap di atas header. Popover/bottom sheet lonceng kini berada dalam konteks tumpuk header (z-30), masih di atas konten dan di bawah drawer/modal/toast.
+- `<html class="scroll-pt-16">` supaya tautan "Lewati ke konten utama" dan fokus keyboard tidak tertutup header. Panel detail Kotak Masuk Bagian Umum (`xl:sticky`) digeser ke `xl:top-20` dan `max-h-[calc(100dvh-6rem)]` agar menempel di bawah header.

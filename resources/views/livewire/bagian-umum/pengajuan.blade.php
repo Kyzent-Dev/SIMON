@@ -100,7 +100,7 @@
             x-trap="drawer && @js((bool) $detail)"
             wire:loading.delay.class="opacity-60" wire:loading.delay.attr="aria-busy" wire:target="pilihSpt,terima,kirimCatatan,muatUlang,bukaTerima,bukaCatatan"
             @class([
-                'flex flex-col bg-white outline-none xl:col-span-3 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:rounded-lg xl:border xl:border-neutral-200 xl:shadow-xs',
+                'flex flex-col bg-white outline-none xl:col-span-3 xl:sticky xl:top-20 xl:max-h-[calc(100dvh-6rem)] xl:rounded-lg xl:border xl:border-neutral-200 xl:shadow-xs',
                 'max-md:rounded-lg max-md:border max-md:border-neutral-200',
                 'md:max-xl:fixed md:max-xl:inset-y-0 md:max-xl:right-0 md:max-xl:z-[70] md:max-xl:w-[560px] md:max-xl:shadow-lg' => $detail,
                 'max-xl:hidden' => ! $detail,
