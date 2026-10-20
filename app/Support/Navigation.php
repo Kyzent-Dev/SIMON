@@ -24,7 +24,10 @@ class Navigation
                 $item('Kotak Masuk Pengajuan', 'bagian-umum.pengajuan', 'inbox'),
                 $item('Register Nomor SPT', 'bagian-umum.register', 'book-open', ['spt.show']),
             ]]],
-            Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [$item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path')]]],
+            Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [
+                $item('Monitoring SPT', 'pimpinan.monitoring', 'table-cells'),
+                $item('Revisi Jadwal', 'pimpinan.revisi-jadwal', 'arrow-path'),
+            ]]],
             Role::Admin => [...$dasbor,
                 ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],
                 ['label' => 'Master Data', 'items' => [

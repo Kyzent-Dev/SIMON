@@ -52,6 +52,12 @@ class SptPolicy
         return $user->role === Role::BagianUmum;
     }
 
+    /** Monitoring SPT page and its export: Pimpinan only (PRD §5, read-only). */
+    public function monitoring(User $user): bool
+    {
+        return $user->role === Role::Pimpinan;
+    }
+
     /** Pimpinan starts a thread (optionally Minta Penjelasan) on any SPT they can view. Never changes SPT data. */
     public function komentari(User $user, Spt $spt): bool
     {

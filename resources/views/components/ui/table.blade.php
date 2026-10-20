@@ -1,8 +1,9 @@
 {{-- DESIGN §8 x-ui.table: comfortable (48px rows) / compact (36px). Sticky neutral-50 header, row hover neutral-50,
      selected rows (`data-selected` on <tr>) mint-50 + 3px mint-700 left edge, tabular-nums everywhere, numeric cells: add `text-right`.
      Scrolls inside its own keyboard-focusable region with a right fade hint; first column sticky while scrolling sideways.
+     `grouped`: the slot supplies its own <tbody> elements (one per row group, pimpinan.md monitoring).
      The ≥1024 max height lets the header stick inside the scroll container. No animation (DESIGN §7.5). --}}
-@props(['label', 'density' => 'comfortable'])
+@props(['label', 'density' => 'comfortable', 'grouped' => false])
 
 <div x-data="{ more: false, check() { this.more = this.$refs.box.scrollLeft + this.$refs.box.clientWidth < this.$refs.box.scrollWidth - 1 } }"
     x-init="check()" x-on:resize.window="check()" {{ $attributes->class('relative rounded-lg border border-neutral-200 bg-white shadow-xs') }}>
@@ -20,9 +21,13 @@
             <thead>
                 <tr>{{ $head }}</tr>
             </thead>
-            <tbody>
+            @if ($grouped)
                 {{ $slot }}
-            </tbody>
+            @else
+                <tbody>
+                    {{ $slot }}
+                </tbody>
+            @endif
         </table>
     </div>
     <div x-show="more" x-cloak aria-hidden="true" class="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-lg bg-linear-to-l from-white to-transparent"></div>

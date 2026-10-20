@@ -6,6 +6,7 @@ use App\Jobs\BuatEkspor;
 use App\Models\Ekspor as EksporModel;
 use App\Models\User;
 use App\Services\Ekspor\Pembangun;
+use App\Services\Ekspor\PembangunMonitoring;
 use App\Services\Ekspor\PembangunRegister;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -17,8 +18,8 @@ class Ekspor
 {
     public const BATAS_LANGSUNG = 1000;
 
-    /** Monitoring and Rekap register their builder here. */
-    private const PEMBANGUN = ['register' => PembangunRegister::class];
+    /** Rekap registers its builder here. */
+    private const PEMBANGUN = ['register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class];
 
     public function pembangun(string $jenis): Pembangun
     {

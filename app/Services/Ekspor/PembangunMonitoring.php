@@ -1,0 +1,101 @@
+<?php
+
+namespace App\Services\Ekspor;
+
+use App\Exports\ArrayExport;
+use App\Models\Irban;
+use App\Models\JenisPenugasan;
+use App\Models\Spt;
+use App\Models\User;
+use App\Services\MonitoringSpt;
+use App\Support\Tanggal;
+use Illuminate\Support\Facades\Gate;
+
+/** Monitoring SPT export (pimpinan.md "Monitoring table"): one row per SPT, group label in Jenis Penugasan. Rows come from MonitoringSpt::baris(). */
+class PembangunMonitoring implements Pembangun
+{
+    public const KOLOM = ['Nomor SPT', 'Irban', 'Jenis Penugasan', 'Periode Penugasan (PKPT)', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'];
+
+    /** Labels of the MonitoringSpt::STATUS filter values (page select, PDF filter summary). */
+    public const STATUS = ['berjalan' => 'Berjalan', 'selesai' => 'Selesai', 'siap_dilaksanakan' => 'Siap Dilaksanakan', 'pelaksanaan' => 'Pelaksanaan', 'penyusunan_laporan' => 'Penyusunan Laporan'];
+
+    public const KESESUAIAN = ['sesuai' => 'Sesuai', 'tidak_sesuai' => 'Tidak Sesuai PKPT', 'non_pkpt' => 'Non-PKPT'];
+
+    public const TW = [1 => 'TW I', 2 => 'TW II', 3 => 'TW III', 4 => 'TW IV'];
+
+    public function __construct(private MonitoringSpt $monitoring) {}
+
+    public function otorisasi(User $user): void
+    {
+        Gate::forUser($user)->authorize('monitoring', Spt::class);
+    }
+
+    public function filter(User $user, array $filter): array
+    {
+        return $this->monitoring->filter($filter);
+    }
+
+    public function jumlah(User $user, array $filter): int
+    {
+        return array_sum(array_map(fn ($g) => count($g['spt']), $this->monitoring->baris($filter)));
+    }
+
+    public function namaFile(User $user, array $filter): string
+    {
+        $kode = $filter['irban'] ? Irban::whereKey($filter['irban'])->value('kode_nomor') : null;
+
+        return "monitoring-spt-{$filter['tahun']}".($kode ? "-irban-{$kode}" : '');
+    }
+
+    public function export(User $user, array $filter): ArrayExport
+    {
+        return new ArrayExport(self::KOLOM, $this->baris($filter), ['A']);
+    }
+
+    public function html(User $user, array $filter): string
+    {
+        return view('pdf.monitoring-spt', [
+            'tahun' => $filter['tahun'], 'filter' => $this->ringkasan($filter), 'kolom' => self::KOLOM, 'baris' => $this->baris($filter),
+            'dibuat' => now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB',
+        ])->render();
+    }
+
+    public function halaman(): string
+    {
+        return route('pimpinan.monitoring', absolute: false);
+    }
+
+    /** @return list<list<?string>> */
+    private function baris(array $filter): array
+    {
+        $out = [];
+        foreach ($this->monitoring->baris($filter) as $g) {
+            $pkpt = $g['mulai'] ? Tanggal::rentang($g['mulai'], $g['selesai']) : '–';
+            foreach ($g['spt'] as $r) {
+                $out[] = [
+                    $r['nomor_lengkap'], $r['irban'], $g['label'], $pkpt,
+                    $r['mulai'] && $r['selesai'] ? Tanggal::rentang($r['mulai'], $r['selesai']) : '–',
+                    self::KESESUAIAN[$r['kesesuaian']],
+                    $r['status']->label().(in_array('terlambat', $r['penanda'], true) ? ', Terlambat' : ''),
+                    $r['kendala'] ? "{$r['kendala']['kategori']}: {$r['kendala']['uraian']}" : null,
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return list<string> */
+    private function ringkasan(array $f): array
+    {
+        return array_values(array_filter([
+            $f['tw'] ? self::TW[$f['tw']] : null,
+            $f['irban'] ? 'Irban: '.Irban::whereKey($f['irban'])->value('nama') : null,
+            $f['status'] ? 'Status: '.self::STATUS[$f['status']] : null,
+            $f['jenis'] ? 'Jenis: '.JenisPenugasan::whereKey($f['jenis'])->value('nama') : null,
+            $f['kesesuaian'] ? 'Kesesuaian: '.self::KESESUAIAN[$f['kesesuaian']] : null,
+            $f['penanda'] ? 'Terlambat' : null,
+            $f['penjelasan'] ? 'Permintaan Penjelasan Terbuka' : null,
+        ]));
+    }
+}
