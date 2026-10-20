@@ -4,7 +4,6 @@ namespace App\Livewire\Notifikasi;
 
 use App\Models\User;
 use App\Support\NotifikasiPengguna;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -13,7 +12,6 @@ use Livewire\WithPagination;
 
 /** Notification list page for every role (_shared.md §2): own notifications only, tabs, bulk + per-item mark read. */
 #[Title('Notifikasi')]
-#[Layout('layouts::app', ['breadcrumbs' => ['Dasbor' => null, 'Notifikasi' => null]])]
 class Daftar extends Component
 {
     use WithPagination;
@@ -125,6 +123,6 @@ class Daftar extends Component
         return view('livewire.notifikasi.daftar', [
             'notifikasi' => $query->paginate($this->perPage),
             'belumDibaca' => $this->pengguna()->unreadNotifications()->count(),
-        ]);
+        ])->layoutData(['breadcrumbs' => ['Dasbor' => route($this->pengguna()->role->dashboardRoute()), 'Notifikasi' => null]]);
     }
 }

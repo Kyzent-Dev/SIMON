@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\EksporController;
 use App\Http\Controllers\SptDokumenController;
+use App\Livewire\Admin\Dasbor as AdminDasbor;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\JenisPenugasan;
@@ -19,8 +20,10 @@ use App\Livewire\Admin\PkptDetail;
 use App\Livewire\Admin\PkptImpor;
 use App\Livewire\Admin\Tim;
 use App\Livewire\Admin\WilayahIrban;
+use App\Livewire\BagianUmum\Dasbor as BagianUmumDasbor;
 use App\Livewire\BagianUmum\Pengajuan as BagianUmumPengajuan;
 use App\Livewire\BagianUmum\Register as BagianUmumRegister;
+use App\Livewire\Irban\Dasbor as IrbanDasbor;
 use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
 use App\Livewire\Irban\SptSaya;
@@ -54,7 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/spt/{spt}/dokumen/{dokumen}', SptDokumenController::class)->name('spt.dokumen');
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');
 
-    Route::view('/admin', 'dashboard.admin')->name('admin.dashboard')->middleware('role:admin');
+    Route::get('/admin', AdminDasbor::class)->name('admin.dashboard')->middleware('role:admin');
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/pengaturan', Pengaturan::class)->name('admin.pengaturan');
         Route::get('/klasifikasi', Klasifikasi::class)->name('admin.klasifikasi');
@@ -74,7 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pimpinan/monitoring', Monitoring::class)->name('pimpinan.monitoring')->middleware('role:pimpinan');
     Route::get('/pimpinan/rekap', Rekap::class)->name('pimpinan.rekap')->middleware('role:pimpinan');
     Route::get('/pimpinan/revisi-jadwal', RevisiJadwal::class)->name('pimpinan.revisi-jadwal')->middleware('role:pimpinan');
-    Route::view('/irban', 'dashboard.irban')->name('irban.dashboard')->middleware('role:irban');
+    Route::get('/irban', IrbanDasbor::class)->name('irban.dashboard')->middleware('role:irban');
     Route::middleware('role:irban')->prefix('irban')->group(function () {
         Route::get('/pkpt', IrbanPkpt::class)->name('irban.pkpt');
         Route::get('/rekap', Rekap::class)->name('irban.rekap');
@@ -82,7 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/spt/ajukan', SptForm::class)->name('irban.spt.ajukan');
         Route::get('/spt/{spt}/ubah', SptForm::class)->name('irban.spt.ubah');
     });
-    Route::view('/bagian-umum', 'dashboard.bagian-umum')->name('bagian-umum.dashboard')->middleware('role:bagian_umum');
+    Route::get('/bagian-umum', BagianUmumDasbor::class)->name('bagian-umum.dashboard')->middleware('role:bagian_umum');
     Route::get('/bagian-umum/pengajuan', BagianUmumPengajuan::class)->name('bagian-umum.pengajuan')->middleware('role:bagian_umum');
     Route::get('/bagian-umum/register', BagianUmumRegister::class)->name('bagian-umum.register')->middleware('role:bagian_umum');
 });

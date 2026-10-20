@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifikasi;
 
 use App\Enums\StatusPengajuan;
 use App\Livewire\Notifikasi\Lonceng;
+use App\Models\Irban;
 use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\PengajuanBaru;
@@ -141,7 +142,7 @@ class LoncengNotifikasiTest extends TestCase
     public function test_renders_on_every_role_dashboard(): void
     {
         foreach (['admin', 'pimpinan', 'bagianUmum', 'irban'] as $role) {
-            $user = User::factory()->{$role}()->create();
+            $user = User::factory()->{$role}()->create($role === 'irban' ? ['irban_id' => Irban::factory()->create()->id] : []);
             $this->actingAs($user)->get(route($user->role->dashboardRoute()))
                 ->assertOk()->assertSeeLivewire(Lonceng::class)->assertSee('Notifikasi, tidak ada yang belum dibaca');
         }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Irban;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,7 +77,7 @@ class DashboardShellTest extends TestCase
         $paths = ['pimpinan' => '/pimpinan', 'irban' => '/irban', 'bagianUmum' => '/bagian-umum'];
 
         foreach ($paths as $state => $path) {
-            $user = User::factory()->{$state}()->create();
+            $user = User::factory()->{$state}()->create($state === 'irban' ? ['irban_id' => Irban::factory()->create()->id] : []);
             $this->actingAs($user)->get($path)->assertOk()
                 ->assertSee('Dasbor')
                 ->assertDontSee('Master Data')

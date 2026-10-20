@@ -64,6 +64,12 @@ class Spt extends Model
         return $this->tanggal_selesai === null || $hariIni <= $this->tanggal_selesai->toDateString() ? StatusSpt::Pelaksanaan : StatusSpt::PenyusunanLaporan;
     }
 
+    /** Irban year (SPT Saya, Irban dashboard): the year of tanggal_mulai; drafts without dates count in the year they were created. */
+    public function scopeTahunPenugasan(Builder $q, int $tahun): void
+    {
+        $q->where(fn ($q) => $q->whereYear('tanggal_mulai', $tahun)->orWhere(fn ($q) => $q->whereNull('tanggal_mulai')->whereYear('created_at', $tahun)));
+    }
+
     /** SQL twin of status() for list filters; keep both in step. */
     public function scopeBerstatus(Builder $q, StatusSpt $status): void
     {

@@ -56,8 +56,7 @@ class SptSaya extends Component
         $tahun = (int) $this->tahun;
         $status = StatusSpt::tryFrom($this->status);
         $spt = Spt::with(['jenisPenugasan', 'pkptItem'])->where('irban_id', $user->irban_id)
-            // Year of the assignment; drafts without dates count in the year they were created.
-            ->where(fn ($q) => $q->whereYear('tanggal_mulai', $tahun)->orWhere(fn ($q) => $q->whereNull('tanggal_mulai')->whereYear('created_at', $tahun)))
+            ->tahunPenugasan($tahun)
             ->when($status, fn ($q) => $q->berstatus($status))
             ->latest('updated_at')->latest('id')
             ->paginate($this->perPage);
@@ -65,8 +64,7 @@ class SptSaya extends Component
 
         return view('livewire.irban.spt-saya', [
             'spt' => $spt,
-            // shortcut: PenandaSpt::untuk still runs its revisi/dokumen exists queries per row (bounded by the page size); batch them with the Fase 8 SQL flag filters.
-            'penanda' => $spt->getCollection()->mapWithKeys(fn (Spt $s) => [$s->id => $penanda->untuk($s)])->all(),
+            'penanda' => $penanda->untukBanyak($spt->getCollection()),
             'statusOptions' => collect(StatusSpt::cases())
                 ->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all(),
             'tahunList' => $tahunList,
