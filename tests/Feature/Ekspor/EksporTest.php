@@ -136,6 +136,33 @@ class EksporTest extends TestCase
         Notification::assertNotSentTo($this->bu, EksporSiap::class);
     }
 
+    public function test_failed_hook_marks_gagal_once_and_removes_partial_file(): void
+    {
+        Notification::fake();
+        $e = $this->buatRow('xlsx');
+        Storage::disk('local')->put("ekspor/{$e->id}.xlsx", 'partial');
+        $job = new BuatEkspor($e);
+
+        $job->failed(new \RuntimeException('timeout'));
+        $job->failed(new \RuntimeException('timeout'));
+
+        $this->assertSame('gagal', $e->fresh()->status);
+        Storage::disk('local')->assertMissing("ekspor/{$e->id}.xlsx");
+        Notification::assertSentToTimes($this->bu, EksporGagal::class, 1);
+    }
+
+    public function test_failed_hook_ignores_finished_export(): void
+    {
+        Notification::fake();
+        $e = $this->buatRow('xlsx');
+        app()->call([new BuatEkspor($e), 'handle']);
+
+        (new BuatEkspor($e))->failed(new \RuntimeException('late'));
+
+        $this->assertSame('selesai', $e->fresh()->status);
+        Notification::assertNotSentTo($this->bu, EksporGagal::class);
+    }
+
     public function test_job_rechecks_authorization_of_stored_user(): void
     {
         Notification::fake();
