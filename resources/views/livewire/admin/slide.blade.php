@@ -39,7 +39,7 @@
                         <div class="min-w-0 flex-1">
                             <p class="text-xs text-neutral-500 tabular-nums">Urutan {{ $loop->iteration }}</p>
                             <p id="slide-{{ $s->id }}-judul" class="truncate font-semibold text-neutral-900">{{ $s->judul }}</p>
-                            <x-ui.switch :label="'Aktif'" name="aktif-{{ $s->id }}" :checked="$s->aktif" aria-describedby="slide-{{ $s->id }}-judul"
+                            <x-ui.switch :label="'Aktif'" name="aktif-{{ $s->id }}" :checked="$s->aktif" aria-label="Aktif: {{ $s->judul }}"
                                 x-on:change="$wire.aturAktif({{ $s->id }}, $event.target.checked)" />
                         </div>
                         <div class="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">

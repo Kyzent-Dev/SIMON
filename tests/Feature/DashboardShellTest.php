@@ -7,6 +7,7 @@ use App\Models\Irban;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -52,23 +53,33 @@ class DashboardShellTest extends TestCase
 
     public function test_empty_groups_are_dropped(): void
     {
+        $admin = User::factory()->admin()->create();
+        // With every real route present, Konten Beranda (labelled) is shown.
+        $this->assertContains('Konten Beranda', array_column(Navigation::groups(Role::Admin), 'label'));
+        $this->actingAs($admin)->get('/admin')->assertSee('Konten Beranda');
+
+        // Take away the routes of that labelled group: it must disappear with its label, while Master Data
+        // (some routes left) stays. Holds no matter which routes later phases add.
+        $dibuang = ['admin.slide', 'admin.kontak'];
+        $sisa = new RouteCollection;
+        foreach (Route::getRoutes()->getRoutes() as $r) {
+            if (! in_array($r->getName(), $dibuang, true)) {
+                $sisa->add($r);
+            }
+        }
+        Route::setRoutes($sisa);
+
         $groups = Navigation::groups(Role::Admin);
         $labels = array_column($groups, 'label');
-        // Master Data survives because admin.klasifikasi exists; missing items (e.g. admin.impor, Fase 10) are filtered out.
+        $this->assertNotContains('Konten Beranda', $labels);
         $this->assertContains('Master Data', $labels);
-        $routes = array_column(array_merge(...array_column($groups, 'items')), 'route');
-        $this->assertContains('admin.klasifikasi', $routes);
-        $this->assertNotContains('admin.impor', $routes);
-        $this->assertFalse(Route::has('admin.impor'));
-        // Pengguna has no route yet, so its whole group is dropped (no group is ever left empty, checked below).
-        $this->assertFalse(Route::has('admin.pengguna'));
-        $this->assertNotContains('admin.pengguna', $routes);
         foreach ($groups as $group) {
             $this->assertNotEmpty($group['items']);
             foreach ($group['items'] as $item) {
                 $this->assertTrue(Route::has($item['route']));
             }
         }
+        $this->actingAs($admin)->get('/admin/pengaturan')->assertOk()->assertDontSee('Konten Beranda')->assertDontSee('Slide Beranda')->assertSee('Master Data');
     }
 
     public function test_other_roles_see_only_dasbor(): void

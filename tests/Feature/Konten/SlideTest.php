@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Konten;
 
+use App\Actions\Konten\SimpanSlide;
 use App\Actions\Konten\UrutkanSlide;
 use App\Enums\Role;
 use App\Livewire\Admin\Dasbor;
@@ -118,6 +119,48 @@ class SlideTest extends TestCase
             ->assertHasErrors(['gambar'])->assertSee('Ukuran gambar slide maksimal 5120 KB.');
         $this->assertSame(0, LandingSlide::count());
         $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_oversized_dimensions_are_rejected(): void
+    {
+        // 6001 wide (or tall) is over the 6000 x 6000 cap that keeps GD decoding within memory.
+        foreach ([[6001, 3000], [3000, 6001]] as [$w, $h]) {
+            $this->page()->call('create')->set('judul', 'A')->set('alt', 'x')
+                ->set('gambar', UploadedFile::fake()->image('besar.png', $w, $h))->call('save')
+                ->assertHasErrors(['gambar'])->assertSee('Ukuran gambar maksimal 6000 × 6000 piksel.');
+        }
+        $this->page()->call('create')->set('judul', 'Pas')->set('alt', 'x')
+            ->set('gambar', UploadedFile::fake()->image('pas.png', 6000, 3375))->call('save')->assertHasNoErrors();
+        $this->assertSame(1, LandingSlide::count());
+    }
+
+    /** JPEG magic bytes (so `mimes` sees image/jpeg) followed by garbage that no decoder can read. */
+    private function rusak(): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent('rusak.jpg', "\xFF\xD8\xFF\xE0".str_repeat("\x00\x13garbage", 400));
+    }
+
+    public function test_undecodable_image_is_a_validation_error_without_files(): void
+    {
+        $this->page()->call('create')->set('judul', 'A')->set('alt', 'x')->set('gambar', $this->rusak())->call('save')
+            ->assertHasErrors(['gambar'])->assertSee('Gambar tidak dapat dibaca. Unggah ulang file lain.');
+
+        // The action itself (GD path, bypassing the component rules) also reports it as a gambar error and writes nothing.
+        try {
+            app(SimpanSlide::class)->handle(null, ['judul' => 'A', 'kutipan' => null, 'pemilik_nama' => null,
+                'pemilik_jabatan' => null, 'alt' => 'x', 'dekoratif' => false, 'aktif' => true], $this->rusak());
+            $this->fail('Gambar rusak diterima.');
+        } catch (ValidationException $e) {
+            $this->assertSame(['Gambar tidak dapat dibaca. Unggah ulang file lain.'], $e->errors()['gambar']);
+        }
+        $this->assertSame(0, LandingSlide::count());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_list_switch_has_title_in_accessible_name(): void
+    {
+        LandingSlide::factory()->create(['judul' => 'Alfa']);
+        $this->page()->assertSeeHtml('role="switch"')->assertSeeHtml('aria-label="Aktif: Alfa"');
     }
 
     public function test_judul_and_alt_rules(): void

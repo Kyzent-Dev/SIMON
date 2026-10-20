@@ -19,3 +19,4 @@
 ## Konten beranda (Fase 9)
 - Jalankan `php artisan storage:link` sekali di server: gambar slide disimpan di `storage/app/public/slide/` dan dilayani lewat `public/storage`. Tanpa tautan ini gambar hero dan thumbnail Admin tidak tampil. Di shared hosting tanpa symlink, salin/arahkan `public/storage` ke `storage/app/public`.
 - PHP butuh ekstensi GD dengan dukungan WebP (`imagewebp`). `upload_max_filesize` dan `post_max_size` minimal 6M agar gambar slide 5 MB bisa diunggah (batas unggahan sementara Livewire 12 MB). Pemrosesan menaikkan `memory_limit` ke 512M (lihat catatan ekspor tentang `ini_set`).
+- Aktifkan ekstensi PHP `exif` agar foto JPEG dari ponsel diputar sesuai orientasi EXIF sebelum dipotong; tanpa ekstensi itu foto tegak bisa tersimpan miring.

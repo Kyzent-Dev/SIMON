@@ -6,6 +6,8 @@ use App\Models\LandingSlide;
 use App\Support\GambarSlide;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 /** Create or update a hero slide. New slides go to the end (`urutan = max + 1`); a new image replaces (and deletes) the old files. */
@@ -21,8 +23,22 @@ class SimpanSlide
             'alt' => ['nullable', 'string', 'max:150', 'required_unless:dekoratif,true'],
             'dekoratif' => ['boolean'],
             'aktif' => ['boolean'],
-            'gambar' => [$baru ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=960'],
+            // bail: one message per file. The readable/6000 px check runs before GD ever decodes it (a tiny 20000 x 20000 PNG would need > 1 GB).
+            'gambar' => [$baru ? 'required' : 'nullable', 'bail', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120', self::terbaca(...), 'dimensions:min_width=960'],
         ];
+    }
+
+    public const TIDAK_TERBACA = 'Gambar tidak dapat dibaca. Unggah ulang file lain.';
+
+    /** Header must be readable and at most 6000 x 6000 px. */
+    private static function terbaca(string $attribute, mixed $value, \Closure $fail): void
+    {
+        $info = $value instanceof UploadedFile ? @getimagesize($value->getRealPath()) : false;
+        if (! $info) {
+            $fail(self::TIDAK_TERBACA);
+        } elseif ($info[0] > 6000 || $info[1] > 6000) {
+            $fail('Ukuran gambar maksimal 6000 × 6000 piksel.');
+        }
     }
 
     public static function messages(): array
@@ -43,7 +59,12 @@ class SimpanSlide
         if ($data['dekoratif']) {
             $data['alt'] = null;
         }
-        $baru = $gambar ? GambarSlide::simpan($gambar) : null;
+        try {
+            $baru = $gambar ? GambarSlide::simpan($gambar) : null;
+        } catch (RuntimeException) {
+            // GD could not decode a file that passed the header checks (e.g. truncated); GambarSlide left no files.
+            throw ValidationException::withMessages(['gambar' => self::TIDAK_TERBACA]);
+        }
         $lama = $baru && $slide ? $slide->gambar : null;
 
         try {
