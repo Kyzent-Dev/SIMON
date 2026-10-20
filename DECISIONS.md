@@ -11,6 +11,7 @@ Keputusan teknis dan penyimpangan dari PRD/DESIGN dicatat per fase di folder `de
 - [Fase 6: Notifikasi](decisions/fase-6.md)
 - [Fase 7: Komentar](decisions/fase-7.md)
 - [Fase 8: Dasbor, monitoring, rekap, ekspor](decisions/fase-8.md)
+- [Fase 9: Landing page publik](decisions/fase-9.md)
 - [Catatan deploy (lintas fase)](decisions/catatan-deploy.md)
 
 Fase baru: buat `decisions/fase-N.md` (judul `# Keputusan Fase N`, bagian `## Fase N, Task M`) dan tambahkan satu baris di daftar ini.

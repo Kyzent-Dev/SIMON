@@ -9,6 +9,7 @@ use App\Services\Settings;
 use App\Services\Triwulan;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TriwulanTest extends TestCase
@@ -107,5 +108,23 @@ class TriwulanTest extends TestCase
         $this->assertSame([$a->id], $ids('tanggal_lhp', 2026, 2));
         $this->assertSame([$b->id], $ids('tanggal_lhp', 2026, 4));
         $this->assertSame([], $ids('tanggal_lhp', 2026, 1));
+    }
+
+    public function test_batasi_on_a_joined_query_builder_and_by_month(): void
+    {
+        // The joined pkpt_item has its own tanggal_* columns (2027): batasi must use the qualified spt basis column.
+        $item = PkptItem::factory()->create(['tanggal_mulai' => '2027-01-01', 'tanggal_selesai' => '2027-01-31']);
+        $spt = Spt::factory()->diterima()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
+        foreach (['tanggal_selesai', 'tanggal_mulai', 'tanggal_lhp'] as $dasar) {
+            $ids = function (?int $tw, ?int $bulan) use ($dasar) {
+                $q = DB::table('spt')->join('pkpt_item', 'pkpt_item.id', '=', 'spt.pkpt_item_id');
+                $this->triwulan($dasar)->batasi($q, 2026, $tw, $bulan);
+
+                return $q->pluck('spt.id')->all();
+            };
+            $this->assertSame([$spt->id], $ids(1, 3), $dasar);
+            $this->assertSame([$spt->id], $ids(null, 3), $dasar);
+            $this->assertSame([], $ids(null, 2), $dasar);
+        }
     }
 }

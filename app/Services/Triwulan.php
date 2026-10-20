@@ -6,7 +6,9 @@ use App\Models\PkptItem;
 use App\Models\Spt;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 
 /** Quarter of an SPT or PKPT item (PRD §9.5); basis date from `rekap.dasar_triwulan`, read once per instance. */
 class Triwulan
@@ -49,17 +51,26 @@ class Triwulan
         return [$awal, $awal->addMonths(2)->endOfMonth()->startOfDay()];
     }
 
-    /** SQL twin of tanggalDasar(): SPT whose basis date falls in year $tahun (or its quarter $tw). Keep both in step. */
-    public function batasi(Builder $q, int $tahun, ?int $tw = null): void
+    /** SQL twin of tanggalDasar(), qualified with `spt.` so it is safe in joins. Keep both in step. */
+    public function kolomDasar(): string
     {
-        [$awal, $akhir] = $tw === null ? [CarbonImmutable::create($tahun, 1, 1), CarbonImmutable::create($tahun, 12, 31)] : $this->rentang($tahun, $tw);
-        $antara = fn ($w, string $kolom) => $w->whereDate($kolom, '>=', $awal->toDateString())->whereDate($kolom, '<=', $akhir->toDateString());
-
-        match ($this->dasar) {
-            'tanggal_mulai' => $antara($q, 'tanggal_mulai'),
-            'tanggal_lhp' => $q->where(fn ($w) => $antara($w, 'tanggal_lhp')
-                ->orWhere(fn ($w) => $antara($w->whereNull('tanggal_lhp'), 'tanggal_selesai'))),
-            default => $antara($q, 'tanggal_selesai'),
+        return match ($this->dasar) {
+            'tanggal_mulai' => 'spt.tanggal_mulai',
+            'tanggal_lhp' => 'coalesce(spt.tanggal_lhp, spt.tanggal_selesai)',
+            default => 'spt.tanggal_selesai',
         };
+    }
+
+    /** SPT whose basis date (kolomDasar) falls in year $tahun (or its quarter $tw), and in month $bulan when given. */
+    public function batasi(EloquentBuilder|Builder $q, int $tahun, ?int $tw = null, ?int $bulan = null): void
+    {
+        $kolom = DB::raw($this->kolomDasar());
+        $antara = fn (CarbonImmutable $awal, CarbonImmutable $akhir) => $q->whereDate($kolom, '>=', $awal->toDateString())->whereDate($kolom, '<=', $akhir->toDateString());
+
+        $antara(...($tw === null ? [CarbonImmutable::create($tahun, 1, 1), CarbonImmutable::create($tahun, 12, 31)] : $this->rentang($tahun, $tw)));
+        if ($bulan !== null) {
+            $awal = CarbonImmutable::create($tahun, $bulan, 1);
+            $antara($awal, $awal->endOfMonth()->startOfDay());
+        }
     }
 }
