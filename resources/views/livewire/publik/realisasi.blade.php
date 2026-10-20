@@ -88,8 +88,8 @@
         </x-slot:footer>
     </x-ui.drawer>
 
-    {{-- KPI line. mint-800 numbers on the page background (7.5:1; see decisions/fase-9.md Task 5). --}}
-    @php $angka = 'font-display text-[28px] leading-9 font-bold text-mint-800 tabular-nums'; @endphp
+    {{-- KPI line. mint-700 numbers on the page background (DESIGN §3.4 pair, 5.49:1; not realisasi.md's mint-800, see decisions/fase-9.md Task 5). --}}
+    @php $angka = 'font-display text-[28px] leading-9 font-bold text-mint-700 tabular-nums'; @endphp
     @if ($kpi)
         <p class="mt-6 text-base text-neutral-900"><span class="{{ $angka }}">{{ $n($kpi['selesai']) }}</span> SPT selesai dari <span class="{{ $angka }}">{{ $n($kpi['rencana']) }}</span> SPT yang direncanakan · <span class="{{ $angka }}">{{ $pct($kpi['persen']) }}</span> realisasi</p>
     @else
@@ -266,8 +266,14 @@
                     @endforeach
                 </x-ui.table>
 
-                {{-- Below 768 each row is a card: type chip on top, key–value list beneath. --}}
-                <ul role="list" aria-label="Rincian realisasi" class="mt-4 space-y-3 md:hidden">
+                {{-- Below 768 each row is a card: type chip on top, key–value list beneath. The sort button mirrors the table header (same `urut`). --}}
+                <div class="mt-4 flex justify-end md:hidden">
+                    <x-ui.button type="button" variant="secondary" size="sm" wire:click="urutkan" class="min-h-11">
+                        {{ svg($urut === 'asc' ? 'heroicon-m-bars-arrow-up' : 'heroicon-m-bars-arrow-down', 'size-5', ['aria-hidden' => 'true']) }}
+                        Urutkan: {{ $urut === 'asc' ? 'Terlama' : 'Terbaru' }}
+                    </x-ui.button>
+                </div>
+                <ul role="list" aria-label="Rincian realisasi" class="mt-3 space-y-3 md:hidden">
                     @foreach ($baris as $r)
                         <li class="rounded-lg border border-neutral-200 bg-white p-4 shadow-xs">
                             <x-app.type-chip :color="$r['jenis']['warna']" :label="$r['jenis']['nama']" class="font-semibold" />

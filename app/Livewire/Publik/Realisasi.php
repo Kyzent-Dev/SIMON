@@ -50,8 +50,12 @@ class Realisasi extends Component
     /** TW of the bar card: '1'–'4', '0' = Setahun, '' = follow the TW filter. */
     public string $twGrafik = '';
 
+    /** Set during this request when a chart input changed (filters, card controls); page and sort changes leave the charts alone. */
+    private bool $grafikBerubah = false;
+
     public function updated(string $nama): void
     {
+        $this->grafikBerubah = true;
         if (in_array($nama, self::FILTER, true)) {
             $this->resetPage();
         }
@@ -73,6 +77,7 @@ class Realisasi extends Component
     {
         $this->reset([...self::FILTER, 'twGrafik']);
         $this->resetPage();
+        $this->grafikBerubah = true;
         $this->dispatch('fokus-filter');
     }
 
@@ -99,7 +104,7 @@ class Realisasi extends Component
             'tabel' => $this->aman(fn () => $this->tabel($svc, $f)),
         ];
         $awal = ! app('livewire')->isLivewireRequest();
-        if (! $awal) {
+        if (! $awal && $this->grafikBerubah) {
             $this->dispatch('grafik-publik', garis: $data['garis'], donat: $data['donat'], batang: $data['batang']);
         }
 

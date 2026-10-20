@@ -183,6 +183,35 @@ class RealisasiHalamanTest extends TestCase
         $this->assertLessThan(strpos($html, '28 Mei – 2 Juni 2026'), strpos($html, '3–20 Februari 2026'));
     }
 
+    public function test_mobile_cards_have_a_sort_button_bound_to_urut(): void
+    {
+        // Same `urutkan` action and `?urut` as the table header; the label shows the current order.
+        $this->get('/realisasi')->assertSee('Urutkan: Terbaru')->assertDontSee('Urutkan: Terlama');
+        Livewire::test(Realisasi::class)->assertSeeHtml('wire:click="urutkan"')
+            ->call('urutkan')->assertSet('urut', 'asc')->assertSee('Urutkan: Terlama')->assertDontSee('Urutkan: Terbaru');
+        Livewire::withQueryParams(['urut' => 'asc'])->test(Realisasi::class)->assertSee('Urutkan: Terlama');
+    }
+
+    public function test_charts_update_only_when_a_chart_input_changes(): void
+    {
+        for ($k = 0; $k < 26; $k++) {
+            $this->spt('selesai', $this->a, $this->a1, $this->reguler, '2026-03-02', '2026-03-06');
+        }
+        Livewire::test(Realisasi::class)->call('gotoPage', 2)->assertNotDispatched('grafik-publik');
+        Livewire::test(Realisasi::class)->call('urutkan')->assertNotDispatched('grafik-publik');
+        Livewire::test(Realisasi::class)->set('irban', (string) $this->a->id)->assertDispatched('grafik-publik');
+        Livewire::test(Realisasi::class)->set('proporsi', 'jenis')->assertDispatched('grafik-publik');
+        Livewire::withQueryParams(['irban' => (string) $this->a->id])->test(Realisasi::class)->call('hapus', 'irban')->assertDispatched('grafik-publik');
+        Livewire::withQueryParams(['irban' => (string) $this->a->id])->test(Realisasi::class)->call('aturUlang')->assertDispatched('grafik-publik');
+    }
+
+    public function test_kpi_numbers_use_mint_700(): void
+    {
+        $html = $this->get('/realisasi')->getContent();
+        $this->assertStringContainsString('font-bold text-mint-700 tabular-nums">2</span> SPT selesai', $html);
+        $this->assertStringNotContainsString('text-mint-800', $html);
+    }
+
     public function test_nomor_column_only_with_the_setting(): void
     {
         app(Settings::class)->set('publik.tampilkan_nomor_spt', true);
