@@ -19,6 +19,7 @@ use App\Notifications\SptTerlambat;
 use App\Services\RingkasanMingguan as Hitung;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -63,7 +64,7 @@ class NotifikasiSeeder extends Seeder
             $this->kirim($irban, fn ($r) => new RevisiJadwalDiputuskan($r), $revisi, 7200, true);
         }
 
-        $this->kirim($pimpinan, fn ($h) => new RingkasanMingguan($h), app(Hitung::class)->hitung(CarbonImmutable::now('Asia/Jakarta')->startOfWeek()), 360, false);
+        $this->kirim($pimpinan, fn ($h) => new RingkasanMingguan($h), app(Hitung::class)->hitung(CarbonImmutable::now('Asia/Jakarta')->startOfWeek(CarbonInterface::MONDAY)), 360, false);
     }
 
     /** Sends one database notification $menit minutes in the past; returns false when the source model is missing. */

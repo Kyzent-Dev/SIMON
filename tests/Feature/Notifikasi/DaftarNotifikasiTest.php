@@ -146,4 +146,18 @@ class DaftarNotifikasiTest extends TestCase
         Livewire::actingAs($user)->test(Daftar::class)->set('tab', 'belum')->call('tandaiDibaca', $b->id)
             ->assertDispatched('fokus-ke', id: 'judul-notifikasi');
     }
+
+    public function test_mark_actions_dispatch_event_for_the_bell_and_list_refreshes_on_bell_event(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        $a = $this->buat($user);
+        $this->buat($user);
+
+        $c = Livewire::actingAs($user)->test(Daftar::class)->call('tandaiDibaca', $a->id)->assertDispatched('notifikasi-diperbarui');
+        $c->call('tandaiSemua')->assertDispatched('notifikasi-diperbarui');
+
+        $nBaru = $this->buat($user);
+        $c->dispatch('lonceng-diperbarui')->assertSee($nBaru->data['judul']);
+        $c->set('terpilih', [$nBaru->id])->call('tandaiTerpilih')->assertDispatched('notifikasi-diperbarui');
+    }
 }

@@ -47,3 +47,14 @@
 - Perbaikan Task 2: konteks `PengajuanBaru`/`PengajuanDiputuskan` untuk SPT tanpa jenis penugasan (SPT khusus) diawali ` · `; kini bagian kosong dibuang (`collect([...])->filter()->implode(' · ')`), dites.
 - `NotifikasiSeeder` (dev saja, dipanggil `DatabaseSeeder` setelah `SptSeeder`, idempoten: berhenti bila `irban1` sudah punya notifikasi) membuat notifikasi lewat kelas aslinya dan `Notification::sendNow($user, $n, ['database'])`. Id notifikasi diisi sebelum dikirim (pengirim meng-clone objek) agar `created_at`/`read_at` bisa digeser untuk waktu relatif yang bervariasi. Revisi jadwal memakai model `PkptItemRevisi` yang tidak disimpan (hanya sumber teks) supaya tidak muncul revisi menunggu palsu. SPT yang dikirimi `SptTerlambat` diberi `terlambat_diberitahu_pada` seperti perintah harian.
 - Hasil `php artisan notifikasi:harian` sekali pada data demo segar: `Terlambat: 2 notifikasi, pengingat SPT final: 3 notifikasi.` (SPT diterima demo lama tanpa SPT final/LHP).
+
+## Fase 6, Final review
+- Jendela ringkasan mingguan memakai `startOfWeek(CarbonInterface::MONDAY)` (perintah dan `NotifikasiSeeder`); default Carbon 3 mengikuti locale (en_US mulai Minggu). Dites di bawah locale `en_US`.
+- Lonceng dan halaman daftar saling menyegarkan: aksi tandai di `Daftar` men-dispatch `notifikasi-diperbarui` (didengar `Lonceng`), `Lonceng::tandaiSemuaDibaca` men-dispatch `lonceng-diperbarui` (didengar `Daftar`). Dua nama berbeda agar tidak ada gema ke pengirim. Render ulang Lonceng menurunkan `$terakhir` sehingga tidak berdering.
+- Poll lonceng tidak lagi memuat 8 item saat tertutup: properti `$terbuka` (diisi Alpine lewat `$wire.$set` saat buka, `false` saat tutup) mengatur kueri daftar; saat tertutup hanya hitungan.
+- `NotifikasiRingkasanMingguan` mencetak pesan akurat bila tidak ada pimpinan (`Tidak ada pimpinan penerima; ringkasan tidak dikirim.`) dan jumlah penerima bila ada.
+- `Lonceng::tandaiDibaca` diganti nama `buka` (membuka dan menavigasi), konsisten dengan `Daftar::buka`.
+- `User::routeNotificationForMail` membuang duplikat tanpa membedakan huruf besar/kecil dan mempertahankan ejaan pertama.
+- Diterima: deteksi notifikasi baru melewatkan item baru bila ada item lain yang ditandai dibaca dalam interval poll yang sama (selisih hitungan nol atau negatif).
+- Belum ditegakkan: beberapa akun irban untuk satu irban masing-masing memicu salinan email irban (PRD §5 menyebut satu akun per irban); ditunda ke fase manajemen pengguna/hardening.
+- Diterima: kolom idempotensi (`terlambat_diberitahu_pada`, `pengingat_final_pada`) tetap diisi walau irban tidak punya akun penerima.

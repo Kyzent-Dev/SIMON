@@ -14,6 +14,7 @@ use App\Notifications\RingkasanMingguan;
 use App\Notifications\SptTerlambat;
 use App\Services\RingkasanMingguan as HitungRingkasan;
 use App\Services\Settings;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,6 +197,23 @@ class NotifikasiHarianMingguanTest extends TestCase
                 && str_contains(implode("\n", $n->isi()), 'Nomor SPT terbit: 0'));
         }
         Notification::assertNotSentTo($this->user, RingkasanMingguan::class);
+    }
+
+    public function test_weekly_window_is_monday_based_regardless_of_locale(): void
+    {
+        $pimpinan = User::factory()->pimpinan()->create();
+        $this->jam('2026-04-13 07:00');
+        app()->setLocale('en_US');
+        Carbon::setLocale('en_US');
+        $this->artisan('notifikasi:ringkasan-mingguan')->assertSuccessful();
+        Notification::assertSentTo($pimpinan, RingkasanMingguan::class, fn (RingkasanMingguan $n) => $n->konteks() === '06 April 2026 – 12 April 2026');
+    }
+
+    public function test_weekly_command_reports_zero_recipients_accurately(): void
+    {
+        $this->jam('2026-04-13 07:00');
+        $this->artisan('notifikasi:ringkasan-mingguan')->expectsOutput('Tidak ada pimpinan penerima; ringkasan tidak dikirim.')->assertSuccessful();
+        Notification::assertNothingSent();
     }
 
     public function test_schedule_registered(): void

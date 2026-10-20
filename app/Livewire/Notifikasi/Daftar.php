@@ -5,6 +5,7 @@ namespace App\Livewire\Notifikasi;
 use App\Models\User;
 use App\Support\NotifikasiPengguna;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -90,8 +91,16 @@ class Daftar extends Component
         }
     }
 
+    /** The bell marked something read; the render below re-reads the list and count. */
+    #[On('lonceng-diperbarui')]
+    public function segarkan(): void
+    {
+        $this->pengguna();
+    }
+
     private function selesai(int $n, string $fokus = 'judul-notifikasi'): void
     {
+        $this->dispatch('notifikasi-diperbarui');
         $this->dispatch('toast', type: $n ? 'success' : 'info', message: $n ? "{$n} notifikasi ditandai dibaca" : 'Tidak ada notifikasi yang perlu ditandai dibaca');
         // The clicked control disappears or gets disabled after any mark action, so focus always moves to a stable target;
         // the item link is gone from the "Belum dibaca" tab, so the h1 is used there.

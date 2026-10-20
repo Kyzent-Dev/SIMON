@@ -5,12 +5,16 @@ namespace App\Livewire\Notifikasi;
 use App\Models\User;
 use App\Support\NotifikasiPengguna;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /** Header bell (_shared.md §2): unread count, 8 newest in a dropdown, mark read. Own notifications only. */
 class Lonceng extends Component
 {
     public string $tab = 'semua';
+
+    /** Set by the dropdown (Alpine): the 8-item list is only queried while it is open. */
+    public bool $terbuka = false;
 
     /** Unread count at the previous render; an increase plays the ring and is announced. */
     #[Locked]
@@ -42,7 +46,7 @@ class Lonceng extends Component
         }
     }
 
-    public function tandaiDibaca(string $id): void
+    public function buka(string $id): void
     {
         $url = NotifikasiPengguna::buka($this->pengguna(), $id);
         if ($url) {
@@ -53,6 +57,14 @@ class Lonceng extends Component
     public function tandaiSemuaDibaca(): void
     {
         NotifikasiPengguna::tandaiSemua($this->pengguna());
+        $this->dispatch('lonceng-diperbarui');
+    }
+
+    /** The list page marked something read; the render re-reads the count (and lowers the baseline, so no ring). */
+    #[On('notifikasi-diperbarui')]
+    public function segarkan(): void
+    {
+        $this->pengguna();
     }
 
     public function render()
@@ -68,7 +80,7 @@ class Lonceng extends Component
         return view('livewire.notifikasi.lonceng', [
             'belum' => $belum,
             'baru' => $baru,
-            'notifikasi' => ($this->tab === 'belum' ? $user->unreadNotifications() : $user->notifications())->latest()->latest('id')->limit(8)->get(),
+            'notifikasi' => $this->terbuka ? ($this->tab === 'belum' ? $user->unreadNotifications() : $user->notifications())->latest()->latest('id')->limit(8)->get() : collect(),
         ]);
     }
 }

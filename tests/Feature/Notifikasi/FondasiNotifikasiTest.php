@@ -57,6 +57,14 @@ class FondasiNotifikasiTest extends TestCase
         $this->assertSame(['irban2@example.test', 'kasubag@example.test'], $user->routeNotificationForMail());
     }
 
+    public function test_mail_route_dedupes_case_insensitively_keeping_first_spelling(): void
+    {
+        $irban = Irban::factory()->create(['email_notifikasi' => 'Irban2@Example.test', 'email_tembusan' => ['irban2@example.test', 'Kasubag@example.test']]);
+        $user = User::factory()->irban()->create(['irban_id' => $irban->id]);
+
+        $this->assertSame(['Irban2@Example.test', 'Kasubag@example.test'], $user->routeNotificationForMail());
+    }
+
     public function test_irban_mail_route_falls_back_to_user_email(): void
     {
         $irban = Irban::factory()->create(['email_notifikasi' => '', 'email_tembusan' => null]);

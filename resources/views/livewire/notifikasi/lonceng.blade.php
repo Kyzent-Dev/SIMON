@@ -4,8 +4,8 @@
 <div class="shrink-0"
     x-data="{
         open: false, sheet: false, dering: false,
-        buka() { this.sheet = matchMedia('(max-width: 639.98px)').matches; this.open = true; this.$nextTick(() => this.$refs.judul.focus()) },
-        tutup(paksa = true) { if (! this.open) return; this.open = false; this.$nextTick(() => { if (paksa || document.activeElement === document.body) this.$refs.bell.focus() }) },
+        buka() { this.sheet = matchMedia('(max-width: 639.98px)').matches; this.open = true; $wire.$set('terbuka', true); this.$nextTick(() => this.$refs.judul.focus()) },
+        tutup(paksa = true) { if (! this.open) return; this.open = false; $wire.terbuka = false; this.$nextTick(() => { if (paksa || document.activeElement === document.body) this.$refs.bell.focus() }) },
     }"
     x-on:keydown.escape.window="tutup()"
     x-on:lonceng-dering.window="dering = false; $nextTick(() => dering = true)"
@@ -49,7 +49,8 @@
             </div>
 
             <div id="panel-lonceng" role="tabpanel" aria-labelledby="panel-lonceng-tab-{{ $tab }}" class="min-h-0 flex-1 overflow-y-auto" wire:loading.class="opacity-60" wire:target="tab">
-                @if ($notifikasi->isEmpty())
+                @if (! $terbuka)
+                @elseif ($notifikasi->isEmpty())
                     <p class="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm font-medium text-neutral-600">
                         {{ svg('heroicon-o-bell', 'size-8 text-mint-600', ['aria-hidden' => 'true']) }}
                         {{ $tab === 'belum' ? 'Semua notifikasi sudah dibaca' : 'Belum ada notifikasi' }}
@@ -58,7 +59,7 @@
                     <ul role="list" class="divide-y divide-neutral-200" aria-label="Notifikasi terbaru">
                         @foreach ($notifikasi as $n)
                             <li wire:key="l-{{ $n->id }}">
-                                <a href="{{ $n->data['url'] ?? '#' }}" x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.tandaiDibaca('{{ $n->id }}')"
+                                <a href="{{ $n->data['url'] ?? '#' }}" x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.buka('{{ $n->id }}')"
                                     @class(['flex items-start gap-3 px-4 py-3 text-sm focus-visible:-outline-offset-2', 'bg-mint-50' => $n->read_at === null])>
                                     <x-app.notifikasi-ikon :jenis="$n->data['jenis'] ?? ''" />
                                     <span class="block min-w-0 flex-1">

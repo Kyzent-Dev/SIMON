@@ -34,7 +34,9 @@ class User extends Authenticatable
             ? [$this->irban->email_notifikasi ?: $this->email, ...($this->irban->email_tembusan ?? [])]
             : [$this->email];
 
-        return array_values(array_unique(array_filter($alamat))) ?: null;
+        $unik = collect($alamat)->filter()->unique(fn ($a) => mb_strtolower($a))->values()->all();
+
+        return $unik ?: null;
     }
 
     public function initials(): string
