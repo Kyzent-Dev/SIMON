@@ -1,5 +1,5 @@
 {{-- Irban "Jadwal PKPT" (irban.md "Ajukan Revisi Jadwal", _shared.md tables/modals, login.md §5 Diinput oleh).
-     Only this irban's items of a Disahkan PKPT. Table ≥1024, cards below (DESIGN §11). Revision state = rectangular x-app.tag (never a pill).
+     Only this irban's items of a Disahkan PKPT. ?tampilan=kalender (default: Wilayah panel + x-app.kalender-pkpt) | tabel: table ≥1024, cards below (DESIGN §11). Revision state = rectangular x-app.tag (never a pill).
      No animation on the table, cards or the form (DESIGN §7.5); only the modal's own transition. --}}
 @use('App\Enums\StatusRevisi')
 @use('App\Support\Tanggal')
@@ -7,7 +7,9 @@
     $tahun = (int) $this->tahun;
     $disahkan = $pkpt?->status === \App\Enums\StatusPkpt::Disahkan;
 @endphp
-<div x-on:revisi-terkirim.window="setTimeout(() => [...document.querySelectorAll(`[data-menunggu='${$event.detail.id}']`)].find((e) => e.offsetParent)?.focus(), 50)">
+{{-- After a sent revision: the visible "menunggu" reason (table/cards), else the visible calendar card, else the calendar heading. --}}
+<div x-on:revisi-terkirim.window="setTimeout(() => { const v = (s) => [...document.querySelectorAll(s)].find((e) => e.offsetParent);
+    (v(`[data-menunggu='${$event.detail.id}']`) ?? v(`[data-kartu='${$event.detail.id}']`) ?? document.getElementById('judul-kalender'))?.focus() }, 50)">
     <x-ui.page-header title="Jadwal PKPT" :description="'Item PKPT '.$irbanNama.' yang sudah disahkan. Ajukan revisi bila jadwal perlu digeser; revisi berlaku setelah disetujui pimpinan.'">
         @if ($disahkan)
             <x-slot:meta>
@@ -21,13 +23,15 @@
             </x-slot:meta>
         @endif
         <x-slot:actions>
+            <x-ui.segmented name="tampilan" legend="Tampilan" legend-visible :options="['kalender' => 'Kalender', 'tabel' => 'Tabel']" :value="$this->tampilan"
+                wire:model.live="tampilan" penuh class="w-full sm:w-auto" />
             <div class="w-full sm:w-40">
                 <x-ui.select label="Tahun" name="tahun" wire:model.live="tahun" :options="$tahunList" :value="$this->tahun" />
             </div>
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div wire:loading.class="opacity-60" wire:target="tahun">
+    <div wire:loading.class="opacity-60" wire:target="tahun,tampilan">
         @if (! $pkpt)
             <x-ui.card>
                 <x-ui.empty-state icon="calendar-days" :title="'Belum ada PKPT tahun '.$tahun.'.'" description="PKPT disusun dan disahkan oleh Admin. Pilih tahun lain atau hubungi Admin." />
@@ -40,6 +44,9 @@
             <x-ui.card>
                 <x-ui.empty-state icon="calendar-days" :title="'Tidak ada item PKPT untuk '.$irbanNama.' tahun '.$tahun.'.'" description="Hubungi Admin bila item untuk irban ini seharusnya ada." />
             </x-ui.card>
+        @elseif ($this->tampilan === 'kalender')
+            @include('livewire.irban.partials.wilayah', ['w' => $wilayah])
+            <x-app.kalender-pkpt :kalender="$kalender" :tahun="$tahun" aksi="buka" />
         @else
             {{-- ≥1024: table --}}
             <x-ui.table :label="'Item PKPT '.$irbanNama.' '.$tahun" class="max-lg:hidden">

@@ -1,5 +1,6 @@
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import kotakMasuk from './kotak-masuk';
+import kalenderPkpt from './kalender';
 import countUp from './countup';
 import { grafikRealisasi, grafikStatus } from './grafik';
 
@@ -16,6 +17,7 @@ document.addEventListener('livewire:navigated', () => {
 });
 
 Alpine.data('kotakMasuk', kotakMasuk);
+Alpine.data('kalenderPkpt', kalenderPkpt);
 Alpine.data('countUp', countUp);
 Alpine.data('grafikRealisasi', grafikRealisasi);
 Alpine.data('grafikStatus', grafikStatus);

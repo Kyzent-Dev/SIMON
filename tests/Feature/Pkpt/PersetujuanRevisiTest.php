@@ -194,7 +194,7 @@ class PersetujuanRevisiTest extends TestCase
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->get(route('admin.pkpt.show', $this->item->pkpt_id))->assertOk()
             ->assertSee('6 April 2026 – 24 April 2026')->assertSee('semula 2–20 Maret 2026');
-        $this->actingAs($this->irbanUser)->get('/irban/pkpt')->assertOk()
+        $this->actingAs($this->irbanUser)->get('/irban/pkpt?tampilan=tabel')->assertOk()
             ->assertSee('6 April 2026 – 24 April 2026')->assertSee('semula 2–20 Maret 2026');
     }
 

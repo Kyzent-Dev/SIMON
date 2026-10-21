@@ -265,7 +265,7 @@ class RevisiJadwalTest extends TestCase
         $item2 = PkptItem::factory()->create(['pkpt_id' => $this->pkpt->id, 'irban_id' => $this->irban->id, 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-09-25']);
         $key = "diinput_oleh.{$this->irban->id}";
 
-        $page = Livewire::actingAs($this->user)->test(IrbanPage::class)
+        $page = Livewire::actingAs($this->user)->withQueryParams(['tampilan' => 'tabel'])->test(IrbanPage::class)
             ->call('buka', $this->item->id)
             ->assertSet('tanggal_mulai', '2026-03-02')->assertSet('diinput_oleh', null)
             ->assertSee('Budi Santoso · …1012')
@@ -302,7 +302,7 @@ class RevisiJadwalTest extends TestCase
     public function test_history_disclosure_on_irban_page(): void
     {
         PkptItemRevisi::factory()->ditolak()->create(['pkpt_item_id' => $this->item->id, 'diinput_oleh' => $this->anggota->id, 'komentar' => 'Tidak cukup alasan.']);
-        $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()
+        $this->actingAs($this->user)->get('/irban/pkpt?tampilan=tabel')->assertOk()
             ->assertSee('Riwayat revisi (1)')->assertSee('Tidak cukup alasan.')->assertSee('Diinput oleh')->assertSee('Budi Santoso')->assertSee('Ditolak');
     }
 }
