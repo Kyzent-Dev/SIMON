@@ -48,6 +48,14 @@ class PkptIrbanIDemo2026SeederTest extends TestCase
         $this->assertSame(1, JenisPenugasan::where('nama', 'Evaluasi RB dan Reviu DAK')->count());
     }
 
+    public function test_seeder_is_a_noop_outside_local_and_testing(): void
+    {
+        $this->app['env'] = 'staging';
+        $this->seedDemo();
+
+        $this->assertSame(0, PkptItem::count());
+    }
+
     public function test_second_run_keeps_25_and_removes_stray_items_without_spt(): void
     {
         $this->seedDemo();

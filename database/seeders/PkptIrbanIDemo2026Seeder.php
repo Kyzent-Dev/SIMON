@@ -47,7 +47,8 @@ class PkptIrbanIDemo2026Seeder extends Seeder
 
     public function run(): void
     {
-        if (app()->isProduction()) {
+        // Deletes items: only local/testing, never a staging copy of real data.
+        if (! app()->environment('local', 'testing')) {
             return;
         }
 
