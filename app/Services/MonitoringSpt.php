@@ -124,7 +124,7 @@ class MonitoringSpt
                 in_array('tidak_sesuai_pkpt', $flags, true) => 'tidak_sesuai',
                 default => 'sesuai',
             };
-            if (($f['kesesuaian'] && $f['kesesuaian'] !== $kesesuaian) || ($f['penanda'] && ! in_array($f['penanda'], $flags, true))) {
+            if ((($f['kesesuaian'] ?? null) && $f['kesesuaian'] !== $kesesuaian) || (($f['penanda'] ?? null) && ! in_array($f['penanda'], $flags, true))) {
                 continue;
             }
             $hasil[] = [$spt, $flags, $kesesuaian];
@@ -139,25 +139,41 @@ class MonitoringSpt
         $spts = $this->query($f)
             ->with(['irban:id,nama', 'jenisPenugasan', 'kendala', 'pkptItem.revisiDisetujui', 'pkptItem.irban:id,nama', 'pkptItem.jenisPenugasan'])
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
-        $hariIni = now('Asia/Jakarta')->toDateString();
         $hasil = [];
-        foreach ($this->saring($spts, $f) as [$spt, $flags, $kesesuaian]) {
-            $hasil[] = [$spt, [
-                'id' => $spt->id,
-                'nomor_lengkap' => $spt->nomor_lengkap,
-                'irban' => $spt->irban->nama,
-                'jenis' => $this->jenis($spt->jenisPenugasan),
-                'mulai' => $spt->tanggal_mulai,
-                'selesai' => $spt->tanggal_selesai,
-                'kesesuaian' => $kesesuaian,
-                'status' => $spt->status($hariIni),
-                'penanda' => $flags,
-                'kendala' => $spt->kendala ? ['kategori' => $spt->kendala->kategori, 'uraian' => $spt->kendala->uraian] : null,
-                'url' => route('spt.show', $spt->id),
-            ]];
+        foreach ($this->saring($spts, $f) as $h) {
+            $hasil[] = [$h[0], $this->bentukBaris(...$h)];
         }
 
         return $hasil;
+    }
+
+    /**
+     * Rows (the shape documented on baris()) for already loaded SPT, no filters; one PenandaSpt batch. Eager-load
+     * irban, jenisPenugasan and kendala beforehand to keep the query count constant.
+     *
+     * @param  Collection<int, Spt>  $spts
+     * @return list<array>
+     */
+    public function barisSpt(Collection $spts): array
+    {
+        return array_map(fn ($h) => $this->bentukBaris(...$h), $this->saring($spts, []));
+    }
+
+    private function bentukBaris(Spt $spt, array $flags, string $kesesuaian): array
+    {
+        return [
+            'id' => $spt->id,
+            'nomor_lengkap' => $spt->nomor_lengkap,
+            'irban' => $spt->irban->nama,
+            'jenis' => $this->jenis($spt->jenisPenugasan),
+            'mulai' => $spt->tanggal_mulai,
+            'selesai' => $spt->tanggal_selesai,
+            'kesesuaian' => $kesesuaian,
+            'status' => $spt->status(now('Asia/Jakarta')->toDateString()),
+            'penanda' => $flags,
+            'kendala' => $spt->kendala ? ['kategori' => $spt->kendala->kategori, 'uraian' => $spt->kendala->uraian] : null,
+            'url' => route('spt.show', $spt->id),
+        ];
     }
 
     private function jenis(?JenisPenugasan $j): ?array
