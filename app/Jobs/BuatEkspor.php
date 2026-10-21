@@ -55,6 +55,6 @@ class BuatEkspor implements ShouldQueue
         }
         Storage::disk('local')->delete("ekspor/{$e->id}.{$e->format}");
         $e->update(['status' => 'gagal']);
-        Notification::send(app(PenerimaNotifikasi::class)->pengguna($e->user), new EksporGagal($e->nama_file, app(Ekspor::class)->pembangun($e->jenis)->halaman()));
+        Notification::send(app(PenerimaNotifikasi::class)->pengguna($e->user), new EksporGagal($e->nama_file, app(Ekspor::class)->pembangun($e->jenis)->halaman($e->user)));
     }
 }

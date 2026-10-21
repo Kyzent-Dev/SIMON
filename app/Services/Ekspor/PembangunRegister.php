@@ -47,7 +47,7 @@ class PembangunRegister implements Pembangun
         return app(RegisterNomor::class)->html($filter);
     }
 
-    public function halaman(): string
+    public function halaman(User $user): string
     {
         return route('bagian-umum.register', absolute: false);
     }

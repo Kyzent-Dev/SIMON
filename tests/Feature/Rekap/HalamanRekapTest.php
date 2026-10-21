@@ -184,7 +184,7 @@ class HalamanRekapTest extends TestCase
     {
         $p = app(PembangunRekap::class);
         $this->assertSame(['tahun' => 2026, 'tw' => 0, 'irban' => null], $p->filter($this->pimpinan, ['tahun' => 'abc', 'tw' => '7', 'irban' => '999']));
-        $this->assertSame('/pimpinan/rekap', $p->halaman());
+        $this->assertSame('/pimpinan/rekap', $p->halaman($this->pimpinan));
 
         $this->expectException(AuthorizationException::class);
         $p->otorisasi(User::factory()->create(['role' => Role::BagianUmum]));

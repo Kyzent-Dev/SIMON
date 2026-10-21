@@ -218,7 +218,7 @@ class HalamanMonitoringTest extends TestCase
 
         $this->assertSame(['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => $this->j2->id, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null], $f);
         $this->assertSame(1, $p->jumlah($this->pimpinan, $f));
-        $this->assertSame('/pimpinan/monitoring', $p->halaman());
+        $this->assertSame('/pimpinan/monitoring', $p->halaman($this->pimpinan));
 
         $this->expectException(AuthorizationException::class);
         $p->otorisasi(User::factory()->create(['role' => Role::BagianUmum]));

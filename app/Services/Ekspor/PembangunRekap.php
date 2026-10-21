@@ -7,12 +7,14 @@ use App\Exports\ArrayExport;
 use App\Models\Irban;
 use App\Models\Spt;
 use App\Models\User;
+use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
+use App\Support\Tanggal;
 use Illuminate\Support\Facades\Gate;
 
 /**
  * Rekap Triwulanan export. The sections come from bagian(), the same method the page renders, so the file equals the screen.
- * ArrayExport is single-sheet: the three sections follow each other in one sheet, each with a title row and a column-header row.
+ * ArrayExport is single-sheet: the four sections follow each other in one sheet, each with a title row and a column-header row.
  */
 class PembangunRekap implements Pembangun
 {
@@ -24,7 +26,11 @@ class PembangunRekap implements Pembangun
 
     private const JN = [['Rencana', 'Realisasi', '%', 'Jumlah SPT'], ['rencana', 'realisasi', 'persen', 'jumlah']];
 
-    public function __construct(private RekapTriwulan $rekap) {}
+    private const DETAIL = 'Detail Realisasi per Item PKPT';
+
+    private const KOLOM_DETAIL = ['Jenis Penugasan', 'Periode Penugasan (PKPT)', 'Nomor SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'];
+
+    public function __construct(private RekapTriwulan $rekap, private RealisasiItemPkpt $detailRealisasi) {}
 
     public function otorisasi(User $user): void
     {
@@ -45,10 +51,10 @@ class PembangunRekap implements Pembangun
         ];
     }
 
-    /** Three small tables: always an immediate download. */
+    /** The three summary tables are small; the Detail Realisasi rows decide whether the export is queued. */
     public function jumlah(User $user, array $filter): int
     {
-        return 0;
+        return array_sum(array_map(fn ($g) => count($g['baris']), $this->detail($filter)));
     }
 
     public function namaFile(User $user, array $filter): string
@@ -72,6 +78,13 @@ class PembangunRekap implements Pembangun
             }
             $rows[] = [];
         }
+        $rows[] = [self::DETAIL];
+        foreach ($this->detail($filter) as $g) {
+            $rows[] = [$g['irban']];
+            $rows[] = self::KOLOM_DETAIL;
+            array_push($rows, ...$g['baris']);
+            $rows[] = [];
+        }
 
         return new ArrayExport(['Rekap Triwulanan '.$filter['tahun'].($filter['tw'] ? ' '.self::TW[$filter['tw']] : '')], $rows);
     }
@@ -83,15 +96,45 @@ class PembangunRekap implements Pembangun
         return view('pdf.rekap-triwulan', [
             'tahun' => $filter['tahun'], 'tw' => $filter['tw'] ? self::TW[$filter['tw']] : 'Semua TW',
             'irban' => $filter['irban'] ? Irban::whereKey($filter['irban'])->value('nama') : null,
-            'pkptDisahkan' => $data['pkpt_disahkan'], 'bagian' => $this->bagian($data, $filter['tw'], 'semua'),
+            'pkptDisahkan' => $data['pkpt_disahkan'], 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL, 'detail' => $this->detail($filter),
+            'bagian' => $this->bagian($data, $filter['tw'], 'semua'),
             'dibuat' => now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB',
         ])->render();
     }
 
-    /** Only used by a failed queued export; rekap is never queued (jumlah() = 0), so the Irban page (irban.rekap) is not reachable here. */
-    public function halaman(): string
+    /** Failure notification target: Irban accounts have their own rekap page. */
+    public function halaman(User $user): string
     {
-        return route('pimpinan.rekap', absolute: false);
+        return route($user->role === Role::Irban ? 'irban.rekap' : 'pimpinan.rekap', absolute: false);
+    }
+
+    /**
+     * Fourth section, same service as the Detail Realisasi tab. One table per irban; Jenis and Periode only on the first row of an item
+     * (shortcut: no merged cells, ArrayExport cannot merge).
+     *
+     * @return list<array{irban: string, baris: list<list<string>>}>
+     */
+    private function detail(array $filter): array
+    {
+        $hasil = [];
+        foreach ($this->detailRealisasi->untuk($filter['tahun'], $filter['tw'], $filter['irban']) as $g) {
+            $baris = [];
+            foreach ($g['item'] as $it) {
+                $awal = [$it['jenis']['nama'], Tanggal::rentang($it['mulai'], $it['selesai'])];
+                foreach ($it['spt'] ?: [null] as $r) {
+                    $baris[] = [...($awal ?? ['', '']), ...($r ? [
+                        $r['nomor_lengkap'], Tanggal::rentang($r['mulai'], $r['selesai']),
+                        $r['kesesuaian'] === 'sesuai' ? 'Sesuai' : ($r['kesesuaian'] === 'tidak_sesuai' ? 'Tidak Sesuai PKPT' : 'Non-PKPT'),
+                        $r['status']->label().(in_array('terlambat', $r['penanda'], true) ? ' · Terlambat' : ''),
+                        $r['kendala'] ? $r['kendala']['kategori'].': '.$r['kendala']['uraian'] : '–',
+                    ] : ['–', 'Belum ada SPT', '–', '–', '–'])];
+                    $awal = null;
+                }
+            }
+            $hasil[] = ['irban' => $g['irban']['nama'], 'baris' => $baris ?: [['Tidak ada item PKPT pada periode ini.', '', '', '', '', '', '']]];
+        }
+
+        return $hasil;
     }
 
     /**

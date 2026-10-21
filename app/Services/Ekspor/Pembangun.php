@@ -25,5 +25,5 @@ interface Pembangun
     public function html(User $user, array $filter): string;
 
     /** Relative URL of the page the export came from (failure notification). */
-    public function halaman(): string;
+    public function halaman(User $user): string;
 }

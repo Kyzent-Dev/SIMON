@@ -60,7 +60,7 @@ class PembangunMonitoring implements Pembangun
         ])->render();
     }
 
-    public function halaman(): string
+    public function halaman(User $user): string
     {
         return route('pimpinan.monitoring', absolute: false);
     }

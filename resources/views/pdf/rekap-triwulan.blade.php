@@ -13,6 +13,7 @@
     table { width: 60%; border-collapse: collapse; margin-top: 4px; }
     th { background: #F1F5F4; text-align: left; font-weight: bold; }
     th, td { border: 1px solid #D5DEDB; padding: 4px 5px; }
+    table.lebar { width: 100%; }
     td.n, th.n { text-align: right; }
     tr.total td, tr.total th { font-weight: bold; border-top: 2px solid #B8C4C0; }
     tr { page-break-inside: avoid; }
@@ -38,6 +39,18 @@
                 </tbody>
             </table>
         @endforeach
+    @endforeach
+    <h2>{{ $detailJudul }}</h2>
+    @foreach ($detail as $g)
+        <h3>{{ $g['irban'] }}</h3>
+        <table class="lebar">
+            <thead><tr>@foreach ($detailKolom as $k)<th>{{ $k }}</th>@endforeach</tr></thead>
+            <tbody>
+                @foreach ($g['baris'] as $b)
+                    <tr>@foreach ($b as $sel)<td>{{ $sel }}</td>@endforeach</tr>
+                @endforeach
+            </tbody>
+        </table>
     @endforeach
 </body>
 </html>
