@@ -137,7 +137,7 @@
                                             </span>
                                             <p class="text-sm text-neutral-600 tabular-nums">{{ Tanggal::rentang($r['mulai'], $r['selesai']) }}</p>
                                             @if ($r['kendala'])
-                                                <p class="line-clamp-2 text-sm text-neutral-900"><span class="font-medium">{{ $r['kendala']['kategori'] }}:</span> {{ $r['kendala']['uraian'] }}</p>
+                                                <div class="text-sm text-neutral-900">@include('livewire.pimpinan.partials.kendala', ['pre' => 'kendala-kartu'])</div>
                                             @endif
                                             <a href="{{ $r['url'] }}" wire:navigate class="inline-flex min-h-11 items-center text-sm font-medium [overflow-wrap:anywhere] text-mint-700 underline-offset-2 hover:underline">{{ $r['nomor_lengkap'] }}</a>
                                         </li>

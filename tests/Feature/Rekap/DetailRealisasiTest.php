@@ -101,6 +101,15 @@ class DetailRealisasiTest extends TestCase
         }
     }
 
+    public function test_mobile_card_has_selengkapnya_toggle_for_long_kendala(): void
+    {
+        $this->spt->kendala()->create(['kategori' => 'Cuaca', 'dibuat_oleh' => User::factory()->create()->id, 'uraian' => str_repeat('Banjir menghambat perjalanan tim. ', 4)]);
+        $html = $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['tw' => '1'])->html();
+
+        $this->assertStringContainsString('id="kendala-kartu-'.$this->spt->id.'"', $html);
+        $this->assertStringContainsString('aria-controls="kendala-kartu-'.$this->spt->id.'"', $html);
+    }
+
     public function test_pimpinan_irban_param_scopes_to_one_irban(): void
     {
         $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['irban' => (string) $this->b->id])
