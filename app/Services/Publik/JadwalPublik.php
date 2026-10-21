@@ -14,9 +14,6 @@ class JadwalPublik
 {
     public const BELUM_DITENTUKAN = 'Belum ditentukan';
 
-    /** irban_wilayah objek jenis → panel list. */
-    private const DAFTAR = ['kecamatan' => 'Kecamatan', 'dinas_badan' => 'Dinas/Badan', 'rsud' => 'Dinas/Badan', 'bumd' => 'BUMD'];
-
     public function __construct(private RealisasiPublik $realisasi, private KesesuaianPkpt $kesesuaian) {}
 
     /**
