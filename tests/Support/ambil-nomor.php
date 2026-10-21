@@ -1,6 +1,6 @@
 <?php
 
-// Child process for PenomoranKonkurensiTest: boots the app against the SQLite file given by DB_DATABASE (env),
+// Child process for PenomoranKonkurensiTest: boots the app against the throwaway database given by DB_CONNECTION/DB_DATABASE (env),
 // takes one number inside a transaction and prints it as JSON. Args: irban id, decision date (Y-m-d), barrier dir
 // [, spt id, user id: run TerimaPengajuan on that SPT as that user instead; its decision date is today].
 // Start barrier: after booting, touch {dir}/siap-{pid} and wait for {dir}/mulai, so all children take a number together.

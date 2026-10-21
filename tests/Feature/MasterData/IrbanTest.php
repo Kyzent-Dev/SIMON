@@ -12,7 +12,7 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\IrbanSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -142,14 +142,15 @@ class IrbanTest extends TestCase
 
     public function test_users_irban_id_has_foreign_key(): void
     {
+        Schema::enableForeignKeyConstraints();
+        $user = User::factory()->irban()->create();
         $this->expectException(QueryException::class);
-        DB::statement('PRAGMA foreign_keys = ON');
-        User::factory()->irban()->create()->forceFill(['irban_id' => 999])->save();
+        $user->forceFill(['irban_id' => 999])->save();
     }
 
     public function test_deleting_irban_nulls_user_irban_id(): void
     {
-        DB::statement('PRAGMA foreign_keys = ON');
+        Schema::enableForeignKeyConstraints();
         $o = Irban::factory()->create();
         $u = User::factory()->irban()->create();
         $u->forceFill(['irban_id' => $o->id])->save();

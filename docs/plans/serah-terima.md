@@ -30,6 +30,7 @@ Baca file ini sebelum menulis plan fase berikutnya. Perbarui di akhir setiap fas
 - Keputusan dicatat di `decisions/fase-N.md` (lihat CLAUDE.md "Decisions log").
 - Graph dokumen: setelah ekstraksi semantik, simpan + rebuild dengan `scripts/rebuild_graph.py` (lihat docstring-nya). Jangan hapus file chunk sebelum skrip mencetak `wrote True`.
 - Model: Opus untuk konkurensi, form kompleks, dan review akhir; Sonnet untuk layar yang meniru pola yang ada dan review per tugas; Haiku untuk review ulang perbaikan kecil dan ekstraksi graphify.
+- Uji di MySQL/MariaDB (XAMPP di port 3306, pengguna `root` tanpa kata sandi): buat database kosong (`mysql -u root -e "CREATE DATABASE simon_uji CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"`), jalankan `DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 DB_DATABASE=simon_uji DB_USERNAME=root DB_PASSWORD= php artisan test`, lalu hapus database itu. Jalankan sekali di akhir setiap fase yang menambah query.
 - Cek browser: `playwright-cli --config .playwright/cli.config.json` terhadap `php artisan serve`; screenshot ke folder scratchpad sesi yang sedang berjalan. Halaman login di `/masuk`. Untuk skrip uji, tulis fungsi `async page => {...}` ke file lalu `playwright-cli run-code --filename <file>` (`run-code` tidak menerima `--config`; `open` menerimanya). Hentikan server lewat PID yang mendengar di port-nya (`netstat -ano`), bukan PID shell pembungkus. Akun dev: `admin`, `pimpinan`, `irban1`, `bagianumum` (kata sandi `password`).
 
 ## Jebakan yang sudah diketahui (salin ke Global Constraints setiap plan)
@@ -62,6 +63,7 @@ Masing-masing pernah lolos ke review dan memakan satu putaran perbaikan.
 - **Durasi CSS `.4s` di `motion.js`:** parser durasi harus menangani angka tanpa nol di depan; tiga perbaikan `motion.js` di Task 4 memengaruhi Beranda juga.
 - **Gambar unggahan:** batasi dimensi maksimum (bom dekompresi) dan ubah gambar yang tidak bisa didekode menjadi galat field, bukan 500; putar sesuai EXIF sebelum memeriksa lebar minimum (Task 2).
 - **Rentang satu hari:** `Tanggal::rentang` untuk tanggal mulai = selesai ditulis `1 April 2026`, bukan `1–1 April 2026`.
+- **Tes harus jalan di MySQL juga:** jangan pakai SQL khusus SQLite di tes (`PRAGMA`, dsb.); untuk foreign key pakai `Schema::enableForeignKeyConstraints()`. `expectException` dipasang tepat sebelum baris yang diuji, kalau tidak galat dari pernyataan persiapan membuat tes lulus semu (ditemukan di `IrbanTest` setelah Fase 9).
 - **Data publik hanya lewat `RealisasiPublik`/`JadwalPublik`:** komponen Livewire publik hanya memegang skalar; tambahkan penanda unik ke `PrivasiPublikTest` setiap kali kolom baru dari tabel SPT/PKPT bisa mendekati halaman publik.
 
 ## Catatan deploy (ringkasan; rincian di `decisions/catatan-deploy.md`)
@@ -86,7 +88,7 @@ Masing-masing pernah lolos ke review dan memakan satu putaran perbaikan.
 - Cache publik (PRD §12): agregat `RealisasiPublik`/`JadwalPublik` dihitung per permintaan di SQL tanpa cache dan diukur dengan 5.000 SPT di Fase 9 (`decisions/fase-9.md`, Task 1); target PRD §10 < 2 detik, tambahkan cache di sini bila perlu.
 - Deploy publik: `storage:link`, disk `public` dapat ditulis, GD+WebP, ekstensi `exif`, batas unggah (`decisions/catatan-deploy.md`, "Konten beranda (Fase 9)"); logo resmi Diskominfo pengganti `x-app.logo` sementara.
 - Kinerja: monitoring/penanda dihitung PHP (±1,0 detik/1.000 SPT untuk `baris()`; dasbor Pimpinan ±1,6 s, monitoring ±1,65 s pada 1.000 SPT). Target PRD §10 untuk ±5.000 SPT **tidak** tercapai (±5 s); sisa biaya = cast tanggal Eloquent per akses (±35 µs). Jalur: bandingkan tanggal mentah sekali per baris atau scope SQL untuk penanda.
-- Jalankan `PenomoranKonkurensiTest` terhadap MySQL (locking di MySQL baru dianalisis, belum dijalankan).
+- Suite penuh (735 test) sudah lulus di MariaDB 10.4 lokal, termasuk `PenomoranKonkurensiTest` yang kini memakai database MySQL sekali pakai (`decisions/fase-9.md`, "Uji MySQL"). Sisa: jalankan di MySQL 8 server staging; di Windows tes konkurensi kadang gagal dengan galat soket 10048 dalam putaran penuh (1 dari 3), belum dicoba di Linux.
 - SQLite IMMEDIATE hanya berlaku di PHP ≥ 8.4; composer masih `^8.3`. Naikkan bila SQLite dipakai di produksi.
 - Batas unggah sementara Livewire tetap bawaan 12 MB; bila `upload.maks_mb` > 12, publikasikan config Livewire (`temporary_file_upload.rules`).
 - `phpunit.xml` memakai `memory_limit` 512M (puncak suite ±118 MB; tumbuh, bukan bocor).
