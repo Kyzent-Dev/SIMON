@@ -7,6 +7,7 @@ use App\Models\Pkpt;
 use App\Models\Spt;
 use App\Services\Ekspor;
 use App\Services\Ekspor\PembangunRekap;
+use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
@@ -21,7 +22,7 @@ class Rekap extends Component
     #[Url]
     public string $tahun = '';
 
-    /** 'irban' | 'gabungan' (Pimpinan only). */
+    /** 'irban' (Per Irban / Ringkasan) | 'gabungan' (Pimpinan only) | 'detail' (Detail Realisasi). */
     #[Url]
     public string $tab = 'irban';
 
@@ -65,7 +66,11 @@ class Rekap extends Component
         $this->tahun = (string) $f['tahun'];
         $this->tw = $f['tw'] ? (string) $f['tw'] : '';
         $this->irban = $f['irban'] ? (string) $f['irban'] : '';
-        $this->tab = $pimpinan && $this->tab === 'gabungan' ? 'gabungan' : 'irban';
+        $this->tab = match (true) {
+            $this->tab === 'detail', $pimpinan && $this->tab === 'gabungan' => $this->tab,
+            default => 'irban',
+        };
+        $detail = $this->tab === 'detail';
 
         $rekap = app(RekapTriwulan::class)->hitung($f['tahun'], $f['irban']);
         $tahunList = Spt::whereNotNull('tahun')->distinct()->pluck('tahun')->merge(Pkpt::distinct()->pluck('tahun'))
@@ -74,7 +79,8 @@ class Rekap extends Component
         return view('livewire.rekap', [
             'judul' => $pimpinan ? 'Rekap Triwulanan' : 'Rekap Saya',
             'rekap' => $rekap,
-            'bagian' => $pembangun->bagian($rekap, $f['tw'], $this->tab),
+            'bagian' => $detail ? [] : $pembangun->bagian($rekap, $f['tw'], $this->tab),
+            'detail' => $detail ? app(RealisasiItemPkpt::class)->untuk($f['tahun'], $f['tw'], $f['irban']) : null,
             'tahunList' => $tahunList,
             'pimpinan' => $pimpinan,
         ])->title($pimpinan ? 'Rekap Triwulanan' : 'Rekap Saya');

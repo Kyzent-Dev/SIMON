@@ -83,13 +83,13 @@ class HalamanRekapTest extends TestCase
         $this->halaman($this->pimpinan)->assertSee('Irban A')->assertSee('Irban B');
     }
 
-    public function test_irban_sees_only_own_irban_without_tabs_and_tampered_irban_is_ignored(): void
+    public function test_irban_sees_only_own_irban_on_ringkasan_and_tampered_irban_is_ignored(): void
     {
         $t = $this->halaman($this->irbanA, ['irban' => (string) $this->b->id, 'tab' => 'gabungan']);
         $html = $t->html();
 
-        $t->assertSee('Rekap Saya')->assertSee('Irban A')->assertDontSee('Irban B')->assertDontSee('Gabungan');
-        $this->assertStringNotContainsString('role="tablist"', $html);
+        // Fase 9.1: Irban has tabs Ringkasan | Detail Realisasi; 'gabungan' falls back to Ringkasan ('irban').
+        $t->assertSet('tab', 'irban')->assertSee('Rekap Saya')->assertSee('Ringkasan')->assertSee('Irban A')->assertDontSee('Irban B')->assertDontSee('Gabungan');
         $b = $this->baris($html);
         $this->assertContains('Total 6 3 50', $b);
         $this->assertNotContains('Total 3 1 33', $b);
