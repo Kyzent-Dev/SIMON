@@ -107,3 +107,6 @@
 - Task 4: ekspor Rekap mendapat bagian keempat "Detail Realisasi per Item PKPT" (xlsx dan PDF) dari `RealisasiItemPkpt::untuk` yang sama dengan layar. `ArrayExport` tidak mendukung gabung sel, jadi di xlsx Jenis dan Periode hanya diisi pada baris pertama item dan dikosongkan pada baris berikutnya (tanpa merge); PDF memakai pola yang sama.
 - Task 4: label kesesuaian di berkas mengikuti layar: `Sesuai` / `Tidak Sesuai PKPT` (label `x-app.flag`), bukan "Tidak Sesuai" polos; status = label status + ` · Terlambat` bila bertanda.
 - Task 4: `PembangunRekap::jumlah()` kini jumlah baris detail (Σ max(1, SPT) per item, +1 per irban tanpa item) sehingga ekspor besar masuk antrean. Karena akun Irban kini bisa mengantre ekspor rekap, `Pembangun::halaman()` menjadi `halaman(User $user): string` di antarmuka, tiga pembangun, dan `BuatEkspor`; Rekap mengembalikan `irban.rekap` untuk Irban dan `pimpinan.rekap` selain itu.
+
+## Fase 9, Task Tambahan B: Kalender Jadwal
+- Task 5: `App\Support\MingguPkpt` jadi satu-satunya aturan minggu PKPT (Senin–Minggu, milik bulan Rabu-nya; label Senin–Jumat). `untukRentang` menempelkan rentang yang hanya menyentuh hari sisa di tepi tahun (mis. 1–2 Jan 2026, minggu milik Des 2025) ke minggu 1 Januari atau minggu terakhir Desember; rentang di luar tahun kalender menghasilkan `[]`.
