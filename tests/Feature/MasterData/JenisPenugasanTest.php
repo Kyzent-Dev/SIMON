@@ -116,7 +116,7 @@ class JenisPenugasanTest extends TestCase
     public function test_seeder_adds_three_sample_types(): void
     {
         $this->seed(DatabaseSeeder::class);
-        $rows = JenisPenugasan::orderBy('id')->get();
+        $rows = JenisPenugasan::orderBy('id')->limit(3)->get(); // later ids come from PkptIrbanIDemo2026Seeder
         $this->assertSame(['#332288', '#C77C00', '#3F6FA6'], $rows->pluck('warna')->all());
         $this->assertSame('Reviu LKjIP', $rows[2]->nama);
     }
