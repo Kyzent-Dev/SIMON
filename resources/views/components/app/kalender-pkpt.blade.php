@@ -1,5 +1,5 @@
 {{-- PKPT calendar in the Sistem B grid (spec Tugas B.3): legend, then month blocks × Minggu 1–5 (MingguPkpt, from KalenderPkpt::untuk).
-     ≥1024 two blocks per row, 768–1023 one per row (5 columns kept), <768 accordion month cards with vertical week sections.
+     ≥1280 two blocks per row, 768–1279 one per row (5 columns kept; 2 columns at 1024 leave ~40px cells beside the sidebar), <768 accordion month cards with vertical week sections.
      A card opens the item detail: popover ≥768, x-ui.drawer bottom sheet <768 (Alpine `kalenderPkpt`, resources/js/kalender.js).
      `aksi`: Livewire method of the host page called with the item id for "Ajukan Revisi Jadwal" (null = read-only).
      No animation (DESIGN §7.5) apart from the drawer's own transition; the accordion and popover switch instantly. --}}
@@ -27,7 +27,7 @@
     </div>
 
     {{-- ≥768: month blocks with a 5-column week table. --}}
-    <div class="mt-4 grid gap-4 max-md:hidden lg:grid-cols-2">
+    <div class="mt-4 grid gap-4 max-md:hidden xl:grid-cols-2">
         @foreach ($kalender as $b)
             <section wire:key="kal-{{ $tahun }}-{{ $b['bulan'] }}" aria-labelledby="bulan-g-{{ $b['bulan'] }}" class="min-w-0 rounded-lg border border-neutral-200 bg-white shadow-xs">
                 <h3 id="bulan-g-{{ $b['bulan'] }}" class="px-4 py-2.5 text-base font-semibold text-neutral-900">{{ $b['nama'] }} {{ $tahun }}</h3>
@@ -125,7 +125,7 @@
     </div>
 
     {{-- Drawer <768 (bottom sheet). --}}
-    <x-ui.drawer name="kalender-detail" title="Detail penugasan" posisi="bawah">
+    <x-ui.drawer name="kalender-detail" title="Detail penugasan" posisi="bawah" x-model="drawerBuka">
         @foreach ($semua as $i)
             <div wire:key="kal-d-{{ $i['id'] }}" x-show="aktif === {{ $i['id'] }}"><x-app.kalender-pkpt-detail :item="$i" :aksi="$aksi" v="d" /></div>
         @endforeach

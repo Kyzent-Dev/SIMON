@@ -1,5 +1,5 @@
 {{-- DESIGN §8 x-ui.drawer from the right: sm 400 / md 560 / lg 720 (default; create/edit forms, admin.md Layout).
-     Same open/close contract as x-ui.modal: `wire:model` (x-modelable) or the `open-modal` / `close-modal` window events with {name}.
+     Same open/close contract as x-ui.modal: `wire:model` or `x-model` (x-modelable) or the `open-modal` / `close-modal` window events with {name}.
      Slot `footer` is the sticky action bar. `posisi="bawah"`: bottom sheet (public filters below 768, DESIGN §11). --}}
 @props(['name', 'title', 'size' => 'lg', 'posisi' => 'kanan'])
 
@@ -10,7 +10,7 @@
     $geser = $bawah ? 'translate-y-full' : 'translate-x-full';
 @endphp
 
-<div x-data="{ open: false }" x-modelable="open" {{ $attributes->whereStartsWith('wire:model') }}
+<div x-data="{ open: false }" x-modelable="open" {{ $attributes->whereStartsWith(['wire:model', 'x-model']) }}
     x-on:open-modal.window="if ($event.detail?.name === @js($name)) open = true"
     x-on:close-modal.window="if ($event.detail?.name === @js($name)) open = false">
     <template x-teleport="body">
@@ -21,7 +21,7 @@
             <div x-show="open" x-trap.noscroll="open" role="dialog" aria-modal="true" aria-labelledby="{{ $name }}-title"
                 x-transition:enter="transition duration-[var(--dur-base)] ease-[var(--ease-enter)]" x-transition:enter-start="{{ $geser }}"
                 x-transition:leave="transition duration-[var(--dur-fast)] ease-[var(--ease-exit)]" x-transition:leave-end="{{ $geser }}"
-                {{ $attributes->whereDoesntStartWith('wire:model')->class($panel) }}>
+                {{ $attributes->whereDoesntStartWith(['wire:model', 'x-model'])->class($panel) }}>
                 <div class="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-4 lg:px-5">
                     <h2 id="{{ $name }}-title" class="truncate font-display text-[22px] leading-[30px] font-bold text-neutral-900">{{ $title }}</h2>
                     <button type="button" x-on:click="open = false" aria-label="Tutup"

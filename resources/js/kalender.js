@@ -1,25 +1,31 @@
 // x-app.kalender-pkpt (dashboard): item detail as a popover anchored to the card ≥768, or the x-ui.drawer bottom sheet <768.
 // Mirrors the public jadwal.js detail logic (no motion: dashboard bundle). tutup() returns focus to the card.
-const DRAWER = 'kalender-detail';
-
 export default () => ({
     aktif: null,
     pemicu: null,
     drawer: false,
+    // Bound to x-ui.drawer with x-model: every way it closes (X, Esc, scrim, tutup()) clears the open item.
+    drawerBuka: false,
     pos: { top: 0, left: 0 },
 
     init() {
+        this.$watch('drawerBuka', (v) => { if (!v && this.drawer) this.aktif = null; });
         // Livewire morphs keep Alpine state: drop a detail whose item is no longer rendered (year change, revision sent).
-        this.$wire.$hook('morphed', () => this.$nextTick(() => {
+        this.unhook = this.$wire.$hook('morphed', () => this.$nextTick(() => {
             if (this.aktif !== null && !this.$root.querySelector(`[data-kartu="${this.aktif}"]`)) this.tutup(document.getElementById('judul-kalender'));
         }));
+    },
+
+    // $hook cleans up with the Livewire component only; the calendar is removed on Kalender⇄Tabel without that.
+    destroy() {
+        this.unhook?.();
     },
 
     buka(id, el) {
         this.pemicu = el;
         this.aktif = id;
         this.drawer = innerWidth < 768;
-        if (this.drawer) this.$dispatch('open-modal', { name: DRAWER });
+        if (this.drawer) this.drawerBuka = true;
         else this.$nextTick(() => this.posisi());
     },
 
@@ -27,8 +33,8 @@ export default () => ({
     tutup(fokus = null) {
         if (this.aktif === null) return;
         const sasaran = fokus ?? this.pemicu;
-        if (this.drawer) this.$dispatch('close-modal', { name: DRAWER });
         this.aktif = null;
+        this.drawerBuka = false;
         setTimeout(() => (sasaran?.isConnected && sasaran.offsetParent ? sasaran : document.getElementById('judul-kalender'))?.focus(), 0);
     },
 
