@@ -17,7 +17,8 @@ use Tests\TestCase;
  * Public Jadwal PKPT page (design/public/jadwal.md). Fixture: PublikFixture (today 15 Desember 2026).
  * a1: Irban A, Jenis Satu, 5 Jan–31 Mar 2026, target 2, 1 public SPT, wilayah "Kec X, Kec Y".
  * b1: Irban B, Jenis Dua, 1 Apr–30 Jun 2026, target null → 1, 1 public SPT, wilayah "Dinas D, Kec Y".
- * Grid: column = (bulan − 1) × 5 + min(5, ceil(hari / 7)); the first grid column is the jenis name, so a bar from column m
+ * Grid: column = (bulan − 1) × 5 + minggu from MingguPkpt (a week belongs to its Wednesday's month); the first grid column is
+ * the jenis name, so a bar from column m
  * to s is placed at `grid-column: m+1 / s+2`.
  */
 class JadwalHalamanTest extends TestCase
@@ -39,13 +40,15 @@ class JadwalHalamanTest extends TestCase
     {
         $html = $this->get('/jadwal')->getContent();
 
-        // a1: 5 Jan → (0×5)+1 = 1, 31 Mar → (2×5)+5 = 15 → grid-column 2 / 17.
+        // a1: 5 Jan → Jan M1 = 1, 31 Mar (Tuesday; Wednesday 1 Apr) → Apr M1 = 16 → grid-column 2 / 18.
         $this->assertStringContainsString('aria-label="Jenis Satu, Irban A, Kec X, Kec Y, 5 Januari–31 Maret 2026"', $html);
-        $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 2 \/ 17/', $html);
-        // b1: 1 Apr → 15+1 = 16, 30 Jun → 25+5 = 30 → grid-column 17 / 32.
+        $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 2 \/ 18/', $html);
+        // b1: 1 Apr → Apr M1 = 16, 30 Jun (Tuesday; Wednesday 1 Jul) → Jul M1 = 31 → grid-column 17 / 33.
         $this->assertStringContainsString('aria-label="Jenis Dua, Irban B, Dinas D, Kec Y, 1 April–30 Juni 2026"', $html);
-        $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 17 \/ 32/', $html);
-        // Today 15 Des 2026 → (11×5)+3 = 58.
+        $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 17 \/ 33/', $html);
+        // Today 15 Des 2026 → Des M3 = 58.
+        // 2026 has 8 four-week months: their column 5 is hatched (header + body) = 16 cells.
+        $this->assertSame(16, substr_count($html, 'data-minggu-kosong'));
         $this->assertStringContainsString('Hari ini', $html);
         // Progress text per item (detail): a1 1 of 2, b1 1 of 1.
         $this->assertStringContainsString('1 dari 2 SPT selesai', $html);
@@ -60,7 +63,7 @@ class JadwalHalamanTest extends TestCase
         PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
 
         $html = $this->get('/jadwal')->getContent();
-        // Semula 1 Jul → 30+1 = 31, 31 Jul → 30+5 = 35 → 32 / 37 (dashed outline). Bar 3 Aug → 36, 28 Aug → 35+4 = 39 → 37 / 41.
+        // Semula 1 Jul → Jul M1 = 31, 31 Jul → Jul M5 = 35 → 32 / 37 (dashed outline). Bar 3 Aug → Agu M1 = 36, 28 Aug → Agu M4 = 39 → 37 / 41.
         $this->assertMatchesRegularExpression('/data-semula[^>]*grid-column: 32 \/ 37/', $html);
         $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 37 \/ 41/', $html);
         $this->assertStringContainsString('Jadwal direvisi: semula 1–31 Juli 2026', $html);
@@ -74,13 +77,14 @@ class JadwalHalamanTest extends TestCase
         PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->b->id, 'jenis_penugasan_id' => $this->j2->id,
             'tanggal_mulai' => '2026-03-20', 'tanggal_selesai' => '2026-03-25']);
 
-        // Jan: a1 (Minggu 1, 5 Jan). Feb: a1 (later month → Minggu 1). Mar: a1 (Minggu 1) + new (20 Mar → Minggu 3) = 2.
-        // Apr–Jun: b1 = 1 each. Jul–Des: 0.
+        // Items appear under every week they overlap (MingguPkpt). Jan/Feb: a1 in M1–M4. Mar: a1 M1–M4 + new (20–25 Mar → M3–M4) = 2.
+        // Apr: a1 (31 Mar sits in Apr M1) + b1 = 2. Mei, Jun: b1. Jul: b1 (30 Jun sits in Jul M1). Agu–Des: 0.
         $this->get('/jadwal')->assertSeeInOrder([
             'Januari 2026 · 1 penugasan', 'Minggu 1', 'Jenis Satu', 'Irban A · Kec X, Kec Y', '5 Januari – 31 Maret 2026',
             'Februari 2026 · 1 penugasan', 'Minggu 1',
             'Maret 2026 · 2 penugasan', 'Minggu 1', 'Jenis Satu', 'Minggu 3', 'Jenis Dua', 'Irban B · Belum ditentukan', '20–25 Maret 2026',
-            'April 2026 · 1 penugasan', 'Mei 2026 · 1 penugasan', 'Juni 2026 · 1 penugasan', 'Juli 2026 · 0 penugasan', 'Desember 2026 · 0 penugasan',
+            'April 2026 · 2 penugasan', 'Mei 2026 · 1 penugasan', 'Juni 2026 · 1 penugasan', 'Juli 2026 · 1 penugasan',
+            'Agustus 2026 · 0 penugasan', 'Desember 2026 · 0 penugasan',
         ]);
     }
 

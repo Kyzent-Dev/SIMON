@@ -11,6 +11,9 @@
         .$i['mulai']->translatedFormat($i['mulai']->year === $i['selesai']->year ? 'j F' : 'j F Y').'–'.$penuh($i['selesai']);
     $jenis = collect($item)->pluck('jenis')->unique('id')->values();
     $hariIni = $linimasa['hariIni'] ?? null;
+    // Column 5 of a month with only 4 PKPT weeks (MingguPkpt) is empty and hatched; decorative, inside aria-hidden grids.
+    $kosong = fn (int $k) => $k % 5 === 4 && ($linimasa['mingguBulan'][intdiv($k, 5) + 1] ?? 5) === 4;
+    $arsir = 'bg-[repeating-linear-gradient(135deg,var(--color-neutral-200)_0_2px,transparent_2px_6px)]';
     // The irban-specific empty title only when the year really has a Disahkan PKPT (opsi.tahun is clamped to Disahkan years).
     $namaIrban = $irban !== '' && $opsi['adaDisahkan'] ? collect($opsi['irban'])->firstWhere('id', (int) $irban)['nama'] ?? null : null;
     $tahunOpsi = collect($opsi['tahun'])->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
@@ -108,15 +111,16 @@
                                 <div class="col-span-5 border-l border-neutral-200 px-1.5 py-1 font-semibold text-neutral-900">{{ \Carbon\CarbonImmutable::create($tahunAngka, $b, 1)->translatedFormat('M') }}</div>
                             @endfor
                             @for ($k = 0; $k < 60; $k++)
-                                <div @class(['pb-1 text-center text-neutral-500 tabular-nums', $k % 5 === 0 ? 'border-l border-neutral-200' : 'border-l border-dotted border-neutral-100'])>{{ $k % 5 + 1 }}</div>
+                                <div @if ($kosong($k)) data-minggu-kosong @endif @class(['pb-1 text-center text-neutral-500 tabular-nums', $k % 5 === 0 ? 'border-l border-neutral-200' : 'border-l border-dotted border-neutral-100', $arsir => $kosong($k)])>{{ $kosong($k) ? '' : $k % 5 + 1 }}</div>
                             @endfor
                         </div>
 
                         <div class="relative">
                             <div class="absolute inset-y-0 right-0 left-[240px] grid grid-cols-[repeat(60,minmax(0,1fr))]" aria-hidden="true">
                                 @for ($k = 0; $k < 60; $k++)
-                                    <span @class([
+                                    <span @if ($kosong($k)) data-minggu-kosong @endif @class([
                                         'relative',
+                                        $arsir => $kosong($k),
                                         $k % 5 === 0 ? 'border-l border-neutral-200' : 'border-l border-dotted border-neutral-100',
                                         'bg-mint-50' => $hariIni && intdiv($k, 5) === intdiv($hariIni - 1, 5),
                                     ])>

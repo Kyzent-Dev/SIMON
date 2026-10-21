@@ -4,6 +4,7 @@ namespace App\Services\Publik;
 
 use App\Enums\StatusPengajuan;
 use App\Services\KesesuaianPkpt;
+use App\Support\MingguPkpt;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -67,7 +68,9 @@ class JadwalPublik
      * Rows per jenis (in item order) with greedy lanes: an item joins the first lane whose last bar ends in a column
      * strictly before its start column. Bars: {item, mulai, selesai, semula} as grid columns 1–60.
      *
-     * @return array{baris: list<array{jenis: array, jumlah: int, lajur: list<list<array>>}>, hariIni: ?int}
+     * `mingguBulan`: weeks per month (4 or 5, MingguPkpt), so the view can hatch column 5 of a 4-week month.
+     *
+     * @return array{baris: list<array{jenis: array, jumlah: int, lajur: list<list<array>>}>, hariIni: ?int, mingguBulan: array<int, int>}
      */
     public function linimasa(array $item, int $tahun): array
     {
@@ -99,30 +102,34 @@ class JadwalPublik
 
         $hariIni = CarbonImmutable::now();
 
-        return ['baris' => $hasil, 'hariIni' => $hariIni->year === $tahun ? $this->kolom($hariIni, $tahun) : null];
+        $mingguBulan = [];
+        foreach (range(1, 12) as $bulan) {
+            $mingguBulan[$bulan] = count(MingguPkpt::daftar($tahun, $bulan));
+        }
+
+        return ['baris' => $hasil, 'hariIni' => $hariIni->year === $tahun ? $this->kolom($hariIni, $tahun) : null, 'mingguBulan' => $mingguBulan];
     }
 
     /**
-     * 12 months; an item is listed in every month its effective range overlaps: under the week of its start date in its
-     * start month, under week 1 in later months. `minggu` holds only non-empty weeks, keyed 1–5.
+     * 12 months; an item is listed under every PKPT week (MingguPkpt) its effective range overlaps. `minggu` holds only
+     * non-empty weeks, keyed 1–5; `jumlah` counts distinct items in the month.
      *
      * @return list<array{bulan: int, nama: string, jumlah: int, minggu: array<int, list<array>>}>
      */
     public function bulanan(array $item, int $tahun): array
     {
-        $hasil = [];
-        foreach (range(1, 12) as $bulan) {
-            $awal = CarbonImmutable::create($tahun, $bulan, 1);
-            $akhir = $awal->endOfMonth()->startOfDay();
-            $minggu = [];
-            foreach ($item as $i) {
-                if ($i['mulai']->gt($akhir) || $i['selesai']->lt($awal)) {
-                    continue;
-                }
-                $minggu[$i['mulai']->gte($awal) ? $this->minggu($i['mulai']) : 1][] = $i;
+        $minggu = array_fill_keys(range(1, 12), []);
+        foreach ($item as $i) {
+            foreach (MingguPkpt::untukRentang($i['mulai'], $i['selesai'], $tahun) as $w) {
+                $minggu[$w['bulan']][$w['minggu']][] = $i;
             }
-            ksort($minggu);
-            $hasil[] = ['bulan' => $bulan, 'nama' => $awal->translatedFormat('F'), 'jumlah' => array_sum(array_map('count', $minggu)), 'minggu' => $minggu];
+        }
+
+        $hasil = [];
+        foreach ($minggu as $bulan => $m) {
+            ksort($m);
+            $hasil[] = ['bulan' => $bulan, 'nama' => CarbonImmutable::create($tahun, $bulan, 1)->translatedFormat('F'),
+                'jumlah' => count(array_unique(array_column(array_merge(...array_values($m)), 'id'))), 'minggu' => $m];
         }
 
         return $hasil;
@@ -145,18 +152,15 @@ class JadwalPublik
         })->all();
     }
 
-    /** Grid column 1–60: (bulan − 1) × 5 + week of the month (1–5); dates outside $tahun clamp to its first/last column. */
+    /** Grid column 1–60: (bulan − 1) × 5 + week (MingguPkpt); weeks owned by another year clamp to its first/last column. */
     private function kolom(CarbonImmutable $t, int $tahun): int
     {
-        return match (true) {
-            $t->year < $tahun => 1,
-            $t->year > $tahun => 60,
-            default => ($t->month - 1) * 5 + $this->minggu($t),
-        };
-    }
+        $w = MingguPkpt::dari($t);
 
-    private function minggu(CarbonImmutable $t): int
-    {
-        return min(5, (int) ceil($t->day / 7));
+        return match (true) {
+            $w['tahun'] < $tahun => 1,
+            $w['tahun'] > $tahun => 60,
+            default => ($w['bulan'] - 1) * 5 + $w['minggu'],
+        };
     }
 }

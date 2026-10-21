@@ -61,18 +61,39 @@ class JadwalPublikTest extends TestCase
 
     public function test_grid_column_mapping_and_year_clamp(): void
     {
-        // column = (bulan − 1) × 5 + min(5, ceil(hari / 7)): day 1 → 1, 7 → 1, 8 → 2, 28 → 4, 29 → 5, 31 → 5.
-        $kasus = [['2026-01-01', '2026-01-07', 1, 1], ['2026-01-08', '2026-01-28', 2, 4], ['2026-01-29', '2026-01-31', 5, 5],
-            ['2026-03-08', '2026-12-31', 12, 60], ['2025-12-20', '2026-01-10', 1, 2], ['2026-12-20', '2027-01-15', 58, 60]];
+        // column = (bulan − 1) × 5 + minggu, both from MingguPkpt::dari (the week belongs to its Wednesday's month).
+        // 1 Jan 2026 sits in Des 2025 M5 → clamps to 1; 29–31 Jan → Jan M4 (Januari has 4 weeks); 31 Des → Des M5 = 60.
+        $kasus = [['2026-01-01', '2026-01-07', 1, 1], ['2026-01-12', '2026-01-28', 2, 4], ['2026-01-29', '2026-01-31', 4, 4],
+            ['2026-03-08', '2026-12-31', 11, 60], ['2025-12-20', '2026-01-10', 1, 1], ['2026-12-20', '2027-01-15', 58, 60],
+            ['2026-09-28', '2026-10-02', 45, 45]];
         foreach ($kasus as $n => [$m, $s, $km, $ks]) {
             $bar = $this->svc()->linimasa([$this->it($n + 1, $m, $s)], 2026)['baris'][0]['lajur'][0][0];
             $this->assertSame([$km, $ks], [$bar['mulai'], $bar['selesai']], "$m – $s");
         }
         $bar = $this->svc()->linimasa([$this->it(1, '2026-03-01', '2026-03-10', 1, ['2026-02-01', '2026-02-14'])], 2026)['baris'][0]['lajur'][0][0];
-        $this->assertSame([6, 7], $bar['semula']); // 1 Feb → 6, 14 Feb → 7
+        $this->assertSame([4, 7], $bar['semula']); // 1 Feb (Sunday) → Jan M4 = 4, 14 Feb → Feb M2 = 7
 
-        $this->assertSame(58, $this->svc()->linimasa([], 2026)['hariIni']); // 15 Des → 55 + 3
+        $this->assertSame(58, $this->svc()->linimasa([], 2026)['hariIni']); // 15 Des → Des M3 = 55 + 3
         $this->assertNull($this->svc()->linimasa([], 2025)['hariIni']);
+    }
+
+    public function test_weeks_per_month_for_the_hatched_fifth_column(): void
+    {
+        $this->assertSame([1 => 4, 4, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5], $this->svc()->linimasa([], 2026)['mingguBulan']);
+    }
+
+    public function test_week_edges_follow_the_wednesday_rule(): void
+    {
+        // Evaluasi RB 30 Mar–3 Apr: its Wednesday is 1 April → Apr M1 only, never Mar M5. SAKIP 6–10 Apr → Apr M2 only.
+        $item = [$this->it(1, '2026-03-30', '2026-04-03'), $this->it(2, '2026-04-06', '2026-04-10', 2)];
+        $baris = $this->svc()->linimasa($item, 2026)['baris'];
+        $kolom = fn (array $b) => [$b['lajur'][0][0]['mulai'], $b['lajur'][0][0]['selesai']];
+        $this->assertSame([[16, 16], [17, 17]], array_map($kolom, $baris));
+
+        $b = $this->svc()->bulanan($item, 2026);
+        $this->assertSame([0, []], [$b[2]['jumlah'], $b[2]['minggu']]); // Maret empty
+        $this->assertSame([1 => [1], 2 => [2]], array_map(fn ($m) => array_column($m, 'id'), $b[3]['minggu']));
+        $this->assertSame(2, $b[3]['jumlah']);
     }
 
     public function test_lane_packing(): void
@@ -82,8 +103,8 @@ class JadwalPublikTest extends TestCase
         $item = [
             $this->it(1, '2026-01-01', '2026-01-07'), // cols 1–1 → lane 1
             $this->it(2, '2026-01-07', '2026-01-14'), // cols 1–2, shares col 1 → lane 2
-            $this->it(3, '2026-01-08', '2026-01-20'), // cols 2–3, lane 1 ends at 1 < 2 → lane 1
-            $this->it(4, '2026-01-14', '2026-01-31'), // cols 2–5, lane 1 ends 3, lane 2 ends 2 → lane 3
+            $this->it(3, '2026-01-12', '2026-01-20'), // cols 2–3, lane 1 ends at 1 < 2 → lane 1
+            $this->it(4, '2026-01-14', '2026-01-31'), // cols 2–4, lane 1 ends 3, lane 2 ends 2 → lane 3
             $this->it(5, '2026-02-01', '2026-02-05', 2), // other jenis → its own row
         ];
         $baris = $this->svc()->linimasa($item, 2026)['baris'];
@@ -93,19 +114,21 @@ class JadwalPublikTest extends TestCase
         $this->assertSame([[1, 3], [2], [4]], $lajur);
     }
 
-    public function test_bulanan_lists_an_item_in_every_month_it_overlaps(): void
+    public function test_bulanan_lists_an_item_in_every_week_it_overlaps(): void
     {
         $item = [
-            $this->it(1, '2026-01-29', '2026-03-02'), // Jan Minggu 5, Feb + Mar Minggu 1
-            $this->it(2, '2025-12-28', '2026-01-05'), // starts last year → Jan Minggu 1
-            $this->it(3, '2026-01-08', '2026-01-09'), // Jan Minggu 2
+            $this->it(1, '2026-01-29', '2026-03-02'), // Jan M4, Feb M1–M4, Mar M1
+            $this->it(2, '2025-12-28', '2026-01-05'), // weeks of Des 2025 + the week of 5 Jan → Jan M1
+            $this->it(3, '2026-01-15', '2026-01-16'), // Jan M2
+            $this->it(4, '2026-01-01', '2026-01-02'), // only in Des 2025 M5 → falls back to Jan M1
         ];
         $b = $this->svc()->bulanan($item, 2026);
         $this->assertCount(12, $b);
-        $this->assertSame(['Januari', 3], [$b[0]['nama'], $b[0]['jumlah']]);
+        $this->assertSame(['Januari', 4], [$b[0]['nama'], $b[0]['jumlah']]);
         $ids = fn (array $bulan) => array_map(fn ($m) => array_column($m, 'id'), $bulan['minggu']);
-        $this->assertSame([1 => [2], 2 => [3], 5 => [1]], $ids($b[0]));
-        $this->assertSame([1 => [1]], $ids($b[1]));
+        $this->assertSame([1 => [2, 4], 2 => [3], 4 => [1]], $ids($b[0]));
+        $this->assertSame([1 => [1], 2 => [1], 3 => [1], 4 => [1]], $ids($b[1]));
+        $this->assertSame(1, $b[1]['jumlah']); // distinct items, not week entries
         $this->assertSame([1 => [1]], $ids($b[2]));
         $this->assertSame([0, []], [$b[3]['jumlah'], $b[3]['minggu']]);
         $this->assertSame(range(1, 12), array_column($b, 'bulan'));
