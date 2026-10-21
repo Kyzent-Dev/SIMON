@@ -210,7 +210,7 @@ class RealisasiPublik
             ->when($irban, fn ($q) => $q->where('pkpt_item.irban_id', $irban))
             ->when($jenis, fn ($q) => $q->where('pkpt_item.jenis_penugasan_id', $jenis))
             ->with(['revisiDisetujui' => fn ($q) => $q->select(['id', 'pkpt_item_id', 'tanggal_mulai', 'tanggal_selesai', 'status', 'diputuskan_pada'])])
-            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt_item.tanggal_mulai', 'pkpt_item.tanggal_selesai', 'pkpt_item.target_spt']);
+            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt_item.tanggal_mulai', 'pkpt_item.tanggal_selesai', 'pkpt_item.target_spt', 'pkpt_item.keterangan']);
     }
 
     /** spt_objek → objek (+ parent): nama, jenis, induk; callers add the key column `kunci` and their own constraints. */

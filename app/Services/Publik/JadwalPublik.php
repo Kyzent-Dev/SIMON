@@ -4,6 +4,7 @@ namespace App\Services\Publik;
 
 use App\Enums\StatusPengajuan;
 use App\Services\KesesuaianPkpt;
+use App\Services\WilayahPengawasan;
 use App\Support\MingguPkpt;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -138,18 +139,9 @@ class JadwalPublik
     /** @return list<array{irban: string, daftar: array{Kecamatan: list<string>, 'Dinas/Badan': list<string>, BUMD: list<string>}}> */
     public function wilayah(int $tahun): array
     {
-        $objek = DB::table('irban_wilayah')->join('objek', 'objek.id', '=', 'irban_wilayah.objek_id')
-            ->where('irban_wilayah.tahun', $tahun)->whereIn('objek.jenis', array_keys(self::DAFTAR))
-            ->orderBy('objek.nama')->get(['irban_wilayah.irban_id', 'objek.nama', 'objek.jenis'])->groupBy('irban_id');
-
-        return DB::table('irban')->orderBy('nama')->get(['id', 'nama'])->map(function ($i) use ($objek) {
-            $daftar = ['Kecamatan' => [], 'Dinas/Badan' => [], 'BUMD' => []];
-            foreach ($objek[$i->id] ?? [] as $o) {
-                $daftar[self::DAFTAR[$o->jenis]][] = $o->nama;
-            }
-
-            return ['irban' => $i->nama, 'daftar' => $daftar];
-        })->all();
+        return array_map(fn ($w) => ['irban' => $w['irban'], 'daftar' => [
+            'Kecamatan' => $w['kecamatan'], 'Dinas/Badan' => $w['dinas_badan'], 'BUMD' => $w['bumd'],
+        ]], app(WilayahPengawasan::class)->untuk($tahun));
     }
 
     /** Grid column 1–60: (bulan − 1) × 5 + week (MingguPkpt); weeks owned by another year clamp to its first/last column. */
