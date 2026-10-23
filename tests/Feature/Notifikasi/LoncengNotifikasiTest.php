@@ -171,6 +171,20 @@ class LoncengNotifikasiTest extends TestCase
         $this->assertSame('Pemeriksaan khusus dana desa.', (new PengajuanDiputuskan($spt))->toArray($user)['konteks']);
     }
 
+    /** Fase 9.2: the revisi-jadwal classes are gone, but old bell rows still render with their icon tile. */
+    public function test_legacy_revisi_jadwal_row_still_renders_with_its_icon(): void
+    {
+        $user = User::factory()->irban()->create();
+        $user->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'App\Notifications\RevisiJadwalDiputuskan', // class no longer exists
+            'data' => ['jenis' => 'revisi_jadwal_disetujui', 'judul' => 'Revisi jadwal PKPT disetujui', 'konteks' => 'Reviu LKjIP · 6–24 April 2026', 'url' => '/irban/pkpt', 'catatan' => null],
+        ]);
+
+        Livewire::actingAs($user)->test(Lonceng::class)->set('terbuka', true)
+            ->assertSee('Revisi jadwal PKPT disetujui')->assertSeeHtml('bg-status-selesai-bg text-status-selesai-fg');
+    }
+
     public function test_dev_seeder_gives_demo_users_read_and_unread_notifications_once(): void
     {
         Mail::fake();
@@ -185,9 +199,9 @@ class LoncengNotifikasiTest extends TestCase
             $jumlah[$username] = $user->notifications->pluck('data.jenis')->unique()->sort()->values()->all();
         }
         $this->assertGreaterThan(0, User::where('username', 'irban1')->first()->readNotifications()->count());
-        $this->assertSame(['nomor_dibatalkan', 'pengajuan_diterima', 'pengajuan_perlu_revisi', 'revisi_jadwal_disetujui', 'spt_terlambat'], $jumlah['irban1']);
+        $this->assertSame(['nomor_dibatalkan', 'pengajuan_diterima', 'pengajuan_perlu_revisi', 'spt_terlambat'], $jumlah['irban1']);
         $this->assertSame(['pengajuan_baru'], $jumlah['bagianumum']);
-        $this->assertSame(['revisi_jadwal_diajukan', 'ringkasan_mingguan'], $jumlah['pimpinan']);
+        $this->assertSame(['ringkasan_mingguan'], $jumlah['pimpinan']);
         Mail::assertNothingOutgoing();
     }
 }

@@ -8,12 +8,10 @@ use DateTimeInterface;
 
 class KesesuaianPkpt
 {
-    /** @return array{0: CarbonImmutable, 1: CarbonImmutable} latest approved revision's dates, else the item's own. */
+    /** @return array{0: CarbonImmutable, 1: CarbonImmutable} the item's own dates (an approved Perubahan PKPT writes them). */
     public function rentang(PkptItem $item): array
     {
-        $src = $item->revisiDisetujuiTerakhir() ?? $item;
-
-        return [CarbonImmutable::parse($src->tanggal_mulai)->startOfDay(), CarbonImmutable::parse($src->tanggal_selesai)->startOfDay()];
+        return [CarbonImmutable::parse($item->tanggal_mulai)->startOfDay(), CarbonImmutable::parse($item->tanggal_selesai)->startOfDay()];
     }
 
     public function sesuai(PkptItem $item, DateTimeInterface|string $mulai, DateTimeInterface|string $selesai): bool

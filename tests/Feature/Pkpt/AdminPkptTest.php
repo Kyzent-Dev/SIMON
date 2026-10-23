@@ -9,7 +9,6 @@ use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\User;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
@@ -197,20 +196,12 @@ class AdminPkptTest extends TestCase
         $this->assertSame(StatusPkpt::Disahkan, $pkpt->fresh()->status);
     }
 
-    public function test_disahkan_page_is_read_only_with_effective_range_and_history(): void
+    public function test_disahkan_page_is_read_only_with_item_range_and_semula(): void
     {
         $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
         $item = PkptItem::factory()->create(['pkpt_id' => $pkpt->id, 'tanggal_mulai' => '2026-02-03', 'tanggal_selesai' => '2026-02-21']);
-        $pimpinan = User::factory()->pimpinan()->create(['name' => 'Kepala Inspektur']);
-        PkptItemRevisi::factory()->ditolak()->create([
-            'pkpt_item_id' => $item->id, 'tanggal_mulai_semula' => '2026-02-03', 'tanggal_selesai_semula' => '2026-02-21',
-            'tanggal_mulai' => '2026-05-01', 'tanggal_selesai' => '2026-05-10', 'alasan' => 'Alasan pertama', 'komentar' => 'Terlalu jauh',
-        ]);
-        PkptItemRevisi::factory()->disetujui()->create([
-            'pkpt_item_id' => $item->id, 'tanggal_mulai_semula' => '2026-02-03', 'tanggal_selesai_semula' => '2026-02-21',
-            'tanggal_mulai' => '2026-03-03', 'tanggal_selesai' => '2026-03-21', 'alasan' => 'Bentrok jadwal',
-            'diputuskan_oleh' => $pimpinan->id, 'diputuskan_pada' => '2026-02-01 10:00:00',
-        ]);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-03', 'tanggal_selesai' => '2026-03-21']);
+        PkptItem::factory()->dihapus()->create(['pkpt_id' => $pkpt->id, 'keterangan' => 'Item yang dihapus']);
 
         $this->detail($pkpt)
             ->assertDontSee('Sahkan PKPT')->assertDontSee('Impor Excel')->assertDontSee('Tambah')
@@ -218,9 +209,8 @@ class AdminPkptTest extends TestCase
             ->assertSee('Jadwal berlaku')
             ->assertSee('3 Maret 2026 – 21 Maret 2026')
             ->assertSee('semula 3–21 Februari 2026')
-            ->assertSee('Riwayat revisi')
-            ->assertSee('Bentrok jadwal')->assertSee('Alasan pertama')->assertSee('Terlalu jauh')
-            ->assertSee('Disetujui')->assertSee('Ditolak')->assertSee('Kepala Inspektur')->assertSee('1 Februari 2026');
+            ->assertDontSee('Item yang dihapus')
+            ->assertViewHas('total', 1);
     }
 
     public function test_tag_component_renders_icon_and_label(): void

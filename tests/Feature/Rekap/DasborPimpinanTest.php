@@ -7,8 +7,6 @@ use App\Enums\StatusPermintaan;
 use App\Livewire\Pimpinan\Dasbor;
 use App\Models\Irban;
 use App\Models\Komentar;
-use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\MonitoringSpt;
@@ -27,7 +25,6 @@ use Tests\TestCase;
  *               Penyusunan Laporan and > 14 days past the end = 4
  *   Tidak Sesuai PKPT = s11 (Des 2025 vs item b1 Mei–Jun 2026)    = 1
  *   Permintaan Penjelasan Terbuka (all years) = open on s10 + open on an SPT of tahun 2025 = 2 (a closed one and a reply do not count)
- *   Revisi Jadwal Menunggu = the pending revision of b2 = 1
  */
 class DasborPimpinanTest extends TestCase
 {
@@ -77,20 +74,18 @@ class DasborPimpinanTest extends TestCase
         $h = $this->halaman(['tahun' => 2026]);
         $kartu = $this->kartu($h);
 
-        $this->assertSame(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka', 'Revisi Jadwal Menunggu'],
+        $this->assertSame(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka'],
             array_column($h->viewData('kartu'), 'label'));
-        $this->assertSame([3, 6, 4, 1, 2, 1], array_column($h->viewData('kartu'), 'nilai'));
-        $this->assertSame(route('pimpinan.revisi-jadwal'), $kartu['Revisi Jadwal Menunggu']['href']);
+        $this->assertSame([3, 6, 4, 1, 2], array_column($h->viewData('kartu'), 'nilai'));
         $this->assertTrue($kartu['Terlambat']['alert']);
-        $this->assertTrue($kartu['Revisi Jadwal Menunggu']['alert']);
         $this->assertFalse($kartu['Berjalan']['alert']);
-        $h->assertSeeHtmlInOrder(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka', 'Revisi Jadwal Menunggu']);
+        $h->assertSeeHtmlInOrder(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka']);
     }
 
     public function test_each_monitoring_card_equals_the_row_count_behind_its_link(): void
     {
         foreach ($this->kartu($this->halaman(['tahun' => 2026])) as $label => $k) {
-            if ($label === 'Revisi Jadwal Menunggu' || $label === 'Permintaan Penjelasan Terbuka') {
+            if ($label === 'Permintaan Penjelasan Terbuka') {
                 continue;
             }
             $this->assertStringStartsWith(route('pimpinan.monitoring').'?', $k['href'], $label);
@@ -137,14 +132,6 @@ class DasborPimpinanTest extends TestCase
         $this->assertSame([2, true, '2026'], $terlambat('2026-01-04'));
     }
 
-    public function test_revisi_card_is_alert_only_when_something_waits(): void
-    {
-        PkptItemRevisi::query()->delete();
-        $kartu = $this->kartu($this->halaman(['tahun' => 2026]));
-        $this->assertSame(0, $kartu['Revisi Jadwal Menunggu']['nilai']);
-        $this->assertFalse($kartu['Revisi Jadwal Menunggu']['alert']);
-    }
-
     public function test_chart_data_and_table_twin_equal_rekap_triwulan(): void
     {
         // Hand-computed (RekapFixture): TW II Irban A 1 dari 1 (100%), Irban B 1 dari 2 (50%); Setahun A 3 dari 6 (50%), B 1 dari 3 (33%).
@@ -180,22 +167,11 @@ class DasborPimpinanTest extends TestCase
         $this->assertSame('', $h->get('tw'));
     }
 
-    public function test_approval_list_shows_at_most_five_with_tinjau_links_and_no_edit_controls(): void
+    /** Fase 9.2: the old schedule revision card and approval panel are gone (Perubahan PKPT replaces them in Task 8). */
+    public function test_no_revisi_jadwal_card_or_panel_and_no_edit_controls(): void
     {
-        $item = PkptItem::first();
-        PkptItemRevisi::factory()->count(6)->create(['pkpt_item_id' => $item->id, 'alasan' => 'Alasan uji']);
-
-        $h = $this->halaman(['tahun' => 2026]);
-        $this->assertSame(5, substr_count($h->html(), '>Tinjau<'));
-        $h->assertSee('Menunggu Persetujuan Anda')->assertSeeHtml('href="'.route('pimpinan.revisi-jadwal').'"')
-            ->assertSee('Lihat semua revisi (7)')
+        $this->halaman(['tahun' => 2026])->assertDontSee('Revisi Jadwal')->assertDontSee('Menunggu Persetujuan Anda')
             ->assertDontSee('Setujui')->assertDontSee('Tolak')->assertDontSee('wire:click', false);
-    }
-
-    public function test_approval_list_empty_state(): void
-    {
-        PkptItemRevisi::query()->delete();
-        $this->halaman()->assertSee('Tidak ada revisi jadwal yang menunggu persetujuan.')->assertDontSee('>Tinjau<', false);
     }
 
     public function test_link_cards(): void

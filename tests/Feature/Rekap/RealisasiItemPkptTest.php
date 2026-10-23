@@ -6,7 +6,6 @@ use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Services\RealisasiItemPkpt;
 use App\Services\Settings;
@@ -100,10 +99,10 @@ class RealisasiItemPkptTest extends TestCase
         $this->assertSame([$early2->id, $early1->id, $late->id], array_column($this->untuk(2)[0]['item'][0]['spt'], 'id'));
     }
 
-    public function test_approved_revision_changes_range_and_kesesuaian(): void
+    public function test_moved_item_changes_range_and_kesesuaian(): void
     {
         $it = $this->item($this->a, '2026-02-02', '2026-02-27');
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $it->id, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-30']);
+        $it->update(['tanggal_mulai_disahkan' => $it->tanggal_mulai, 'tanggal_selesai_disahkan' => $it->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-30']);
         $this->spt('diterima', $this->a, $it, '2026-04-06', '2026-04-10');
 
         $row = $this->untuk(2)[0]['item'][0];

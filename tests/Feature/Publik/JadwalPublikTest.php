@@ -5,7 +5,7 @@ namespace Tests\Feature\Publik;
 use App\Models\IrbanWilayah;
 use App\Models\Objek;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
+use App\Models\PkptUsulan;
 use App\Services\Publik\JadwalPublik;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
@@ -34,9 +34,9 @@ class JadwalPublikTest extends TestCase
     {
         $tanpaSpt = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-31', 'target_spt' => 4]);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $tanpaSpt->id, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $this->a1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']); // pending
-        PkptItemRevisi::factory()->ditolak()->create(['pkpt_item_id' => $this->b1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']);
+        $tanpaSpt->update(['tanggal_mulai_disahkan' => $tanpaSpt->tanggal_mulai, 'tanggal_selesai_disahkan' => $tanpaSpt->tanggal_selesai, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
+        PkptUsulan::factory()->create(['pkpt_item_id' => $this->a1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']); // open proposal: no effect
+        PkptUsulan::factory()->ditutup()->create(['pkpt_item_id' => $this->b1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']);
 
         $item = $this->svc()->item(2026, null);
         // Ordered by jenis name (Dua before Satu), then effective start: b1; a1 (Jan), tanpaSpt (Aug). d1 (Draf PKPT) absent.

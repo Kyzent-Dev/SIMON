@@ -43,7 +43,7 @@ class RekapTriwulan
         $perJenis = $kosong($jenis, $jn);
         $tanpaJenis = array_fill(1, 4, $jn);
 
-        $items = PkptItem::with('revisiDisetujui')
+        $items = PkptItem::aktif()
             ->whereHas('pkpt', fn ($q) => $q->where('tahun', $tahun)->where('status', StatusPkpt::Disahkan))
             ->when($irbanId, fn ($q) => $q->where('irban_id', $irbanId))
             ->get();

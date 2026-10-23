@@ -137,7 +137,7 @@ class MonitoringSpt
     private function spt(array $f): array
     {
         $spts = $this->query($f)
-            ->with(['irban:id,nama', 'jenisPenugasan', 'kendala', 'pkptItem.revisiDisetujui', 'pkptItem.irban:id,nama', 'pkptItem.jenisPenugasan'])
+            ->with(['irban:id,nama', 'jenisPenugasan', 'kendala', 'pkptItem.irban:id,nama', 'pkptItem.jenisPenugasan'])
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
         $hasil = [];
         foreach ($this->saring($spts, $f) as $h) {

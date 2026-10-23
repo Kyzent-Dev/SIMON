@@ -201,7 +201,7 @@ class RealisasiPublik
         ];
     }
 
-    /** Items of the year's Disahkan PKPT (internal: models only so the one effective-range rule applies; never returned). */
+    /** Active items of the year's Disahkan PKPT (internal: models only so KesesuaianPkpt and the snapshot rules apply; never returned). */
     public function itemDisahkan(int $tahun, ?int $irban = null, ?int $jenis = null): Collection
     {
         return PkptItem::query()
@@ -209,8 +209,9 @@ class RealisasiPublik
             ->where('pkpt.tahun', $tahun)->where('pkpt.status', StatusPkpt::Disahkan->value)
             ->when($irban, fn ($q) => $q->where('pkpt_item.irban_id', $irban))
             ->when($jenis, fn ($q) => $q->where('pkpt_item.jenis_penugasan_id', $jenis))
-            ->with(['revisiDisetujui' => fn ($q) => $q->select(['id', 'pkpt_item_id', 'tanggal_mulai', 'tanggal_selesai', 'status', 'diputuskan_pada'])])
-            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt_item.tanggal_mulai', 'pkpt_item.tanggal_selesai', 'pkpt_item.target_spt', 'pkpt_item.keterangan']);
+            ->aktif()
+            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt_item.tanggal_mulai', 'pkpt_item.tanggal_selesai',
+                'pkpt_item.tanggal_mulai_disahkan', 'pkpt_item.tanggal_selesai_disahkan', 'pkpt_item.ditambahkan_perubahan_id', 'pkpt_item.target_spt', 'pkpt_item.keterangan']);
     }
 
     /** spt_objek → objek (+ parent): nama, jenis, induk; callers add the key column `kunci` and their own constraints. */

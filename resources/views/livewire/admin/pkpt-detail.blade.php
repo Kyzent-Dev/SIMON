@@ -1,6 +1,6 @@
 {{-- admin.md "PKPT": item editor table with an inline add row; per-row inline edit; delete and "Sahkan PKPT" behind confirm modals.
-     After Disahkan the page is read-only: no edit controls, "Jadwal berlaku" shows the effective range (KesesuaianPkpt) and, when revised,
-     the original as "semula …" with a dashed marker echoing the public timeline (design/public/jadwal.md), plus a "Riwayat revisi" disclosure.
+     After Disahkan the page is read-only: no edit controls, "Jadwal berlaku" shows the item range (KesesuaianPkpt) and, when a Perubahan PKPT
+     moved it, the snapshot as "semula …" with a dashed marker echoing the public timeline (design/public/jadwal.md).
      No animation on the table or inline forms (DESIGN §7.5); modal transitions only. --}}
 @use('App\Support\Tanggal')
 @php
@@ -87,7 +87,6 @@
                         <td class="min-w-44 align-top !py-3"><x-app.type-chip :color="$item->jenisPenugasan->warna" :label="$item->jenisPenugasan->nama" /></td>
                         <td class="min-w-56 align-top !py-3">
                             <x-app.jadwal-berlaku :item="$item" :mulai="$mulai" :selesai="$selesai" />
-                            @unless ($draf)<x-app.riwayat-revisi :revisi="$item->revisi" class="mt-2" />@endunless
                         </td>
                         <td class="min-w-32 align-top !py-3">
                             @if ($item->keterangan){{ $item->keterangan }}@else<span class="text-neutral-500">—</span>@endif
@@ -136,7 +135,7 @@
 
         <x-ui.modal name="pkpt-sahkan" :title="'Sahkan PKPT '.$pkpt->tahun.'?'" size="md" wire:model="sahkanOpen">
             <div class="space-y-3">
-                <p>Setelah disahkan, PKPT ini menjadi hanya-baca: item tidak dapat lagi ditambah, diubah, dihapus, atau diimpor. Perubahan jadwal hanya lewat revisi jadwal yang disetujui pimpinan.</p>
+                <p>Setelah disahkan, PKPT ini menjadi hanya-baca: item tidak dapat lagi ditambah, diubah, dihapus, atau diimpor. Perubahan sesudahnya hanya lewat Perubahan PKPT yang disetujui Pimpinan.</p>
                 <p class="font-semibold">Pengesahan tidak dapat dibatalkan.</p>
                 <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border border-neutral-200 p-3">
                     <dt class="text-neutral-600">Jumlah item</dt><dd class="tabular-nums">{{ $total }}</dd>

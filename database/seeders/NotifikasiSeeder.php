@@ -3,17 +3,12 @@
 namespace Database\Seeders;
 
 use App\Enums\StatusPengajuan;
-use App\Enums\StatusRevisi;
-use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\NomorDibatalkan;
 use App\Notifications\NotifikasiSimon;
 use App\Notifications\PengajuanBaru;
 use App\Notifications\PengajuanDiputuskan;
-use App\Notifications\RevisiJadwalDiajukan;
-use App\Notifications\RevisiJadwalDiputuskan;
 use App\Notifications\RingkasanMingguan;
 use App\Notifications\SptTerlambat;
 use App\Services\RingkasanMingguan as Hitung;
@@ -51,18 +46,6 @@ class NotifikasiSeeder extends Seeder
         // Bagian Umum: new submissions waiting for a number.
         Spt::where('irban_id', $irban->irban_id)->where('status_pengajuan', StatusPengajuan::MenungguNomor)->orderBy('id')->get()
             ->each(fn (Spt $s, int $i) => $this->kirim($umum, fn ($s) => new PengajuanBaru($s), $s, [10, 75, 2900][$i] ?? 4400, $i >= 2));
-
-        // Revisi jadwal: an unsaved revision (no pending revisi row is created) only feeds the notification text.
-        $item = PkptItem::with(['irban', 'jenisPenugasan'])->where('irban_id', $irban->irban_id)->orderBy('tanggal_mulai')->first();
-        if ($item) {
-            $revisi = (new PkptItemRevisi)->forceFill([
-                'tanggal_mulai_semula' => $item->tanggal_mulai, 'tanggal_selesai_semula' => $item->tanggal_selesai,
-                'tanggal_mulai' => $item->tanggal_mulai->addDays(14), 'tanggal_selesai' => $item->tanggal_selesai->addDays(14),
-                'alasan' => 'Objek pemeriksaan meminta penjadwalan ulang.', 'status' => StatusRevisi::Disetujui, 'komentar' => 'Disetujui, sesuaikan SPT terkait.',
-            ])->setRelation('item', $item);
-            $this->kirim($pimpinan, fn ($r) => new RevisiJadwalDiajukan($r), $revisi, 45, false);
-            $this->kirim($irban, fn ($r) => new RevisiJadwalDiputuskan($r), $revisi, 7200, true);
-        }
 
         $this->kirim($pimpinan, fn ($h) => new RingkasanMingguan($h), app(Hitung::class)->hitung(CarbonImmutable::now('Asia/Jakarta')->startOfWeek(CarbonInterface::MONDAY)), 360, false);
     }

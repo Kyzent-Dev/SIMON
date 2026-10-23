@@ -135,7 +135,7 @@ class SimpanSpt
      */
     public function peringatan(array $data, int $irbanId): array
     {
-        $item = PkptItem::with('pkpt')->where('irban_id', $irbanId)->find($this->int($data['pkpt_item_id'] ?? null));
+        $item = PkptItem::aktif()->with('pkpt')->where('irban_id', $irbanId)->find($this->int($data['pkpt_item_id'] ?? null));
         if (! $item) {
             return [];
         }
@@ -196,7 +196,7 @@ class SimpanSpt
         // Non-PKPT is "no item chosen"; it is only accepted when the klasifikasi does not require an item.
         $item = null;
         if ($itemId = $this->int($d['pkpt_item_id'] ?? null)) {
-            $item = PkptItem::with('pkpt')->where('irban_id', $irbanId)->find($itemId);
+            $item = PkptItem::aktif()->with('pkpt')->where('irban_id', $irbanId)->find($itemId);
             if (! $item) {
                 $e['pkpt_item_id'] = 'Item PKPT tidak valid untuk Irban ini.';
             }

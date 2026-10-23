@@ -5,6 +5,7 @@ namespace App\Actions\Pkpt;
 use App\Enums\StatusPkpt;
 use App\Models\Pkpt;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SahkanPkpt
@@ -19,7 +20,11 @@ class SahkanPkpt
         if (! $pkpt->items()->exists()) {
             throw ValidationException::withMessages(['pkpt' => 'PKPT belum memiliki item.']);
         }
-        $pkpt->forceFill(['status' => StatusPkpt::Disahkan, 'disahkan_pada' => now(), 'disahkan_oleh' => $user->id])->save();
+        DB::transaction(function () use ($pkpt, $user) {
+            $pkpt->forceFill(['status' => StatusPkpt::Disahkan, 'disahkan_pada' => now(), 'disahkan_oleh' => $user->id])->save();
+            // Snapshot for "jadwal semula": a later Perubahan PKPT moves the item dates, never these.
+            $pkpt->items()->update(['tanggal_mulai_disahkan' => DB::raw('tanggal_mulai'), 'tanggal_selesai_disahkan' => DB::raw('tanggal_selesai')]);
+        });
 
         return $pkpt;
     }

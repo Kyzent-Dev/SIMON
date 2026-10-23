@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
-use App\Enums\StatusRevisi;
+use App\Enums\StatusItemPkpt;
+use Carbon\CarbonImmutable;
 use Database\Factories\PkptItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['pkpt_id', 'irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'])]
+#[Fillable(['pkpt_id', 'irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt',
+    'status', 'tanggal_mulai_disahkan', 'tanggal_selesai_disahkan', 'ditambahkan_perubahan_id', 'dihapus_perubahan_id'])]
 class PkptItem extends Model
 {
     /** @use HasFactory<PkptItemFactory> */
@@ -16,9 +19,36 @@ class PkptItem extends Model
 
     protected $table = 'pkpt_item';
 
+    protected $attributes = ['status' => 'aktif'];
+
     protected function casts(): array
     {
-        return ['tanggal_mulai' => 'immutable_date', 'tanggal_selesai' => 'immutable_date'];
+        return [
+            'status' => StatusItemPkpt::class,
+            'tanggal_mulai' => 'immutable_date',
+            'tanggal_selesai' => 'immutable_date',
+            'tanggal_mulai_disahkan' => 'immutable_date',
+            'tanggal_selesai_disahkan' => 'immutable_date',
+        ];
+    }
+
+    /** Excludes items removed by a Perubahan PKPT. Column qualified so joins keep working. */
+    public function scopeAktif(Builder $query): void
+    {
+        $query->where('pkpt_item.status', StatusItemPkpt::Aktif->value);
+    }
+
+    /** True when the dates differ from the snapshot taken at pengesahan. */
+    public function direvisi(): bool
+    {
+        return $this->tanggal_mulai_disahkan !== null && $this->tanggal_selesai_disahkan !== null
+            && (! $this->tanggal_mulai_disahkan->equalTo($this->tanggal_mulai) || ! $this->tanggal_selesai_disahkan->equalTo($this->tanggal_selesai));
+    }
+
+    /** @return array{0: CarbonImmutable, 1: CarbonImmutable}|null "Jadwal semula" from the snapshot, only when the item was moved. */
+    public function semula(): ?array
+    {
+        return $this->direvisi() ? [$this->tanggal_mulai_disahkan->startOfDay(), $this->tanggal_selesai_disahkan->startOfDay()] : null;
     }
 
     public function pkpt()
@@ -36,20 +66,19 @@ class PkptItem extends Model
         return $this->belongsTo(JenisPenugasan::class);
     }
 
-    public function revisi()
+    public function spt()
     {
-        return $this->hasMany(PkptItemRevisi::class);
+        return $this->hasMany(Spt::class);
     }
 
-    /** Approved revisions, latest first (by diputuskan_pada, then id). */
-    public function revisiDisetujui()
+    /** The Perubahan PKPT that added this item (null for items of the original PKPT). */
+    public function ditambahkanOleh()
     {
-        return $this->revisi()->where('status', StatusRevisi::Disetujui)->orderByDesc('diputuskan_pada')->orderByDesc('id');
+        return $this->belongsTo(PkptPerubahan::class, 'ditambahkan_perubahan_id');
     }
 
-    /** Latest approved revision; queried fresh so it is never stale, unless a batch caller eager-loaded `revisiDisetujui`. */
-    public function revisiDisetujuiTerakhir(): ?PkptItemRevisi
+    public function operasiPerubahan()
     {
-        return $this->relationLoaded('revisiDisetujui') ? $this->revisiDisetujui->first() : $this->revisiDisetujui()->first();
+        return $this->hasMany(PkptPerubahanItem::class);
     }
 }

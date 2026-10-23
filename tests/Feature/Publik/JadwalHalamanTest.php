@@ -7,7 +7,6 @@ use App\Models\IrbanWilayah;
 use App\Models\Objek;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Services\Publik\JadwalPublik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -60,7 +59,7 @@ class JadwalHalamanTest extends TestCase
     {
         $item = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-31', 'target_spt' => 4]);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
 
         $html = $this->get('/jadwal')->getContent();
         // Semula 1 Jul → Jul M1 = 31, 31 Jul → Jul M5 = 35 → 32 / 37 (dashed outline). Bar 3 Aug → Agu M1 = 36, 28 Aug → Agu M4 = 39 → 37 / 41.

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\StatusItemPkpt;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
@@ -24,5 +25,17 @@ class PkptItemFactory extends Factory
             'keterangan' => null,
             'target_spt' => null,
         ];
+    }
+
+    /** Removed by a Perubahan PKPT (soft): excluded from every view and count. */
+    public function dihapus(): static
+    {
+        return $this->state(['status' => StatusItemPkpt::Dihapus]);
+    }
+
+    /** Snapshot taken at pengesahan = the item's own dates (move the dates afterwards to make it "direvisi"). */
+    public function disahkanDari(): static
+    {
+        return $this->state(fn (array $a) => ['tanggal_mulai_disahkan' => $a['tanggal_mulai'], 'tanggal_selesai_disahkan' => $a['tanggal_selesai']]);
     }
 }

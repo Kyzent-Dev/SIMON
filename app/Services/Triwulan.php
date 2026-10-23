@@ -30,7 +30,7 @@ class Triwulan
         };
     }
 
-    /** Effective range (approved revision first): its start date when the setting is tanggal_mulai, else its end date. */
+    /** Item range (KesesuaianPkpt): its start date when the setting is tanggal_mulai, else its end date. */
     public function tanggalDasarItem(PkptItem $item): CarbonImmutable
     {
         [$mulai, $selesai] = $this->kesesuaian->rentang($item);

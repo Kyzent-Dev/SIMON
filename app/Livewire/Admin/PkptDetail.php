@@ -5,7 +5,6 @@ namespace App\Livewire\Admin;
 use App\Actions\Pkpt\DeletePkptItem;
 use App\Actions\Pkpt\SahkanPkpt;
 use App\Actions\Pkpt\SavePkptItem;
-use App\Enums\StatusRevisi;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
@@ -152,19 +151,17 @@ class PkptDetail extends Component
 
     public function render(KesesuaianPkpt $kesesuaian)
     {
-        $items = $this->pkpt->items()
-            ->with(['irban', 'jenisPenugasan', 'revisi' => fn ($q) => $q->with(['diputuskanOleh', 'diinputOleh', 'diajukanOleh'])->orderBy('created_at')->orderBy('id')])
+        $items = $this->pkpt->items()->aktif()
+            ->with(['irban', 'jenisPenugasan'])
             ->when($this->irbanId !== '', fn ($q) => $q->where('irban_id', $this->irbanId))
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
 
-        // The service decides the effective range; only items with an approved revision need its query.
-        $rentang = $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $i->revisi->contains('status', StatusRevisi::Disetujui)
-            ? $kesesuaian->rentang($i) : [$i->tanggal_mulai, $i->tanggal_selesai]]);
+        $rentang = $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $kesesuaian->rentang($i)]);
 
         return view('livewire.admin.pkpt-detail', [
             'items' => $items,
             'rentang' => $rentang,
-            'total' => $this->pkpt->items()->count(),
+            'total' => $this->pkpt->items()->aktif()->count(),
             'irbans' => Irban::orderBy('id')->pluck('nama', 'id')->all(),
             'jenis' => JenisPenugasan::orderBy('nama')->pluck('nama', 'id')->all(),
             'deleting' => $this->deletingId ? PkptItem::with(['irban', 'jenisPenugasan'])->find($this->deletingId) : null,

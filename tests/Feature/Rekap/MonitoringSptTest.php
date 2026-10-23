@@ -7,7 +7,6 @@ use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Komentar;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Models\SptDokumen;
 use App\Models\SptKendala;
@@ -23,10 +22,10 @@ use Tests\TestCase;
  * Fixture (today 15 Desember 2026, TW by tanggal_selesai, batas terlambat 14 hari):
  *   i1 Irban A, J1, 1–31 Mar            (effective start 1 Mar)
  *   i3 Irban A, J2, 1–30 Apr            (effective start 1 Apr)
- *   i2 Irban B, J2, 1–28 Feb, approved revision 1–31 Mei (effective start 1 Mei → after i3)
+ *   i2 Irban B, J2, disahkan 1–28 Feb, moved by an approved Perubahan to 1–31 Mei (start 1 Mei → after i3)
  *   m1 A i1 J1  5–20 Mar   Selesai, final           → sesuai, TW I
  *   m2 A i1 J1 25 Mar–5 Apr berjalan, kendala       → tidak sesuai, Penyusunan Laporan + terlambat, TW II
- *   m3 B i2 J2 10–20 Mei   Selesai, final           → sesuai via revision, TW II
+ *   m3 B i2 J2 10–20 Mei   Selesai, final           → sesuai via the moved dates, TW II
  *   m4 A i3 J2  2–10 Apr   Selesai, final           → sesuai, TW II
  *   m5 B -  J1 10–20 Des   berjalan, open Minta Penjelasan → non-PKPT, Pelaksanaan, TW IV
  *   m6 A -  J2 20–30 Des   berjalan                 → non-PKPT, Siap Dilaksanakan, TW IV
@@ -63,7 +62,7 @@ class MonitoringSptTest extends TestCase
         $this->i[1] = $item($this->a, $this->j1, '2026-03-01', '2026-03-31');
         $this->i[2] = $item($this->b, $this->j2, '2026-02-01', '2026-02-28');
         $this->i[3] = $item($this->a, $this->j2, '2026-04-01', '2026-04-30');
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $this->i[2]->id, 'tanggal_mulai' => '2026-05-01', 'tanggal_selesai' => '2026-05-31']);
+        $this->i[2]->update(['tanggal_mulai_disahkan' => $this->i[2]->tanggal_mulai, 'tanggal_selesai_disahkan' => $this->i[2]->tanggal_selesai, 'tanggal_mulai' => '2026-05-01', 'tanggal_selesai' => '2026-05-31']);
 
         $spt = function (string $state, Irban $ir, ?int $tw, JenisPenugasan $j, string $m, string $s, int $tahun = 2026) {
             $spt = Spt::factory()->{$state}()->create(['irban_id' => $ir->id, 'pkpt_item_id' => $tw ? $this->i[$tw]->id : null,
@@ -115,7 +114,7 @@ class MonitoringSptTest extends TestCase
         $i2 = $groups[2];
         $this->assertSame($this->i[2]->id, $i2['item_id']);
         $this->assertSame(['id' => $this->j2->id, 'nama' => 'Jenis Dua', 'warna' => '#3F6FA6', 'warna_teks' => '#FFFFFF'], $i2['jenis']);
-        $this->assertSame(['2026-05-01', '2026-05-31'], [$i2['mulai']->toDateString(), $i2['selesai']->toDateString()]); // effective (revision)
+        $this->assertSame(['2026-05-01', '2026-05-31'], [$i2['mulai']->toDateString(), $i2['selesai']->toDateString()]); // item dates (moved)
         $this->assertSame('Irban B', $i2['irban']);
 
         $luar = $groups[3];
@@ -138,7 +137,7 @@ class MonitoringSptTest extends TestCase
         $this->assertSame('sesuai', $groups[0]['spt'][0]['kesesuaian']);
         $this->assertNull($groups[0]['spt'][0]['kendala']);
         $this->assertSame(StatusSpt::Selesai, $groups[0]['spt'][0]['status']);
-        $this->assertSame('sesuai', $groups[2]['spt'][0]['kesesuaian']); // m3 inside the approved revision
+        $this->assertSame('sesuai', $groups[2]['spt'][0]['kesesuaian']); // m3 inside the moved dates
         $this->assertSame('non_pkpt', $luar['spt'][0]['kesesuaian']);
         $this->assertSame(StatusSpt::Pelaksanaan, $luar['spt'][0]['status']);
         $this->assertSame(StatusSpt::SiapDilaksanakan, $luar['spt'][1]['status']);
@@ -211,7 +210,7 @@ class MonitoringSptTest extends TestCase
         $awal = $hitung();
 
         $item = PkptItem::factory()->create(['irban_id' => $this->a->id, 'jenis_penugasan_id' => $this->j1->id]);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id]);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20']);
         Spt::factory()->diterima()->count(50)->create(['irban_id' => $this->a->id, 'pkpt_item_id' => $item->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-06-01', 'tanggal_selesai' => '2026-06-10', 'dibuat_oleh' => User::factory()->create()->id]);
 

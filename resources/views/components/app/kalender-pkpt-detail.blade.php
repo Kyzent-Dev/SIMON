@@ -1,5 +1,5 @@
 {{-- Detail of one KalenderPkpt item, shown in the x-app.kalender-pkpt popover (≥768) and drawer (<768). `aksi`: Livewire method called with the
-     item id for "Ajukan Revisi Jadwal" (null = no button); disabled with the revisi-aksi wording while a revision is pending. `v` keeps ids unique. --}}
+     item id for "Usulkan Perubahan" (null = no button). `v` keeps ids unique. --}}
 @use('App\Support\Tanggal')
 @props(['item', 'aksi' => null, 'v'])
 
@@ -21,13 +21,8 @@
 </dl>
 <x-ui.progress class="mt-4" :nilai="$item['selesai_spt']" :maks="$item['target']" :label="$item['selesai_spt'].' dari '.$item['target'].' SPT selesai'" />
 @if ($aksi)
-    @php $label = 'Ajukan Revisi Jadwal: '.$item['jenis']['nama'].', '.$rentang; @endphp
+    @php $label = 'Usulkan Perubahan: '.$item['jenis']['nama'].', '.$rentang; @endphp
     <div class="mt-4">
-        @if ($item['revisi_menunggu'])
-            <x-ui.button type="button" size="sm" variant="secondary" disabled aria-label="{{ $label }}" aria-describedby="menunggu-{{ $v }}-{{ $item['id'] }}" class="max-md:h-11 max-md:w-full">Ajukan Revisi Jadwal</x-ui.button>
-            <p id="menunggu-{{ $v }}-{{ $item['id'] }}" class="mt-1 text-xs text-neutral-600">Masih ada revisi yang menunggu persetujuan.</p>
-        @else
-            <x-ui.button type="button" size="sm" variant="secondary" wire:click="{{ $aksi }}({{ $item['id'] }})" x-on:click="tutup()" aria-label="{{ $label }}" class="max-md:h-11 max-md:w-full">Ajukan Revisi Jadwal</x-ui.button>
-        @endif
+        <x-ui.button type="button" size="sm" variant="secondary" wire:click="{{ $aksi }}({{ $item['id'] }})" x-on:click="tutup()" aria-label="{{ $label }}" class="max-md:h-11 max-md:w-full">Usulkan Perubahan</x-ui.button>
     </div>
 @endif

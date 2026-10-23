@@ -2,8 +2,6 @@
 
 namespace Tests\Feature\Notifikasi;
 
-use App\Actions\Pkpt\AjukanRevisiJadwal;
-use App\Actions\Pkpt\PutuskanRevisiJadwal;
 use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\MintaRevisi;
 use App\Actions\Spt\SimpanSpt;
@@ -18,14 +16,11 @@ use App\Models\Objek;
 use App\Models\Pegawai;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\NomorDibatalkan;
 use App\Notifications\PengajuanBaru;
 use App\Notifications\PengajuanDiputuskan;
-use App\Notifications\RevisiJadwalDiajukan;
-use App\Notifications\RevisiJadwalDiputuskan;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
@@ -34,7 +29,7 @@ use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
-/** Fase 6 Task 2: notifications sent by the pengajuan and revisi-jadwal actions. */
+/** Fase 6 Task 2: notifications sent by the pengajuan actions (the revisi-jadwal ones were removed in Fase 9.2). */
 class NotifikasiPengajuanRevisiTest extends TestCase
 {
     use RefreshDatabase;
@@ -94,13 +89,6 @@ class NotifikasiPengajuanRevisiTest extends TestCase
     private function simpan(string $mode, ?Spt $spt = null, array $over = []): Spt
     {
         return app(SimpanSpt::class)->handle($this->irbanUser, $spt, $over + $this->data(), $mode);
-    }
-
-    private function ajukanRevisi(string $mulai = '2026-04-06', string $selesai = '2026-04-24'): PkptItemRevisi
-    {
-        return app(AjukanRevisiJadwal::class)->handle($this->irbanUser, $this->item, [
-            'tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai, 'alasan' => 'Bentrok dengan audit khusus.', 'diinput_oleh' => $this->anggota->id,
-        ]);
     }
 
     /** The single notification of this class sent to the user. */
@@ -217,47 +205,6 @@ class NotifikasiPengajuanRevisiTest extends TestCase
         // Already cancelled, and alasan too short.
         $this->gagal(fn () => app(BatalkanNomor::class)->handle($this->bu, $spt->fresh(), 'Alasan yang cukup panjang'));
         $this->gagal(fn () => app(BatalkanNomor::class)->handle($this->bu, $spt->fresh(), 'pendek'));
-    }
-
-    public function test_revisi_jadwal_diajukan_goes_to_pimpinan(): void
-    {
-        NotificationFacade::fake();
-
-        $this->ajukanRevisi();
-
-        $this->assertHanya(RevisiJadwalDiajukan::class, $this->pimpinan);
-        $this->assertSame([
-            'jenis' => 'revisi_jadwal_diajukan', 'judul' => 'Revisi jadwal PKPT diajukan oleh Irban I',
-            'konteks' => 'Reviu LKjIP · 2–20 Maret 2026 → 6–24 April 2026', 'url' => '/pimpinan/revisi-jadwal', 'catatan' => 'Bentrok dengan audit khusus.',
-        ], $this->dikirim($this->pimpinan, RevisiJadwalDiajukan::class)->toArray($this->pimpinan));
-
-        // A pending revision already exists: the second submit fails and sends nothing.
-        $this->gagal(fn () => $this->ajukanRevisi());
-    }
-
-    public function test_revisi_jadwal_diputuskan_goes_to_the_irban(): void
-    {
-        $r = $this->ajukanRevisi();
-        NotificationFacade::fake();
-
-        app(PutuskanRevisiJadwal::class)->handle($this->pimpinan, $r, true, null);
-
-        $this->assertHanya(RevisiJadwalDiputuskan::class, $this->irbanUser);
-        $this->assertSame([
-            'jenis' => 'revisi_jadwal_disetujui', 'judul' => 'Revisi jadwal PKPT disetujui', 'konteks' => 'Reviu LKjIP · 6–24 April 2026',
-            'url' => '/irban/pkpt', 'catatan' => null,
-        ], $this->dikirim($this->irbanUser, RevisiJadwalDiputuskan::class)->toArray($this->irbanUser));
-
-        // Already decided: nothing more is sent.
-        $this->gagal(fn () => app(PutuskanRevisiJadwal::class)->handle($this->pimpinan, $r, false, 'Tidak bisa.'));
-
-        NotificationFacade::fake();
-        $r2 = $this->ajukanRevisi('2026-05-04', '2026-05-22');
-        app(PutuskanRevisiJadwal::class)->handle($this->pimpinan, $r2, false, 'Jadwal tidak dapat digeser.');
-        $this->assertSame([
-            'jenis' => 'revisi_jadwal_ditolak', 'judul' => 'Revisi jadwal PKPT ditolak', 'konteks' => 'Reviu LKjIP · 4–22 Mei 2026',
-            'url' => '/irban/pkpt', 'catatan' => 'Jadwal tidak dapat digeser.',
-        ], $this->dikirim($this->irbanUser, RevisiJadwalDiputuskan::class)->toArray($this->irbanUser));
     }
 
     public function test_notification_inside_a_rolled_back_transaction_is_not_delivered(): void

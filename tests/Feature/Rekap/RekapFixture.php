@@ -7,7 +7,7 @@ use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
+use App\Models\PkptUsulan;
 use App\Models\Spt;
 use Carbon\CarbonImmutable;
 
@@ -17,9 +17,9 @@ use Carbon\CarbonImmutable;
  * PKPT 2026 Disahkan, items (TW by effective end date):
  *   a1 Irban A, J1, 10 Jan–31 Mar, target 2        → TW I   (31 Maret edge)
  *   a2 Irban A, J2, 20 Mar–1 Apr, target null (=1)  → TW II  (1 April edge)
- *   a3 Irban A, J1, 1–31 Jul, target 3, approved revision 1–20 Okt → TW IV
+ *   a3 Irban A, J1, disahkan 1–31 Jul, moved by an approved Perubahan to 1–20 Okt, target 3 → TW IV
  *   b1 Irban B, J2, 1 Mei–30 Jun, target 2         → TW II
- *   b2 Irban B, J1, 1 Agu–30 Sep, target null (=1), pending revision to Des (ignored) → TW III
+ *   b2 Irban B, J1, 1 Agu–30 Sep, target null (=1), open usulan to Des (ignored) → TW III
  * PKPT 2027 Draf with an item dated Februari 2026, target 5 → ignored in 2026 (other year) and 2027 (Draf).
  *
  * SPT (R = REGULER, K = KHUSUS):
@@ -63,15 +63,15 @@ trait RekapFixture
         $this->k = Klasifikasi::where('kode', 'KHUSUS')->value('id');
 
         $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
-        $item = fn (Irban $i, JenisPenugasan $j, string $m, string $s, ?int $t) => PkptItem::factory()->create(
+        $item = fn (Irban $i, JenisPenugasan $j, string $m, string $s, ?int $t) => PkptItem::factory()->disahkanDari()->create(
             ['pkpt_id' => $pkpt->id, 'irban_id' => $i->id, 'jenis_penugasan_id' => $j->id, 'tanggal_mulai' => $m, 'tanggal_selesai' => $s, 'target_spt' => $t]);
         $a1 = $item($this->a, $this->j1, '2026-01-10', '2026-03-31', 2);
         $a2 = $item($this->a, $this->j2, '2026-03-20', '2026-04-01', null);
         $a3 = $item($this->a, $this->j1, '2026-07-01', '2026-07-31', 3);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $a3->id, 'tanggal_mulai' => '2026-10-01', 'tanggal_selesai' => '2026-10-20']);
+        $a3->update(['tanggal_mulai' => '2026-10-01', 'tanggal_selesai' => '2026-10-20']);
         $b1 = $item($this->b, $this->j2, '2026-05-01', '2026-06-30', 2);
         $b2 = $item($this->b, $this->j1, '2026-08-01', '2026-09-30', null);
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $b2->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-20']);
+        PkptUsulan::factory()->create(['pkpt_item_id' => $b2->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-20']);
         $draf = Pkpt::factory()->create(['tahun' => 2027]);
         PkptItem::factory()->create(['pkpt_id' => $draf->id, 'irban_id' => $this->a->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-02-01', 'tanggal_selesai' => '2026-02-28', 'target_spt' => 5]);

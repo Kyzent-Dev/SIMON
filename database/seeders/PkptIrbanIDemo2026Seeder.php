@@ -69,7 +69,9 @@ class PkptIrbanIDemo2026Seeder extends Seeder
             $keep[] = PkptItem::firstOrCreate([
                 'pkpt_id' => $pkpt->id, 'irban_id' => $irbanId, 'jenis_penugasan_id' => $jenis->id,
                 'tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai,
-            ], ['keterangan' => $keterangan, 'target_spt' => null])->id;
+            ], ['keterangan' => $keterangan, 'target_spt' => null,
+                // Pengesahan snapshot ("jadwal semula"), as SahkanPkpt would write it.
+                'tanggal_mulai_disahkan' => $pkpt->isDraf() ? null : $mulai, 'tanggal_selesai_disahkan' => $pkpt->isDraf() ? null : $selesai])->id;
         }
 
         PkptItem::where('pkpt_id', $pkpt->id)->where('irban_id', $irbanId)

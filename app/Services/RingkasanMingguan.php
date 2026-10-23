@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
-use App\Enums\StatusRevisi;
-use App\Models\PkptItemRevisi;
+use App\Enums\StatusPerubahan;
+use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Models\SptRiwayat;
 use Carbon\CarbonImmutable;
@@ -17,7 +17,7 @@ class RingkasanMingguan
 
     public function __construct(private PenandaSpt $penanda, private Settings $settings) {}
 
-    /** @return array{awal: CarbonImmutable, akhir: CarbonImmutable, nomor: int, selesai: int, menunggu_nomor: int, revisi: int, terlambat: int, daftar: list<string>, lainnya: int} */
+    /** @return array{awal: CarbonImmutable, akhir: CarbonImmutable, nomor: int, selesai: int, menunggu_nomor: int, perubahan: int, terlambat: int, daftar: list<string>, lainnya: int} */
     public function hitung(CarbonImmutable $senin): array
     {
         $senin = $senin->startOfDay();
@@ -36,7 +36,7 @@ class RingkasanMingguan
             'nomor' => $riwayat([KejadianSpt::DITERIMA, KejadianSpt::DICATAT_MANUAL]),
             'selesai' => $riwayat([KejadianSpt::DITANDAI_SELESAI]),
             'menunggu_nomor' => Spt::where('status_pengajuan', StatusPengajuan::MenungguNomor)->count(),
-            'revisi' => PkptItemRevisi::where('status', StatusRevisi::Menunggu)->count(),
+            'perubahan' => PkptPerubahan::where('status', StatusPerubahan::Diajukan)->count(),
             'terlambat' => $terlambat->count(),
             'daftar' => $terlambat->take(self::MAKS_DAFTAR)->map(fn (Spt $s) => "{$s->nomor_lengkap} · {$s->irban->nama} · "
                 .$s->tanggal_selesai->startOfDay()->diffInDays($hariIni).' hari sejak tanggal selesai')->all(),

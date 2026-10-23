@@ -2,10 +2,8 @@
 
 namespace Tests\Feature\Spt;
 
-use App\Actions\Pkpt\PutuskanRevisiJadwal;
 use App\Enums\KejadianSpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Models\SptDokumen;
 use App\Models\SptKendala;
@@ -92,7 +90,7 @@ class PenandaSptTest extends TestCase
         $this->assertNotContains('spt_final_belum_diupload', $this->penanda(Spt::factory()->menungguNomor()->create(['tanggal_mulai' => '2026-03-01'])));
     }
 
-    public function test_tidak_sesuai_pkpt_kendala_and_approved_revision(): void
+    public function test_tidak_sesuai_pkpt_kendala_and_moved_item(): void
     {
         $this->hari('2026-03-15');
         $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
@@ -106,9 +104,8 @@ class PenandaSptTest extends TestCase
         $this->assertFalse($penanda->perluKendala($spt->fresh()));
         $this->assertSame(['tidak_sesuai_pkpt'], $this->penanda($spt));
 
-        // PRD §14 #3: approving a revision that covers the dates removes the flag.
-        $revisi = PkptItemRevisi::factory()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-31']);
-        app(PutuskanRevisiJadwal::class)->handle(User::factory()->pimpinan()->create(), $revisi, true, null);
+        // PRD §14 #3: an approved Perubahan PKPT that moves the item over the dates removes the flag.
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-31']);
         $this->assertSame([], $this->penanda($spt));
         $this->assertFalse($penanda->perluKendala($spt->fresh()));
     }
@@ -135,7 +132,7 @@ class PenandaSptTest extends TestCase
         $this->hari('2026-04-30');
         $buat = function (int $n): void {
             $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-05']);
-            PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-31']);
+            $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-31']);
             $user = User::factory()->create();
             for ($i = 0; $i < $n; $i++) {
                 $this->spt(['pkpt_item_id' => $i % 2 ? $item->id : null, 'dibuat_oleh' => $user->id], final: $i % 3 === 0);

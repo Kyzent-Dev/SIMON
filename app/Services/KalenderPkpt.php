@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\StatusRevisi;
 use App\Enums\StatusSpt;
 use App\Models\Spt;
 use App\Services\Publik\RealisasiPublik;
@@ -17,30 +16,27 @@ class KalenderPkpt
 
     /**
      * @return list<array{bulan: int, nama: string, minggu: array<int, array{ada: bool, mulai: ?CarbonImmutable, selesai: ?CarbonImmutable, ini: bool, item: list<array>}>}>
-     *                                                                                                                                                                       item = {id, jenis: {id, nama, warna, warna_teks}, keterangan, mulai, selesai, semula: ?array{0,1}, direvisi, revisi_menunggu, selesai_spt, target}
+     *                                                                                                                                                                       item = {id, jenis: {id, nama, warna, warna_teks}, keterangan, mulai, selesai, semula: ?array{0,1}, direvisi, selesai_spt, target}
      */
     public function untuk(int $tahun, int $irbanId): array
     {
         $item = $this->realisasi->itemDisahkan($tahun, $irbanId);
         $ids = $item->pluck('id');
         $jenis = DB::table('jenis_penugasan')->whereIn('id', $item->pluck('jenis_penugasan_id')->unique())->get(['id', 'nama', 'warna', 'warna_teks'])->keyBy('id');
-        $menunggu = DB::table('pkpt_item_revisi')->where('status', StatusRevisi::Menunggu->value)->whereIn('pkpt_item_id', $ids)->pluck('pkpt_item_id')->flip();
         $selesai = Spt::query()->berstatus(StatusSpt::Selesai)->whereIn('pkpt_item_id', $ids)
             ->selectRaw('pkpt_item_id, count(*) as jumlah')->groupBy('pkpt_item_id')->pluck('jumlah', 'pkpt_item_id');
 
         $sel = [];
         foreach ($item as $i) {
             [$mulai, $akhir] = $this->kesesuaian->rentang($i);
-            $direvisi = $i->revisiDisetujuiTerakhir() !== null;
             $baris = [
                 'id' => $i->id,
                 'jenis' => (array) $jenis[$i->jenis_penugasan_id],
                 'keterangan' => $i->keterangan,
                 'mulai' => $mulai,
                 'selesai' => $akhir,
-                'semula' => $direvisi ? [$i->tanggal_mulai->startOfDay(), $i->tanggal_selesai->startOfDay()] : null,
-                'direvisi' => $direvisi,
-                'revisi_menunggu' => $menunggu->has($i->id),
+                'semula' => $i->semula(),
+                'direvisi' => $i->direvisi(),
                 'selesai_spt' => (int) ($selesai[$i->id] ?? 0),
                 'target' => $i->target_spt ?? 1,
             ];

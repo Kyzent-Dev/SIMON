@@ -14,7 +14,6 @@ use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\User;
 use App\Services\KesesuaianPkpt;
 use Database\Seeders\DatabaseSeeder;
@@ -132,7 +131,7 @@ class PkptRulesTest extends TestCase
         $this->assertSame($admin->id, $fresh->disahkan_oleh);
     }
 
-    public function test_rentang_ignores_unapproved_revisions_and_keeps_original_columns(): void
+    public function test_rentang_is_the_item_dates_never_the_snapshot(): void
     {
         $svc = new KesesuaianPkpt;
         $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
@@ -140,26 +139,12 @@ class PkptRulesTest extends TestCase
 
         $this->assertSame(['2026-03-02', '2026-03-20'], $fmt());
 
-        PkptItemRevisi::factory()->for($item, 'item')->create(); // menunggu
-        PkptItemRevisi::factory()->ditolak()->for($item, 'item')->create(['tanggal_mulai' => '2026-05-01', 'tanggal_selesai' => '2026-05-02']);
-        $this->assertSame(['2026-03-02', '2026-03-20'], $fmt());
-
-        PkptItemRevisi::factory()->disetujui()->for($item, 'item')->create(['tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20', 'diputuskan_pada' => '2026-02-01 10:00:00']);
-        $this->assertSame(['2026-04-01', '2026-04-20'], $fmt());
-
-        PkptItemRevisi::factory()->disetujui()->for($item, 'item')->create(['tanggal_mulai' => '2026-06-01', 'tanggal_selesai' => '2026-06-20', 'diputuskan_pada' => '2026-02-05 10:00:00']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-06-01', 'tanggal_selesai' => '2026-06-20']);
         $this->assertSame(['2026-06-01', '2026-06-20'], $fmt());
-
-        // Older decision time loses even with a higher id.
-        PkptItemRevisi::factory()->disetujui()->for($item, 'item')->create(['tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-20', 'diputuskan_pada' => '2026-02-03 10:00:00']);
-        $this->assertSame(['2026-06-01', '2026-06-20'], $fmt());
-
-        $fresh = $item->fresh();
-        $this->assertSame('2026-03-02', $fresh->tanggal_mulai->toDateString());
-        $this->assertSame('2026-03-20', $fresh->tanggal_selesai->toDateString());
+        $this->assertSame('2026-03-02', $item->fresh()->tanggal_mulai_disahkan->toDateString());
     }
 
-    public function test_sesuai_is_inclusive_and_uses_revised_range(): void
+    public function test_sesuai_is_inclusive_and_uses_the_moved_range(): void
     {
         $svc = new KesesuaianPkpt;
         $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
@@ -169,7 +154,7 @@ class PkptRulesTest extends TestCase
         $this->assertFalse($svc->sesuai($item, '2026-03-01', '2026-03-20'));
         $this->assertFalse($svc->sesuai($item, '2026-03-02', '2026-03-21'));
 
-        PkptItemRevisi::factory()->disetujui()->for($item, 'item')->create(['tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20']);
         $this->assertFalse($svc->sesuai($item, '2026-03-02', '2026-03-20'));
         $this->assertTrue($svc->sesuai($item, '2026-04-01', '2026-04-20'));
     }

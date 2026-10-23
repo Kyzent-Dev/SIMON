@@ -23,7 +23,7 @@ class RealisasiItemPkpt
     public function untuk(int $tahun, int $tw, ?int $irbanId): array
     {
         $irbans = Irban::orderBy('id')->when($irbanId, fn ($q) => $q->whereKey($irbanId))->get(['id', 'nama']);
-        $items = PkptItem::with(['revisiDisetujui', 'jenisPenugasan'])
+        $items = PkptItem::aktif()->with('jenisPenugasan')
             ->whereHas('pkpt', fn ($q) => $q->where('tahun', $tahun)->where('status', StatusPkpt::Disahkan))
             ->when($irbanId, fn ($q) => $q->where('irban_id', $irbanId))
             ->get();
@@ -50,7 +50,7 @@ class RealisasiItemPkpt
                 'keterangan' => $item->keterangan,
                 'mulai' => $mulai,
                 'selesai' => $selesai,
-                'direvisi' => $item->revisiDisetujuiTerakhir() !== null,
+                'direvisi' => $item->direvisi(),
                 'spt' => $rows,
             ];
         }

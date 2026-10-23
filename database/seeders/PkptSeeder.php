@@ -34,6 +34,8 @@ class PkptSeeder extends Seeder
                     $sekarang->items()->create([
                         'irban_id' => $irbanId, 'jenis_penugasan_id' => $jenis[($i + $n) % count($jenis)],
                         'tanggal_mulai' => "{$tahun}-{$mulai}", 'tanggal_selesai' => "{$tahun}-{$selesai}", 'target_spt' => 2,
+                        // Disahkan: the pengesahan snapshot ("jadwal semula") equals the dates.
+                        'tanggal_mulai_disahkan' => "{$tahun}-{$mulai}", 'tanggal_selesai_disahkan' => "{$tahun}-{$selesai}",
                     ]);
                 }
             }

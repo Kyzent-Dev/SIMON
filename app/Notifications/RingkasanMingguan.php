@@ -36,7 +36,7 @@ class RingkasanMingguan extends NotifikasiSimon
     {
         $h = $this->hasil;
         $baris = ["Nomor SPT terbit: {$h['nomor']}", "SPT ditandai Selesai: {$h['selesai']}", "Pengajuan menunggu nomor: {$h['menunggu_nomor']}",
-            "Revisi jadwal menunggu persetujuan: {$h['revisi']}", "SPT terlambat: {$h['terlambat']}", ...$h['daftar']];
+            "Perubahan PKPT menunggu persetujuan: {$h['perubahan']}", "SPT terlambat: {$h['terlambat']}", ...$h['daftar']];
         if ($h['lainnya'] > 0) {
             $baris[] = "dan {$h['lainnya']} lainnya.";
         }

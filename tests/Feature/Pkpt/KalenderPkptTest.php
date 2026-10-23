@@ -6,7 +6,7 @@ use App\Models\Irban;
 use App\Models\IrbanWilayah;
 use App\Models\Objek;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
+use App\Models\PkptUsulan;
 use App\Services\KalenderPkpt;
 use App\Services\WilayahPengawasan;
 use Database\Seeders\IrbanSeeder;
@@ -107,9 +107,9 @@ class KalenderPkptTest extends TestCase
         $this->assertSame(['3-3'], $ini);
 
         $item = $k[0]['minggu'][2]['item'][0];
-        $this->assertSame(['id', 'jenis', 'keterangan', 'mulai', 'selesai', 'semula', 'direvisi', 'revisi_menunggu', 'selesai_spt', 'target'], array_keys($item));
+        $this->assertSame(['id', 'jenis', 'keterangan', 'mulai', 'selesai', 'semula', 'direvisi', 'selesai_spt', 'target'], array_keys($item));
         $this->assertSame(['id', 'nama', 'warna', 'warna_teks'], array_keys($item['jenis']));
-        $this->assertSame([null, false, false, 0, 1], [$item['semula'], $item['direvisi'], $item['revisi_menunggu'], $item['selesai_spt'], $item['target']]);
+        $this->assertSame([null, false, 0, 1], [$item['semula'], $item['direvisi'], $item['selesai_spt'], $item['target']]);
     }
 
     public function test_no_current_week_outside_the_year(): void
@@ -119,20 +119,20 @@ class KalenderPkptTest extends TestCase
         $this->assertSame([], array_filter(array_merge(...array_map(fn ($b) => array_column($b['minggu'], 'ini'), $k))));
     }
 
-    public function test_approved_revision_moves_the_item_and_pending_is_flagged(): void
+    public function test_moved_item_shows_semula_and_open_usulan_changes_nothing(): void
     {
         $item = PkptItem::where('irban_id', $this->irban->id)->whereDate('tanggal_mulai', '2026-06-29')->first(); // Jul M1
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
         $lain = PkptItem::where('irban_id', $this->irban->id)->whereDate('tanggal_mulai', '2026-10-05')->first(); // Okt M1
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $lain->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-02']);
+        PkptUsulan::factory()->create(['pkpt_item_id' => $lain->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-02']);
 
         $k = app(KalenderPkpt::class)->untuk(2026, $this->irban->id);
 
         $this->assertSame([], $k[6]['minggu'][1]['item']);
         $baru = collect($k[10]['minggu'][1]['item'])->firstWhere('id', $item->id);
         $this->assertSame([true, '2026-06-29', '2026-11-02'], [$baru['direvisi'], $baru['semula'][0]->toDateString(), $baru['mulai']->toDateString()]);
-        $menunggu = $k[9]['minggu'][1]['item'][0];
-        $this->assertSame([$lain->id, false, true], [$menunggu['id'], $menunggu['direvisi'], $menunggu['revisi_menunggu']]);
+        $tetap = $k[9]['minggu'][1]['item'][0];
+        $this->assertSame([$lain->id, false, null], [$tetap['id'], $tetap['direvisi'], $tetap['semula']]);
     }
 
     public function test_other_irban_items_never_appear_and_query_count_is_constant(): void

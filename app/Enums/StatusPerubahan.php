@@ -2,16 +2,18 @@
 
 namespace App\Enums;
 
-enum StatusRevisi: string
+enum StatusPerubahan: string
 {
-    case Menunggu = 'menunggu';
+    case Draf = 'draf';
+    case Diajukan = 'diajukan';
     case Disetujui = 'disetujui';
     case Ditolak = 'ditolak';
 
     public function label(): string
     {
         return match ($this) {
-            self::Menunggu => 'Menunggu Persetujuan',
+            self::Draf => 'Draf',
+            self::Diajukan => 'Diajukan',
             self::Disetujui => 'Disetujui',
             self::Ditolak => 'Ditolak',
         };
@@ -21,9 +23,16 @@ enum StatusRevisi: string
     public function tag(): array
     {
         return match ($this) {
-            self::Menunggu => ['icon' => 'clock', 'variant' => 'warning'],
+            self::Draf => ['icon' => 'pencil-square', 'variant' => 'neutral'],
+            self::Diajukan => ['icon' => 'clock', 'variant' => 'warning'],
             self::Disetujui => ['icon' => 'check', 'variant' => 'mint'],
             self::Ditolak => ['icon' => 'x-circle', 'variant' => 'danger'],
         };
+    }
+
+    /** Only one open package (draf, diajukan or ditolak) per PKPT. */
+    public function terbuka(): bool
+    {
+        return $this !== self::Disetujui;
     }
 }

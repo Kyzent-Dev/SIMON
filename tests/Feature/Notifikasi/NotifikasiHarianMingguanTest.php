@@ -4,7 +4,7 @@ namespace Tests\Feature\Notifikasi;
 
 use App\Enums\KejadianSpt;
 use App\Models\Irban;
-use App\Models\PkptItemRevisi;
+use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Models\SptDokumen;
 use App\Models\SptRiwayat;
@@ -161,14 +161,15 @@ class NotifikasiHarianMingguanTest extends TestCase
         $this->riwayat($a, KejadianSpt::DITANDAI_SELESAI, '2026-04-13 00:00');
         $this->riwayat($a, KejadianSpt::DIAJUKAN, '2026-04-08 10:00');
         Spt::factory()->menungguNomor()->count(2)->create();
-        PkptItemRevisi::factory()->count(3)->create();
-        PkptItemRevisi::factory()->disetujui()->create();
+        PkptPerubahan::factory()->diajukan()->count(3)->create();
+        PkptPerubahan::factory()->disetujui()->create();
+        PkptPerubahan::factory()->create(); // draf
 
         $h = app(HitungRingkasan::class)->hitung(CarbonImmutable::parse('2026-04-13', 'Asia/Jakarta'));
         $this->assertSame(2, $h['nomor']);
         $this->assertSame(1, $h['selesai']);
         $this->assertSame(2, $h['menunggu_nomor']);
-        $this->assertSame(3, $h['revisi']);
+        $this->assertSame(3, $h['perubahan']);
         $this->assertSame(0, $h['terlambat']);
     }
 

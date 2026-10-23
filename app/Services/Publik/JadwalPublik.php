@@ -51,7 +51,7 @@ class JadwalPublik
                 'irban' => $namaIrban[$i->irban_id],
                 'mulai' => $mulai,
                 'selesai' => $akhir,
-                'semula' => $i->revisiDisetujuiTerakhir() ? [$i->tanggal_mulai->startOfDay(), $i->tanggal_selesai->startOfDay()] : null,
+                'semula' => $i->semula(),
                 'wilayah' => $wilayah[$i->id] ?? self::BELUM_DITENTUKAN,
                 'selesaiSpt' => (int) ($selesai[$i->id] ?? 0),
                 'target' => $i->target_spt ?? 1,

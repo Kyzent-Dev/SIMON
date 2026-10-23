@@ -9,7 +9,6 @@ use App\Models\JenisPenugasan;
 use App\Models\Objek;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\User;
 use Database\Seeders\IrbanSeeder;
 use Database\Seeders\JenisPenugasanSeeder;
@@ -50,17 +49,17 @@ class KalenderIrbanTest extends TestCase
     {
         $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()
             ->assertSee('data-kalender-pkpt', false)->assertSee('Minggu ini')->assertSee('6–10 Apr')
-            ->assertSee('1 tim 1 minggu 2 sekolah')->assertDontSee('Revisi terakhir');
+            ->assertSee('1 tim 1 minggu 2 sekolah')->assertDontSee('aria-label="Item PKPT Irban I 2026"', false);
 
         $this->actingAs($this->user)->get('/irban/pkpt?tampilan=tabel')->assertOk()
-            ->assertSee('Revisi terakhir')->assertDontSee('data-kalender-pkpt', false);
+            ->assertSee('aria-label="Item PKPT Irban I 2026"', false)->assertDontSee('data-kalender-pkpt', false);
 
         $this->actingAs($this->user)->get('/irban/pkpt?tampilan=xyz')->assertOk()
-            ->assertSee('data-kalender-pkpt', false)->assertDontSee('Revisi terakhir');
+            ->assertSee('data-kalender-pkpt', false)->assertDontSee('aria-label="Item PKPT Irban I 2026"', false);
 
         Livewire::actingAs($this->user)->test(IrbanPage::class)
             ->assertSet('tampilan', 'kalender')
-            ->set('tampilan', 'tabel')->assertSee('Revisi terakhir')
+            ->set('tampilan', 'tabel')->assertSee('aria-label="Item PKPT Irban I 2026"', false)
             ->set('tampilan', 'bogus')->assertSet('tampilan', 'kalender')->assertSee('data-kalender-pkpt', false);
     }
 
@@ -82,38 +81,25 @@ class KalenderIrbanTest extends TestCase
             ->assertDontSee('Kecamatan Milik Lain')->assertDontSee('Jenis Rahasia Irban Lain')->assertDontSee('Keterangan irban lain');
     }
 
-    public function test_buka_from_calendar_opens_modal_and_scopes_to_own_items(): void
+    /** Fase 9.2 Task 5: the old "Ajukan Revisi Jadwal" flow is gone; "Usulkan Perubahan" arrives in Task 9. */
+    public function test_no_revision_controls_in_calendar_or_table(): void
     {
-        $item = $this->item('2026-10-19');
-        $lain = PkptItem::factory()->create(['pkpt_id' => $item->pkpt_id, 'irban_id' => $this->lain->id]);
-
-        Livewire::actingAs($this->user)->test(IrbanPage::class)
-            ->assertSee('wire:click="buka('.$item->id.')"', false)
-            ->call('buka', $item->id)->assertSet('open', true)->assertSet('itemId', $item->id)
-            ->assertSet('tanggal_mulai', '2026-10-19')->assertSee('Alasan revisi');
-
-        Livewire::actingAs($this->user)->test(IrbanPage::class)->call('buka', $lain->id)->assertNotFound();
+        foreach (['kalender', 'tabel'] as $tampilan) {
+            $this->actingAs($this->user)->get('/irban/pkpt?tampilan='.$tampilan)->assertOk()
+                ->assertDontSee('Ajukan Revisi')->assertDontSee('wire:click="buka', false)->assertDontSee('Usulkan Perubahan');
+        }
     }
 
-    public function test_pending_revision_disables_with_reason_and_buka_toasts(): void
-    {
-        $item = $this->item('2026-10-05');
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-02']);
-
-        Livewire::actingAs($this->user)->test(IrbanPage::class)
-            ->assertSee('Masih ada revisi yang menunggu persetujuan.')
-            ->assertDontSee('wire:click="buka('.$item->id.')"', false)
-            ->call('buka', $item->id)->assertSet('open', false)
-            ->assertDispatched('toast', type: 'error', message: 'Item ini masih punya revisi yang menunggu persetujuan.');
-    }
-
-    public function test_approved_revision_shows_marker_and_semula(): void
+    public function test_moved_item_shows_marker_and_semula_and_dihapus_is_hidden(): void
     {
         $item = $this->item('2026-06-29');
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        PkptItem::factory()->dihapus()->create(['pkpt_id' => $item->pkpt_id, 'irban_id' => $this->irban->id, 'keterangan' => 'Item yang dihapus']);
 
         $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()
-            ->assertSee('Jadwal direvisi')->assertSee('29 Juni – 3 Juli 2026')->assertSee('2–6 November 2026');
+            ->assertSee('Jadwal direvisi')->assertSee('29 Juni – 3 Juli 2026')->assertSee('2–6 November 2026')->assertDontSee('Item yang dihapus');
+        $this->actingAs($this->user)->get('/irban/pkpt?tampilan=tabel')->assertOk()
+            ->assertSee('semula 29 Juni – 3 Juli 2026')->assertDontSee('Item yang dihapus');
     }
 
     public function test_legend_lists_present_jenis_only(): void

@@ -6,7 +6,6 @@ use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Services\Publik\JadwalPublik;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\RekapTriwulan;
@@ -216,12 +215,12 @@ class RealisasiPublikTest extends TestCase
 
     public function test_rencana_matches_the_pimpinan_rekap(): void
     {
-        // Extra items: C 1–31 Jul revised (approved) to 28 Sep – 2 Okt (TW III by start, TW IV by end), target 3;
-        // C Des 2026 revised (approved) into Jan 2027 → outside 2026 by end date, inside by start date.
+        // Extra items: C 1–31 Jul moved (approved Perubahan) to 28 Sep – 2 Okt (TW III by start, TW IV by end), target 3;
+        // C Des 2026 moved into Jan 2027 → outside 2026 by end date, inside by start date.
         $c1 = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-31', 'target_spt' => 3]);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $c1->id, 'tanggal_mulai' => '2026-09-28', 'tanggal_selesai' => '2026-10-02']);
+        $c1->update(['tanggal_mulai_disahkan' => $c1->tanggal_mulai, 'tanggal_selesai_disahkan' => $c1->tanggal_selesai, 'tanggal_mulai' => '2026-09-28', 'tanggal_selesai' => '2026-10-02']);
         $c2 = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-20']);
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $c2->id, 'tanggal_mulai' => '2026-12-28', 'tanggal_selesai' => '2027-01-08']);
+        $c2->update(['tanggal_mulai_disahkan' => $c2->tanggal_mulai, 'tanggal_selesai_disahkan' => $c2->tanggal_selesai, 'tanggal_mulai' => '2026-12-28', 'tanggal_selesai' => '2027-01-08']);
 
         foreach (['tanggal_selesai', 'tanggal_mulai', 'tanggal_lhp'] as $dasar) {
             app(Settings::class)->set('rekap.dasar_triwulan', $dasar);

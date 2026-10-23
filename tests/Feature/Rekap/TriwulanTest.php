@@ -3,7 +3,6 @@
 namespace Tests\Feature\Rekap;
 
 use App\Models\PkptItem;
-use App\Models\PkptItemRevisi;
 use App\Models\Spt;
 use App\Services\Settings;
 use App\Services\Triwulan;
@@ -66,7 +65,7 @@ class TriwulanTest extends TestCase
         $this->assertNull($lhp->tanggalDasar($kosong));
     }
 
-    public function test_item_basis_date_uses_approved_revision_and_setting(): void
+    public function test_item_basis_date_uses_item_dates_and_setting(): void
     {
         $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-31', 'tanggal_selesai' => '2026-04-01']);
 
@@ -74,9 +73,7 @@ class TriwulanTest extends TestCase
         $this->assertSame('2026-04-01', $this->triwulan('tanggal_lhp')->tanggalDasarItem($item)->toDateString()); // items have no LHP: end date
         $this->assertSame('2026-03-31', $this->triwulan('tanggal_mulai')->tanggalDasarItem($item)->toDateString());
 
-        PkptItemRevisi::factory()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-06-30', 'tanggal_selesai' => '2026-07-01']);
-        $this->assertSame('2026-03-31', $this->triwulan('tanggal_mulai')->tanggalDasarItem($item->fresh())->toDateString()); // pending revision ignored
-        PkptItemRevisi::factory()->disetujui()->create(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-06-30', 'tanggal_selesai' => '2026-07-01']);
+        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-06-30', 'tanggal_selesai' => '2026-07-01']); // moved by an approved Perubahan PKPT
         $this->assertSame('2026-06-30', $this->triwulan('tanggal_mulai')->tanggalDasarItem($item->fresh())->toDateString());
         $this->assertSame('2026-07-01', $this->triwulan('tanggal_selesai')->tanggalDasarItem($item->fresh())->toDateString());
     }

@@ -324,7 +324,7 @@ class SptForm extends Component
 
     private function item(): ?PkptItem
     {
-        return $this->pkpt_item_id ? PkptItem::with(['jenisPenugasan', 'pkpt'])->where('irban_id', $this->irban()->irban_id)->find($this->pkpt_item_id) : null;
+        return $this->pkpt_item_id ? PkptItem::aktif()->with(['jenisPenugasan', 'pkpt'])->where('irban_id', $this->irban()->irban_id)->find($this->pkpt_item_id) : null;
     }
 
     private function saran(): ?string
@@ -343,7 +343,7 @@ class SptForm extends Component
         $user = $this->irban();
         $tahun = DiinputOleh::tahun();
         $spt = $this->sptId ? Spt::with('dokumen')->where('irban_id', $user->irban_id)->find($this->sptId) : null;
-        $items = PkptItem::with(['jenisPenugasan', 'pkpt'])->where('irban_id', $user->irban_id)
+        $items = PkptItem::aktif()->with(['jenisPenugasan', 'pkpt'])->where('irban_id', $user->irban_id)
             ->whereHas('pkpt', fn ($q) => $q->where('tahun', $tahun))->orderBy('tanggal_mulai')->get();
         $rentang = $items->mapWithKeys(fn ($i) => [$i->id => Tanggal::rentang(...$kesesuaian->rentang($i))]);
         $item = $items->firstWhere('id', $this->pkpt_item_id);

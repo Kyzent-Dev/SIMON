@@ -53,7 +53,7 @@ class PenandaSpt
     public function untukBanyak(Collection $spts): array
     {
         $spts = new EloquentCollection($spts->all());
-        $spts->loadMissing('pkptItem.revisiDisetujui');
+        $spts->loadMissing('pkptItem');
         $spts->loadExists(['dokumen as final_ada' => fn ($q) => $q->where('jenis', 'final')]);
         [$hariIni, $batas] = [now('Asia/Jakarta')->startOfDay(), $this->settings->get('penanda.batas_terlambat_hari')];
 

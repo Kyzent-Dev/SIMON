@@ -48,7 +48,7 @@ class SavePkptItem
         ];
     }
 
-    /** Date rules shared with AjukanRevisiJadwal: both required, mulai <= selesai, inside the PKPT year. Adds messages to $errors. */
+    /** Date rules (also for Perubahan PKPT operations): both required, mulai <= selesai, inside the PKPT year. Adds messages to $errors. */
     public static function tanggal(Pkpt $pkpt, array $data, array &$errors): array
     {
         $dates = [];

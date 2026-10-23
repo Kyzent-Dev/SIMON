@@ -99,7 +99,7 @@ class PkptItemImportParser
             $irbans[mb_strtolower(trim((string) $i->kode_nomor))] ??= $i;
         }
         $jenis = JenisPenugasan::all(['id', 'nama'])->keyBy(fn ($j) => mb_strtolower(trim($j->nama)));
-        $seen = $pkpt->items()->get(['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai'])
+        $seen = $pkpt->items()->aktif()->get(['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai'])
             ->mapWithKeys(fn ($i) => [$i->irban_id.'|'.$i->jenis_penugasan_id.'|'.$i->tanggal_mulai->toDateString().'|'.$i->tanggal_selesai->toDateString() => true])->all();
 
         $out = [];
