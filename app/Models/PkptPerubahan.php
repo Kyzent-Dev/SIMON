@@ -6,6 +6,7 @@ use App\Enums\JenisPerubahan;
 use App\Enums\StatusPerubahan;
 use Database\Factories\PkptPerubahanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -62,6 +63,18 @@ class PkptPerubahan extends Model
     public function pemutus()
     {
         return $this->belongsTo(User::class, 'diputuskan_oleh');
+    }
+
+    /** Approved by Pimpinan from an Admin paket and the SK is not complete yet: "SK belum dilengkapi" (list marker, dasbor card, daily reminder). */
+    public function perluSk(): bool
+    {
+        return $this->status === StatusPerubahan::Disetujui && $this->sumber === 'admin' && $this->sk_lengkap_pada === null;
+    }
+
+    /** Query twin of perluSk(); call it on a builder (`PkptPerubahan::query()->perluSk()`). */
+    public function scopePerluSk(Builder $query): void
+    {
+        $query->where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')->whereNull('sk_lengkap_pada');
     }
 
     /** SK counts as complete when number, date and PDF are all filled. */

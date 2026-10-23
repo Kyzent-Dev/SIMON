@@ -10,10 +10,10 @@
     $kejadian = ['dibuat' => 'Dibuat', 'diajukan' => 'Diajukan ke Pimpinan', 'disetujui' => 'Disetujui Pimpinan', 'ditolak' => 'Ditolak Pimpinan',
         'sk_diubah' => 'SK diubah', 'pengingat_dimatikan' => 'Pengingat SK dimatikan', 'pengingat_dinyalakan' => 'Pengingat SK dinyalakan'];
     $pengingatAktif = $p->pengingat_sk_dimatikan_pada === null;
-    $aturPengingat = $p->status === \App\Enums\StatusPerubahan::Disetujui && $p->sumber === 'admin' && ! $p->skLengkap();
+    $aturPengingat = $p->perluSk();
 @endphp
 <div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
-    <x-ui.page-header :title="($p->nomor_urut ? 'Perubahan ke-'.$p->nomor_urut : 'Draf Perubahan').' · PKPT '.$pkpt->tahun" title-id="judul-perubahan">
+    <x-ui.page-header :title="$judul" title-id="judul-perubahan">
         <x-slot:meta>
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">
                 <x-app.tag :icon="$tag['icon']" :variant="$tag['variant']">{{ $p->status->label() }}</x-app.tag>

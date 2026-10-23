@@ -53,8 +53,7 @@ class NotifikasiHarian extends Command
             ->where(fn ($q) => $q->whereNull('pengingat_terakhir_pada')->orWhere('pengingat_terakhir_pada', '<', $hariIni))
             ->where(fn ($q) => $q
                 ->where(fn ($q) => $q->where('status', StatusPerubahan::Diajukan)->where('diajukan_pada', '<', $hariIni))
-                ->orWhere(fn ($q) => $q->where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')->whereNull('sk_lengkap_pada')
-                    ->whereNull('pengingat_sk_dimatikan_pada')->where('diputuskan_pada', '<', $hariIni)))
+                ->orWhere(fn ($q) => $q->perluSk()->whereNull('pengingat_sk_dimatikan_pada')->where('diputuskan_pada', '<', $hariIni)))
             ->chunkById(100, function ($semua) use (&$perubahan, &$sk, $penerima) {
                 foreach ($semua as $p) {
                     if ($p->status === StatusPerubahan::Diajukan) {

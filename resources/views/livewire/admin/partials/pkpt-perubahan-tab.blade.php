@@ -49,7 +49,7 @@
                 <td class="whitespace-nowrap align-top !py-3">{{ $tgl($p->diajukan_pada) ?? '—' }}</td>
                 <td class="whitespace-nowrap align-top !py-3">{{ $tgl($p->diputuskan_pada) ?? '—' }}</td>
                 <td class="whitespace-nowrap align-top !py-3">
-                    @if ($p->status === \App\Enums\StatusPerubahan::Disetujui && $p->sumber === 'admin' && ! $p->skLengkap())
+                    @if ($p->perluSk())
                         <x-app.tag icon="document-arrow-up" variant="warning">SK belum dilengkapi</x-app.tag>
                     @elseif ($p->skLengkap())
                         <span class="inline-flex items-center gap-1 text-sm text-neutral-900">{{ svg('heroicon-m-check', 'size-4 shrink-0 text-mint-700') }}Lengkap</span>

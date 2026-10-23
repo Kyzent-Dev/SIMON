@@ -43,8 +43,7 @@ class Dasbor extends Component
             'slideTotal' => LandingSlide::count(),
             'menunggu' => (clone $menunggu)->count(),
             'menungguTertua' => (clone $menunggu)->orderBy('diajukan_pada')->orderBy('id')->value('pkpt_id'),
-            'skBelum' => PkptPerubahan::where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')
-                ->whereNull('sk_lengkap_pada')->whereNull('pengingat_sk_dimatikan_pada')->count(),
+            'skBelum' => PkptPerubahan::query()->perluSk()->whereNull('pengingat_sk_dimatikan_pada')->count(),
             'links' => collect(Navigation::groups(Role::Admin))->pluck('items')->flatten(1)->reject(fn ($i) => $i['route'] === 'admin.dashboard')->values()->all(),
         ]);
     }

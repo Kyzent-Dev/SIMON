@@ -222,6 +222,54 @@ class AdminPerubahanPkptTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.pkpt.perubahan', [$lain, $p]))->assertNotFound();
     }
 
+    public function test_direct_livewire_calls_by_non_admin_after_mount_are_forbidden(): void
+    {
+        $p = $this->paket();
+        $p->operasi()->create(['aksi' => 'hapus', 'pkpt_item_id' => $this->b->id, 'data_baru' => [], 'urutan' => 1]);
+        foreach ([Role::Irban, Role::Pimpinan] as $role) {
+            $u = User::factory()->create(['role' => $role, 'irban_id' => $role === Role::Irban ? $this->irban1->id : null]);
+            $h = $this->halaman($p)->assertSee('Siap diajukan');
+            $this->actingAs($u);
+            $h->call('ajukan')->assertForbidden();
+            $h = $this->halaman($p)->call('bukaOperasi', 'hapus')->set('pkpt_item_id', $this->a->id);
+            $this->actingAs($u);
+            $h->call('simpanOperasi')->assertForbidden();
+            $this->actingAs($this->admin);
+        }
+        $p->refresh();
+        $this->assertSame(StatusPerubahan::Draf, $p->status);
+        $this->assertSame(1, $p->operasi()->count());
+    }
+
+    public function test_h1_names_unnumbered_paket_without_calling_it_draf(): void
+    {
+        $this->halaman($this->paket([], 'diajukan'))->assertSee('Perubahan PKPT 2026 · Belum bernomor')->assertDontSee('Draf Perubahan');
+        $this->halaman($this->paket([], 'disetujui'))->assertSee('Perubahan PKPT 2026 · Perubahan ke-1');
+    }
+
+    public function test_preview_ignores_a_foreign_item_id(): void
+    {
+        $p = $this->paket();
+        $lain = Pkpt::factory()->disahkan()->create(['tahun' => 2032]);
+        $asing = PkptItem::factory()->create(['pkpt_id' => $lain->id, 'irban_id' => $this->irban1->id, 'jenis_penugasan_id' => $this->jenis->id]);
+        Spt::factory()->create(['irban_id' => $this->irban1->id, 'pkpt_item_id' => $asing->id]);
+        $this->halaman($p)->call('bukaOperasi', 'hapus')->set('pkpt_item_id', $asing->id)
+            ->assertViewHas('pilihanPunyaSpt', false)->assertViewHas('punyaSpt', fn ($s) => ! array_key_exists($asing->id, $s))
+            ->assertDontSee(PerubahanPkpt::K7_HAPUS);
+    }
+
+    public function test_perlu_sk_rule_and_scope_agree(): void
+    {
+        $kasus = [
+            $this->paket([], 'disetujui'),
+            $this->paket(['nomor_urut' => 2, 'sk_lengkap_pada' => now()], 'disetujui'),
+            $this->paket(['nomor_urut' => 3, 'sumber' => 'migrasi_revisi'], 'disetujui'),
+            $this->paket([], 'diajukan'),
+        ];
+        $this->assertSame([true, false, false, false], array_map(fn ($p) => $p->fresh()->perluSk(), $kasus));
+        $this->assertSame([$kasus[0]->id], PkptPerubahan::query()->perluSk()->pluck('id')->all());
+    }
+
     public function test_locked_ids_cannot_be_tampered(): void
     {
         $p = $this->paket();

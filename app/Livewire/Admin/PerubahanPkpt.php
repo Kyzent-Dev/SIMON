@@ -284,7 +284,10 @@ class PerubahanPkpt extends Component
             'warna' => $jenis[$i->jenis_penugasan_id]->warna ?? null,
         ]])->all();
 
-        $spt = $aturan->punyaSpt(array_values(array_unique(array_filter([...$p->operasi->pluck('pkpt_item_id')->all(), $this->pkpt_item_id]))));
+        // The client-set item id counts only when it is an aktif item of this PKPT; a foreign id behaves like "no item".
+        $pilihan = $this->pkpt_item_id ? PkptItem::where('pkpt_id', $this->pkptId)->aktif()->whereKey($this->pkpt_item_id)->value('id') : null;
+        $spt = $aturan->punyaSpt(array_values(array_unique(array_filter([...$p->operasi->pluck('pkpt_item_id')->all(), $pilihan]))));
+        $judul = 'Perubahan PKPT '.$p->pkpt->tahun.' · '.($p->nomor_urut ? "Perubahan ke-{$p->nomor_urut}" : 'Belum bernomor');
 
         return view('livewire.admin.perubahan-pkpt', [
             'p' => $p,
@@ -294,11 +297,12 @@ class PerubahanPkpt extends Component
             'operasi' => $p->operasi->map(fn (PkptPerubahanItem $op) => $this->tampilOperasi($op, $irban, $jenis)),
             'itemOptions' => $itemOptions,
             'punyaSpt' => $spt,
-            'pilihanPunyaSpt' => $this->pkpt_item_id ? ($spt[$this->pkpt_item_id] ?? false) : false,
+            'pilihanPunyaSpt' => $pilihan ? ($spt[$pilihan] ?? false) : false,
+            'judul' => $judul,
             'irbans' => $irban,
             'jenisOptions' => $jenis->map->nama->all(),
             'maksMb' => (int) app(Settings::class)->get('upload.maks_mb'),
-        ])->title(($p->nomor_urut ? "Perubahan ke-{$p->nomor_urut}" : 'Draf Perubahan')." · PKPT {$p->pkpt->tahun}");
+        ])->title($judul);
     }
 
     /** The item of the operation being edited stays selectable in its own combobox. */
