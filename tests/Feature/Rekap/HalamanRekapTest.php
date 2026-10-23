@@ -46,6 +46,14 @@ class HalamanRekapTest extends TestCase
         return $t;
     }
 
+    /** Rows of every sheet of a downloaded xlsx as "c1 c2 ..." strings (empty cells dropped). */
+    private function rowsXlsx($r): array
+    {
+        $rows = array_merge(...array_map(fn ($s) => $s->toArray(), IOFactory::load($r->getFile()->getPathname())->getAllSheets()));
+
+        return array_map(fn ($row) => implode(' ', array_filter($row, fn ($c) => $c !== null && $c !== '')), $rows);
+    }
+
     /** Table rows of the page as "label c1 c2 ..." strings. */
     private function baris(string $html): array
     {
@@ -119,16 +127,15 @@ class HalamanRekapTest extends TestCase
     public function test_export_xlsx_equals_the_page_numbers(): void
     {
         $r = app(Ekspor::class)->minta($this->pimpinan, 'rekap', 'xlsx', ['tahun' => '2026']);
-        $this->assertStringContainsString('rekap-triwulan-2026.xlsx', $r->headers->get('content-disposition'));
-        $sheet = IOFactory::load($r->getFile()->getPathname())->getActiveSheet()->toArray();
-        $rows = array_map(fn ($row) => implode(' ', array_filter($row, fn ($c) => $c !== null && $c !== '')), $sheet);
+        $this->assertStringContainsString('rekap-triwulan-2026-rr-klasifikasi-jenis.xlsx', $r->headers->get('content-disposition'));
+        $rows = $this->rowsXlsx($r);
 
-        foreach (['Rencana vs Realisasi', 'Per Klasifikasi', 'Per Jenis Penugasan', 'Irban A Periode Rencana Realisasi %', 'TW II 3 2 67', 'Gabungan Total 9 4 44', 'REGULER Setahun 6 2 4', 'Jenis Satu Setahun 6 2 33 5', 'Total Setahun 9 4 44 8'] as $needle) {
+        foreach (['Rencana vs Realisasi', 'Per Klasifikasi', 'Per Jenis Penugasan', 'Irban Periode Rencana Realisasi %', 'TW II 3 2 67', 'Gabungan Total 9 4 44', 'REGULER Setahun 6 2 4', 'Jenis Satu Setahun 6 2 33 5', 'Total Setahun 9 4 44 8'] as $needle) {
             $this->assertTrue(collect($rows)->contains(fn ($x) => str_contains($x, $needle)), $needle);
         }
         $this->assertTrue(collect($rows)->contains('Irban A Total 6 3 50'));
         $this->assertTrue(collect($rows)->contains('Irban B Total 3 1 33'));
-        $this->halaman($this->pimpinan, ['irban' => (string) $this->a->id])->call('ekspor', 'xlsx')->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'.xlsx');
+        $this->halaman($this->pimpinan, ['irban' => (string) $this->a->id])->call('ekspor', 'xlsx')->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'-rr-klasifikasi-jenis.xlsx');
     }
 
     /** PRD §14 butir 6: for tw=1 every numeric row the page shows (Per Irban and Gabungan tabs) is in the xlsx for the same filter. */
@@ -142,8 +149,8 @@ class HalamanRekapTest extends TestCase
         $this->assertNotContains('TW II 3 2 67', $halaman);
 
         $r = app(Ekspor::class)->minta($this->pimpinan, 'rekap', 'xlsx', ['tahun' => '2026', 'tw' => '1']);
-        $file = array_map(fn ($row) => implode(' ', array_filter($row, fn ($c) => $c !== null && $c !== '')), IOFactory::load($r->getFile()->getPathname())->getActiveSheet()->toArray());
-        $this->assertSame('Rekap Triwulanan 2026 TW I', $file[0]);
+        $file = $this->rowsXlsx($r);
+        $this->assertSame('Rekap Triwulanan 2026 · TW I', $file[0]);
         $this->assertFalse(collect($file)->contains(fn ($x) => str_contains($x, 'TW II')));
 
         // Page row "{label} {cells}" ↔ file row "{label|irban} {periode} {cells}": the cells must match exactly at the row end.
@@ -156,7 +163,7 @@ class HalamanRekapTest extends TestCase
     public function test_export_pdf(): void
     {
         $r = TestResponse::fromBaseResponse(app(Ekspor::class)->minta($this->pimpinan, 'rekap', 'pdf', ['tahun' => '2026']));
-        $r->assertDownload('rekap-triwulan-2026.pdf');
+        $r->assertDownload('rekap-triwulan-2026-rr-klasifikasi-jenis.pdf');
         $this->assertStringStartsWith('%PDF', $r->streamedContent());
 
         $p = app(PembangunRekap::class);
@@ -170,8 +177,8 @@ class HalamanRekapTest extends TestCase
     {
         $p = app(PembangunRekap::class);
         $f = $p->filter($this->irbanA, ['tahun' => '2026', 'irban' => (string) $this->b->id]);
-        $this->assertSame(['tahun' => 2026, 'tw' => 0, 'irban' => $this->a->id], $f);
-        $this->assertSame('rekap-triwulan-2026-irban-'.$this->a->kode_nomor, $p->namaFile($this->irbanA, $f));
+        $this->assertSame(['tahun' => 2026, 'tw' => 0, 'irban' => $this->a->id, 'bagian' => ['rr', 'klasifikasi', 'jenis']], $f);
+        $this->assertSame('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'-rr-klasifikasi-jenis', $p->namaFile($this->irbanA, $f));
 
         $r = app(Ekspor::class)->minta($this->irbanA, 'rekap', 'xlsx', ['irban' => (string) $this->b->id]);
         $text = json_encode(IOFactory::load($r->getFile()->getPathname())->getActiveSheet()->toArray());
@@ -183,7 +190,7 @@ class HalamanRekapTest extends TestCase
     public function test_builder_validates_and_authorizes(): void
     {
         $p = app(PembangunRekap::class);
-        $this->assertSame(['tahun' => 2026, 'tw' => 0, 'irban' => null], $p->filter($this->pimpinan, ['tahun' => 'abc', 'tw' => '7', 'irban' => '999']));
+        $this->assertSame(['tahun' => 2026, 'tw' => 0, 'irban' => null, 'bagian' => ['rr', 'klasifikasi', 'jenis']], $p->filter($this->pimpinan, ['tahun' => 'abc', 'tw' => '7', 'irban' => '999']));
         $this->assertSame('/pimpinan/rekap', $p->halaman($this->pimpinan));
 
         $this->expectException(AuthorizationException::class);

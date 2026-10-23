@@ -2,13 +2,12 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\AmanFormula;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
@@ -18,6 +17,8 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
  */
 class ArrayExport extends DefaultValueBinder implements FromArray, WithColumnFormatting, WithCustomValueBinder, WithHeadings, WithStrictNullComparison
 {
+    use AmanFormula;
+
     public function __construct(private array $headings, private array $rows, private array $textColumns = []) {}
 
     public function headings(): array
@@ -28,17 +29,6 @@ class ArrayExport extends DefaultValueBinder implements FromArray, WithColumnFor
     public function array(): array
     {
         return $this->rows;
-    }
-
-    public function bindValue(Cell $cell, mixed $value): bool
-    {
-        if (is_string($value) && preg_match('/^[=+\-@\t\r]/', $value)) {
-            $cell->setValueExplicit($value, DataType::TYPE_STRING);
-
-            return true;
-        }
-
-        return parent::bindValue($cell, $value);
     }
 
     public function columnFormats(): array

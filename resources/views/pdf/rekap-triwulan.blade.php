@@ -16,7 +16,7 @@
     table.lebar { width: 100%; }
     td.n, th.n { text-align: right; }
     tr.total td, tr.total th { font-weight: bold; border-top: 2px solid #B8C4C0; }
-    tr { page-break-inside: avoid; }
+    tr, .blok { page-break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -26,31 +26,38 @@
     @unless ($pkptDisahkan)
         <p>PKPT {{ $tahun }} belum disahkan; rencana belum dapat dihitung.</p>
     @endunless
-    @foreach ($bagian as $i => $s)
+    {{-- Only the sections picked in the export modal ($pilihan); each table block stays on one page when it fits. --}}
+    @foreach ($bagian as $s)
         <h2>{{ $s['judul'] }}</h2>
         @foreach ($s['tabel'] as $t)
-            @if ($t['judul'])<h3>{{ $t['judul'] }}</h3>@endif
-            <table>
-                <thead><tr><th>{{ $i === 0 ? 'Triwulan' : ($i === 1 ? 'Klasifikasi' : 'Jenis Penugasan') }}</th>@foreach ($s['kolom'] as $k)<th class="n">{{ $k }}</th>@endforeach</tr></thead>
-                <tbody>
-                    @foreach ($t['baris'] as $b)
-                        <tr @class(['total' => $b['total']])><th>{{ $i === 0 ? $b['periode'] : $b['label'] }}</th>@foreach ($b['sel'] as $n)<td class="n">{{ $n }}</td>@endforeach</tr>
-                    @endforeach
-                </tbody>
-            </table>
+            <div class="blok">
+                @if ($t['judul'])<h3>{{ $t['judul'] }}</h3>@endif
+                <table>
+                    <thead><tr><th>{{ ['rr' => 'Triwulan', 'klasifikasi' => 'Klasifikasi', 'jenis' => 'Jenis Penugasan'][$s['kode']] }}</th>@foreach ($s['kolom'] as $k)<th class="n">{{ $k }}</th>@endforeach</tr></thead>
+                    <tbody>
+                        @foreach ($t['baris'] as $b)
+                            <tr @class(['total' => $b['total']])><th>{{ $s['kode'] === 'rr' ? $b['periode'] : $b['label'] }}</th>@foreach ($b['sel'] as $n)<td class="n">{{ $n }}</td>@endforeach</tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         @endforeach
     @endforeach
-    <h2>{{ $detailJudul }}</h2>
-    @foreach ($detail as $g)
-        <h3>{{ $g['irban'] }}</h3>
-        <table class="lebar">
-            <thead><tr>@foreach ($detailKolom as $k)<th>{{ $k }}</th>@endforeach</tr></thead>
-            <tbody>
-                @foreach ($g['baris'] as $b)
-                    <tr>@foreach ($b as $sel)<td>{{ $sel }}</td>@endforeach</tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endforeach
+    @if (in_array('detail', $pilihan, true))
+        <h2>{{ $detailJudul }}</h2>
+        @foreach ($detail as $g)
+            <div class="blok">
+                <h3>{{ $g['irban'] }}</h3>
+                <table class="lebar">
+                    <thead><tr>@foreach ($detailKolom as $k)<th>{{ $k }}</th>@endforeach</tr></thead>
+                    <tbody>
+                        @foreach ($g['baris'] as $b)
+                            <tr>@foreach ($b as $sel)<td>{{ $sel }}</td>@endforeach</tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endforeach
+    @endif
 </body>
 </html>
