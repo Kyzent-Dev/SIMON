@@ -3,9 +3,11 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\Role;
+use App\Enums\StatusPerubahan;
 use App\Models\LandingSlide;
 use App\Models\Pegawai;
 use App\Models\Pkpt;
+use App\Models\PkptPerubahan;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +16,8 @@ use Livewire\Component;
 
 /**
  * Dasbor Admin (admin.md "Dashboard"): health cards Pengguna aktif, Pegawai, PKPT {tahun}, Slide aktif + quick links from the sidebar definition.
- * Impor terakhir and Aktivitas terbaru come with Fase 10 (no placeholders). No motion.
+ * Impor terakhir and Aktivitas terbaru come with Fase 10 (no placeholders). Fase 9.2: "Perubahan menunggu persetujuan" (link to the PKPT
+ * of the oldest submitted paket) and "SK belum dilengkapi" (same set as the daily SK reminder in NotifikasiHarian). No motion.
  */
 #[Title('Dasbor Admin')]
 class Dasbor extends Component
@@ -28,6 +31,7 @@ class Dasbor extends Component
     {
         Gate::authorize('manage-master-data');
         $tahun = (int) now('Asia/Jakarta')->year;
+        $menunggu = PkptPerubahan::where('status', StatusPerubahan::Diajukan);
 
         return view('livewire.admin.dasbor', [
             'tahun' => $tahun,
@@ -37,6 +41,10 @@ class Dasbor extends Component
             'pkpt' => Pkpt::where('tahun', $tahun)->first(),
             'slideAktif' => LandingSlide::where('aktif', true)->count(),
             'slideTotal' => LandingSlide::count(),
+            'menunggu' => (clone $menunggu)->count(),
+            'menungguTertua' => (clone $menunggu)->orderBy('diajukan_pada')->orderBy('id')->value('pkpt_id'),
+            'skBelum' => PkptPerubahan::where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')
+                ->whereNull('sk_lengkap_pada')->whereNull('pengingat_sk_dimatikan_pada')->count(),
             'links' => collect(Navigation::groups(Role::Admin))->pluck('items')->flatten(1)->reject(fn ($i) => $i['route'] === 'admin.dashboard')->values()->all(),
         ]);
     }

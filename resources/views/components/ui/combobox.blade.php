@@ -1,12 +1,12 @@
 {{-- DESIGN §8 x-ui.combobox: Alpine listbox (role=combobox, aria-expanded, aria-activedescendant, aria-controls). Single or `multiple` (selected items become removable chips).
      Search is CLIENT-SIDE: the full `options` ([value => label]) are passed in and filtered in the browser (fine for a few hundred pegawai; for large sets switch to a
      Livewire query debounced 250ms). "Tidak ditemukan" shows when nothing matches. Bind with wire:model (x-modelable): an int/null (single) or a list of ints (multiple).
-     `drop-up` opens the list above the field (e.g. in a modal footer). Keys: ArrowDown/Up move (and open), Enter picks, Esc closes, Backspace on empty search removes the last chip. --}}
+     `drop-up` opens the list above the field (e.g. in a modal footer). An option may be ['label' => …, 'warna' => '#hex'] to lead with a jenis color dot (type-chip style; the label carries the meaning). Keys: ArrowDown/Up move (and open), Enter picks, Esc closes, Backspace on empty search removes the last chip. --}}
 @props(['name', 'label', 'options' => [], 'multiple' => false, 'id' => null, 'placeholder' => 'Cari…', 'error' => null, 'helper' => null, 'required' => false, 'icon' => null, 'dropUp' => false])
 
 @php
     $id ??= $name;
-    $list = collect($options)->map(fn ($l, $v) => ['value' => (string) $v, 'label' => (string) $l])->values();
+    $list = collect($options)->map(fn ($l, $v) => ['value' => (string) $v, 'label' => (string) (is_array($l) ? $l['label'] : $l), 'warna' => is_array($l) ? ($l['warna'] ?? null) : null])->values();
     $describedBy = trim(implode(' ', array_filter([$helper ? $id.'-helper' : null, $error ? $id.'-error' : null])));
 @endphp
 
@@ -80,6 +80,7 @@
                 <span class="size-5 shrink-0">
                     <span x-show="isSel(o)" x-cloak>{{ svg('heroicon-m-check', 'size-5 text-mint-700') }}</span>
                 </span>
+                <span x-show="o.warna" x-cloak aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-[var(--type)]" x-bind:style="o.warna && '--type: ' + o.warna"></span>
                 <span x-text="o.label"></span>
             </li>
         </template>

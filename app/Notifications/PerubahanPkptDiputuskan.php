@@ -72,11 +72,11 @@ class PerubahanPkptDiputuskan extends NotifikasiSimon
 
     private function urlUntuk(?Role $peran): string
     {
-        // shortcut: literal paths of admin.pkpt.perubahan / pimpinan.perubahan-pkpt.show (E7), registered by Tasks 7 and 8; switch to route() then.
+        // shortcut: literal path of pimpinan.perubahan-pkpt.show (E7), registered by Task 8; switch to route() then.
         return match ($peran) {
             Role::Irban => route('irban.pkpt', absolute: false),
             Role::Pimpinan => "/pimpinan/perubahan-pkpt/{$this->perubahanId}",
-            default => "/admin/pkpt/{$this->pkptId}/perubahan/{$this->perubahanId}",
+            default => route('admin.pkpt.perubahan', ['pkpt' => $this->pkptId, 'perubahan' => $this->perubahanId], false),
         };
     }
 }

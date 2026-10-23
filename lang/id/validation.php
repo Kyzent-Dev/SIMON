@@ -41,5 +41,6 @@ return [
         'lampiran' => 'lampiran draf',
         'file' => 'berkas',
         'gambar' => 'gambar slide',
+        'berkas_sk' => 'berkas SK',
     ],
 ];

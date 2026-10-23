@@ -3,13 +3,16 @@
 namespace App\Livewire\Admin;
 
 use App\Actions\Pkpt\DeletePkptItem;
+use App\Actions\Pkpt\Perubahan\BuatPerubahan;
 use App\Actions\Pkpt\SahkanPkpt;
 use App\Actions\Pkpt\SavePkptItem;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
+use App\Models\PkptPerubahan;
 use App\Services\KesesuaianPkpt;
+use App\Services\PerubahanPkpt;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
@@ -37,6 +40,20 @@ class PkptDetail extends Component
     public ?int $deletingId = null;
 
     public bool $sahkanOpen = false;
+
+    /** Disahkan only: `item` | `perubahan` (anything else renders as `item`). */
+    #[Url]
+    public string $tab = 'item';
+
+    /** Tab Item: also list items removed by an approved Perubahan PKPT. */
+    #[Url]
+    public bool $dihapus = false;
+
+    /** Modal "Buat Perubahan". */
+    public bool $buatOpen = false;
+
+    /** Fields of "Buat Perubahan" (jenis, alasan); an array so `$jenis` stays the view's jenis options. */
+    public array $buat = ['jenis' => 'perubahan', 'alasan' => ''];
 
     public function mount(Pkpt $pkpt): void
     {
@@ -120,6 +137,29 @@ class PkptDetail extends Component
         }
     }
 
+    /** Opens a Perubahan PKPT (BuatPerubahan holds every rule) and goes to its page. */
+    public function buatPerubahan(BuatPerubahan $action): void
+    {
+        Gate::authorize('manage-master-data');
+        $this->resetValidation();
+        try {
+            $p = $action->handle(auth()->user(), $this->pkpt, array_intersect_key($this->buat, ['jenis' => 1, 'alasan' => 1]));
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $key => $messages) {
+                if (in_array($key, ['jenis', 'alasan'], true)) {
+                    $this->addError("buat.{$key}", $messages[0]);
+                } else {
+                    $this->buatOpen = false;
+                    $this->dispatch('toast', type: 'error', message: $messages[0]);
+                    $this->dispatch('fokus-ke', id: 'judul-pkpt');
+                }
+            }
+
+            return;
+        }
+        $this->redirectRoute('admin.pkpt.perubahan', ['pkpt' => $this->pkpt->id, 'perubahan' => $p->id], navigate: true);
+    }
+
     /** Runs an action; field errors go under "$prefix.field", anything else (status, SK, items) becomes an error toast. */
     private function write(?string $prefix, callable $fn): bool
     {
@@ -149,9 +189,11 @@ class PkptDetail extends Component
         return $this->pkpt->items()->findOrFail($id);
     }
 
-    public function render(KesesuaianPkpt $kesesuaian)
+    public function render(KesesuaianPkpt $kesesuaian, PerubahanPkpt $perubahan)
     {
-        $items = $this->pkpt->items()->aktif()
+        $draf = $this->pkpt->isDraf();
+        $tab = ! $draf && $this->tab === 'perubahan' ? 'perubahan' : 'item';
+        $items = $this->pkpt->items()->when($draf || ! $this->dihapus, fn ($q) => $q->aktif())
             ->with(['irban', 'jenisPenugasan'])
             ->when($this->irbanId !== '', fn ($q) => $q->where('irban_id', $this->irbanId))
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
@@ -159,6 +201,10 @@ class PkptDetail extends Component
         $rentang = $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $kesesuaian->rentang($i)]);
 
         return view('livewire.admin.pkpt-detail', [
+            'tabAktif' => $tab,
+            'paket' => $tab === 'perubahan' ? PkptPerubahan::where('pkpt_id', $this->pkpt->id)->withCount('operasi')
+                ->orderByRaw('nomor_urut is null desc')->orderByDesc('nomor_urut')->orderByDesc('id')->get() : collect(),
+            'terbuka' => $draf ? null : $perubahan->terbuka($this->pkpt),
             'items' => $items,
             'rentang' => $rentang,
             'total' => $this->pkpt->items()->aktif()->count(),

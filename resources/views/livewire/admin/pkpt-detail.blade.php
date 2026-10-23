@@ -1,6 +1,7 @@
 {{-- admin.md "PKPT": item editor table with an inline add row; per-row inline edit; delete and "Sahkan PKPT" behind confirm modals.
      After Disahkan the page is read-only: no edit controls, "Jadwal berlaku" shows the item range (KesesuaianPkpt) and, when a Perubahan PKPT
      moved it, the snapshot as "semula …" with a dashed marker echoing the public timeline (design/public/jadwal.md).
+     Disahkan: tabs "Item" (read-only, "Tampilkan yang dihapus") and "Perubahan" (paket list + "Buat Perubahan" modal, Fase 9.2 Task 7).
      No animation on the table or inline forms (DESIGN §7.5); modal transitions only. --}}
 @use('App\Support\Tanggal')
 @php
@@ -9,8 +10,8 @@
     $full = fn ($a, $b) => $a->translatedFormat('j F Y').' – '.$b->translatedFormat('j F Y');
     $cols = $draf ? 6 : 5;
 @endphp
-<div>
-    <x-ui.page-header :title="'PKPT '.$pkpt->tahun">
+<div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
+    <x-ui.page-header :title="'PKPT '.$pkpt->tahun" title-id="judul-pkpt">
         <x-slot:meta>
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">
                 <x-app.tag :icon="$tag['icon']" :variant="$tag['variant']">{{ $pkpt->status->label() }}</x-app.tag>
@@ -37,12 +38,27 @@
         </x-slot:actions>
     </x-ui.page-header>
 
+    @unless ($draf)
+        <x-ui.tabs :tabs="['item' => 'Item', 'perubahan' => 'Perubahan']" :active="$tabAktif" model="tab" label="Bagian PKPT" panel="panel-pkpt" />
+        <div role="tabpanel" id="panel-pkpt" aria-labelledby="panel-pkpt-tab-{{ $tabAktif }}">
+    @endunless
+
+    @if ($tabAktif === 'perubahan')
+        @include('livewire.admin.partials.pkpt-perubahan-tab')
+    @else
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div class="w-full sm:w-64">
             <x-ui.select label="Irban" name="irbanId" wire:model.live="irbanId" :options="$irbans" :value="$irbanId" placeholder="Semua Irban" />
         </div>
-        <p class="text-sm text-neutral-600" aria-live="polite">
-            @if ($irbanId !== ''){{ $items->count() }} dari {{ $total }} item @else{{ $total }} item @endif
+        @unless ($draf)
+            <div class="w-full sm:w-auto sm:pb-2">
+                <x-ui.switch name="dihapus" label="Tampilkan yang dihapus" wire:model.live="dihapus" :checked="$dihapus" />
+            </div>
+        @endunless
+        <p class="text-sm text-neutral-600 sm:ml-auto" aria-live="polite">
+            @php $nDihapus = $draf ? 0 : $items->filter(fn ($i) => $i->status === \App\Enums\StatusItemPkpt::Dihapus)->count(); @endphp
+            @if ($irbanId !== ''){{ $items->count() - $nDihapus }} dari {{ $total }} item @else{{ $total }} item @endif
+            @if ($nDihapus)· {{ $nDihapus }} dihapus @endif
         </p>
     </div>
 
@@ -56,7 +72,7 @@
             <x-ui.empty-state icon="calendar-days" title="Tidak ada item untuk filter ini." />
         </x-ui.card>
     @else
-        <x-ui.table label="Item PKPT {{ $pkpt->tahun }}" wire:loading.class="opacity-60" wire:target="irbanId">
+        <x-ui.table label="Item PKPT {{ $pkpt->tahun }}" wire:loading.class="opacity-60" wire:target="irbanId,dihapus">
             <x-slot:head>
                 <x-ui.th>Irban</x-ui.th>
                 <x-ui.th>Jenis Penugasan</x-ui.th>
@@ -84,9 +100,15 @@
                     @endphp
                     <tr wire:key="item-{{ $item->id }}">
                         <td class="whitespace-nowrap align-top !py-3">{{ $item->irban->nama }}</td>
-                        <td class="min-w-44 align-top !py-3"><x-app.type-chip :color="$item->jenisPenugasan->warna" :label="$item->jenisPenugasan->nama" /></td>
+                        <td class="min-w-44 align-top !py-3">
+                            <x-app.type-chip :color="$item->jenisPenugasan->warna" :label="$item->jenisPenugasan->nama" />
+                            @if ($item->status === \App\Enums\StatusItemPkpt::Dihapus)
+                                <x-app.tag icon="trash" variant="neutral" class="mt-1.5">Dihapus</x-app.tag>
+                            @endif
+                        </td>
                         <td class="min-w-56 align-top !py-3">
                             <x-app.jadwal-berlaku :item="$item" :mulai="$mulai" :selesai="$selesai" />
+                            {{-- Task 9: riwayat perubahan --}}
                         </td>
                         <td class="min-w-32 align-top !py-3">
                             @if ($item->keterangan){{ $item->keterangan }}@else<span class="text-neutral-500">—</span>@endif
@@ -121,6 +143,11 @@
             @endif
         </x-ui.table>
     @endif
+    @endif
+
+    @unless ($draf)
+        </div>
+    @endunless
 
     @if ($draf)
         <x-ui.modal name="item-hapus" title="Hapus item?" size="sm" wire:model="deleteOpen">

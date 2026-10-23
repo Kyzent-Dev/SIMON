@@ -39,8 +39,7 @@ class PengingatSkPerubahan extends NotifikasiSimon
 
     public function url(): string
     {
-        // shortcut: literal path of route admin.pkpt.perubahan (E7), which Task 7 registers; switch to route() then.
-        return "/admin/pkpt/{$this->pkptId}/perubahan/{$this->perubahanId}";
+        return route('admin.pkpt.perubahan', ['pkpt' => $this->pkptId, 'perubahan' => $this->perubahanId], false);
     }
 
     public function isi(): array

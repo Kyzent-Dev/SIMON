@@ -18,6 +18,7 @@ use App\Livewire\Admin\Objek;
 use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\PegawaiImpor;
 use App\Livewire\Admin\Pengaturan;
+use App\Livewire\Admin\PerubahanPkpt as AdminPerubahanPkpt;
 use App\Livewire\Admin\Pkpt;
 use App\Livewire\Admin\PkptDetail;
 use App\Livewire\Admin\PkptImpor;
@@ -80,6 +81,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pkpt', Pkpt::class)->name('admin.pkpt');
         Route::get('/pkpt/{pkpt}', PkptDetail::class)->name('admin.pkpt.show');
         Route::get('/pkpt/{pkpt}/impor', PkptImpor::class)->name('admin.pkpt.impor');
+        Route::get('/pkpt/{pkpt}/perubahan/{perubahan}', AdminPerubahanPkpt::class)->name('admin.pkpt.perubahan');
         Route::get('/slide', Slide::class)->name('admin.slide');
         Route::get('/kontak', Kontak::class)->name('admin.kontak');
     });

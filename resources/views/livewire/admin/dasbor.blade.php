@@ -19,6 +19,13 @@
                     </span>
                 </a>
             </li>
+            <li class="flex">
+                <x-ui.stat-card class="w-full" label="Perubahan menunggu persetujuan" :value="$menunggu" icon="clock"
+                    :href="$menungguTertua ? route('admin.pkpt.show', ['pkpt' => $menungguTertua, 'tab' => 'perubahan']) : null"
+                    :subtext="$menunggu ? 'Buka PKPT dengan pengajuan tertua' : 'Tidak ada yang menunggu'" />
+            </li>
+            <li class="flex"><x-ui.stat-card class="w-full" label="SK belum dilengkapi" :value="$skBelum" icon="document-arrow-up" :variant="$skBelum ? 'alert' : 'default'"
+                :subtext="$skBelum ? 'Perubahan disetujui yang SK-nya belum lengkap' : 'Semua SK perubahan lengkap'" /></li>
             <li class="flex"><x-ui.stat-card class="w-full" label="Slide aktif" :value="$slideAktif" :subtext="'dari '.number_format($slideTotal, 0, ',', '.').' slide'" :href="route('admin.slide')" /></li>
         </ul>
     </section>
