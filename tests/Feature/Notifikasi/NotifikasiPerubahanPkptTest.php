@@ -171,8 +171,10 @@ class NotifikasiPerubahanPkptTest extends TestCase
         Notification::assertSentTimes(PengingatSkPerubahan::class, 2 * $admin);
     }
 
-    public function test_nothing_is_delivered_when_the_surrounding_transaction_rolls_back(): void
+    public function test_nothing_is_queued_when_the_surrounding_transaction_rolls_back_and_it_is_after_commit(): void
     {
+        // Real delivery (sync queue, array mailer): the bell rows would roll back anyway, so the emails are the signal.
+        $terkirim = fn () => count(app('mailer')->getSymfonyTransport()->messages());
         try {
             DB::transaction(function () {
                 $this->ajukan();
@@ -180,8 +182,14 @@ class NotifikasiPerubahanPkptTest extends TestCase
             });
         } catch (\RuntimeException) {
         }
-
-        $this->assertSame(0, DB::table('notifications')->count());
+        $this->assertSame(0, $terkirim());
         $this->assertSame('draf', $this->p->fresh()->status->value);
+
+        DB::transaction(function () use ($terkirim) {
+            $this->ajukan();
+            $this->assertSame(0, $terkirim()); // still inside the transaction
+        });
+        $this->assertSame(2, $terkirim()); // both Pimpinan
+        $this->assertSame(2, DB::table('notifications')->where('data->jenis', 'perubahan_pkpt_diajukan')->count());
     }
 }

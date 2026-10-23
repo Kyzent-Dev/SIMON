@@ -43,7 +43,7 @@ class SimpanOperasi
             if ($aksi !== AksiPerubahan::Tambah) {
                 $item = PkptItem::where('pkpt_id', $p->pkpt_id)->aktif()->find(filter_var($data['pkpt_item_id'] ?? null, FILTER_VALIDATE_INT) ?: 0);
                 if (! $item) {
-                    throw ValidationException::withMessages(['pkpt_item_id' => 'Pilih item.']);
+                    throw ValidationException::withMessages(['pkpt_item_id' => PerubahanPkpt::ITEM_TIDAK_ADA]);
                 }
                 if ($p->operasi()->where('pkpt_item_id', $item->id)->when($op?->exists, fn ($q) => $q->whereKeyNot($op->id))->exists()) {
                     throw ValidationException::withMessages(['pkpt_item_id' => PerubahanPkpt::ITEM_GANDA]);

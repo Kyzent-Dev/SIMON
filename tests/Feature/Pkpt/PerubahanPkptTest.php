@@ -222,8 +222,8 @@ class PerubahanPkptTest extends TestCase
         $p = $this->buat();
         $asing = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-03']);
         $dihapus = PkptItem::factory()->dihapus()->create(['pkpt_id' => $this->pkpt->id]);
-        $this->assertSame(['pkpt_item_id' => ['Pilih item.']], $this->galat(fn () => $this->op($p, ['aksi' => 'hapus', 'pkpt_item_id' => $asing->id])));
-        $this->assertSame(['pkpt_item_id' => ['Pilih item.']], $this->galat(fn () => $this->op($p, ['aksi' => 'hapus', 'pkpt_item_id' => $dihapus->id])));
+        $this->assertSame(['pkpt_item_id' => [PerubahanPkpt::ITEM_TIDAK_ADA]], $this->galat(fn () => $this->op($p, ['aksi' => 'hapus', 'pkpt_item_id' => $asing->id])));
+        $this->assertSame(['pkpt_item_id' => [PerubahanPkpt::ITEM_TIDAK_ADA]], $this->galat(fn () => $this->op($p, ['aksi' => 'hapus', 'pkpt_item_id' => $dihapus->id])));
         $this->assertSame(['aksi' => ['Pilih aksi.']], $this->galat(fn () => $this->op($p, ['aksi' => 'geser'])));
         $op = $this->op($p, ['aksi' => 'hapus', 'pkpt_item_id' => $this->b->id]);
         $this->assertSame(['pkpt_item_id' => [PerubahanPkpt::ITEM_GANDA]], $this->galat(fn () => $this->op($p, ['aksi' => 'ubah', 'pkpt_item_id' => $this->b->id, 'keterangan' => 'x'])));
@@ -277,7 +277,7 @@ class PerubahanPkptTest extends TestCase
         $this->assertSame(['komentar' => ['Alasan penolakan wajib diisi.']], $this->galat(fn () => $this->putuskan($p, false, '  ')));
         $p = $this->putuskan($p, false, 'Item sudah dipakai SPT.');
         $this->assertSame(StatusPerubahan::Ditolak, $p->status);
-        $this->assertSame(['perubahan' => [PutuskanPerubahan::SUDAH_DIPUTUSKAN]], $this->galat(fn () => $this->putuskan($p, false, 'Lagi')));
+        $this->assertSame(['perubahan' => [PutuskanPerubahan::SUDAH_DIPUTUSKAN]], $this->galat(fn () => $this->putuskan($p, false, null)));
 
         // Ditolak: editable and re-submittable; the rejection komentar stays.
         app(HapusOperasi::class)->handle($this->admin, $p->operasi()->first());

@@ -3,17 +3,24 @@
 namespace Tests\Feature\Pkpt;
 
 use App\Actions\Spt\SimpanSpt;
+use App\Enums\StatusItemPkpt;
 use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
+use App\Models\IrbanTahunan;
 use App\Models\JenisPenugasan;
+use App\Models\Pegawai;
 use App\Models\PkptItem;
+use App\Models\Spt;
 use App\Models\User;
 use App\Services\KalenderPkpt;
 use App\Services\Publik\JadwalPublik;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
+use App\Support\DiinputOleh;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Feature\Publik\PublikFixture;
@@ -83,5 +90,30 @@ class ItemDihapusTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame('Item PKPT tidak valid untuk Irban ini.', $e->errors()['pkpt_item_id'][0]);
         }
+    }
+
+    /** K7 race: an approved Perubahan PKPT removes the item after the form validated it but before the SPT is written. */
+    public function test_simpan_spt_rechecks_the_item_under_the_pkpt_lock(): void
+    {
+        $ppj = Pegawai::factory()->create();
+        IrbanTahunan::where('irban_id', $this->a->id)->where('tahun', DiinputOleh::tahun())->delete();
+        IrbanTahunan::factory()->create(['irban_id' => $this->a->id, 'tahun' => DiinputOleh::tahun(), 'ppj_pegawai_id' => $ppj->id]);
+        $sebelum = Spt::count();
+        $sekali = false;
+        Event::listen(TransactionBeginning::class, function () use (&$sekali) {
+            if (! $sekali) {
+                $sekali = true;
+                PkptItem::whereKey($this->a1->id)->update(['status' => StatusItemPkpt::Dihapus->value]);
+            }
+        });
+
+        try {
+            app(SimpanSpt::class)->handle($this->irbanA, null, ['klasifikasi_id' => $this->reguler, 'pkpt_item_id' => $this->a1->id, 'diinput_oleh' => $ppj->id], 'draf');
+            $this->fail('ValidationException expected');
+        } catch (ValidationException $e) {
+            $this->assertSame('Item PKPT tidak valid untuk Irban ini.', $e->errors()['pkpt_item_id'][0]);
+        }
+        $this->assertTrue($sekali);
+        $this->assertSame($sebelum, Spt::count());
     }
 }

@@ -10,6 +10,7 @@ use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\Objek;
 use App\Models\Pegawai;
+use App\Models\Pkpt;
 use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
@@ -66,6 +67,9 @@ class SimpanSpt
         $path = null;
         try {
             [$spt, $dihapus] = DB::transaction(function () use ($user, $spt, $kolom, $objekIds, $personel, $ajukan, $lampiran, $hapusLampiran, &$path) {
+                if ($kolom['pkpt_item_id'] ?? null) {
+                    $this->kunciItem($user->irban_id, $kolom);
+                }
                 if ($spt) {
                     $spt = Spt::whereKey($spt->id)->lockForUpdate()->firstOrFail();
                     $this->pastikanBisaDiubah($spt);
@@ -151,6 +155,21 @@ class SimpanSpt
         }
 
         return $w;
+    }
+
+    /**
+     * K7 against a concurrent Perubahan PKPT approval: lock the PKPT row (approval locks it too, always first) and re-read the item,
+     * so an approval that removed the item or changed its irban/jenis cannot commit in the same window as this SPT.
+     */
+    private function kunciItem(int $irbanId, array $kolom): void
+    {
+        $pkptId = PkptItem::whereKey($kolom['pkpt_item_id'])->value('pkpt_id');
+        Pkpt::whereKey($pkptId)->lockForUpdate()->first();
+        $ada = PkptItem::aktif()->whereKey($kolom['pkpt_item_id'])->where('irban_id', $irbanId)
+            ->where('jenis_penugasan_id', $kolom['jenis_penugasan_id'] ?? null)->exists();
+        if (! $ada) {
+            throw ValidationException::withMessages(['pkpt_item_id' => 'Item PKPT tidak valid untuk Irban ini.']);
+        }
     }
 
     private function pastikanBisaDiubah(Spt $spt): void

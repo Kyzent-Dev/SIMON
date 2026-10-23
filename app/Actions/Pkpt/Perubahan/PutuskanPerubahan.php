@@ -36,15 +36,6 @@ class PutuskanPerubahan
     public function handle(User $user, PkptPerubahan $p, bool $setujui, ?string $komentar): PkptPerubahan
     {
         Gate::forUser($user)->authorize('putuskan', $p);
-        $komentar = trim((string) $komentar);
-        if (! $setujui && $komentar === '') {
-            throw ValidationException::withMessages(['komentar' => 'Alasan penolakan wajib diisi.']);
-        }
-        if (mb_strlen($komentar) > 1000) {
-            throw ValidationException::withMessages(['komentar' => 'Komentar maksimal 1000 karakter.']);
-        }
-        $komentar = $komentar === '' ? null : $komentar;
-
         $p = DB::transaction(function () use ($user, $p, $setujui, $komentar) {
             // PKPT row first: two approvals of one PKPT queue here, so nomor_urut and the re-validation never race.
             Pkpt::whereKey($p->pkpt_id)->lockForUpdate()->first();
@@ -52,6 +43,8 @@ class PutuskanPerubahan
             if ($p?->status !== StatusPerubahan::Diajukan) {
                 throw ValidationException::withMessages(['perubahan' => self::SUDAH_DIPUTUSKAN]);
             }
+            // After the status check, so a stale tab learns the package was already decided before any komentar error.
+            $komentar = $this->komentar($komentar, $setujui);
             $putusan = ['diputuskan_oleh' => $user->id, 'diputuskan_pada' => now(), 'komentar_putusan' => $komentar];
 
             if (! $setujui) {
@@ -81,6 +74,19 @@ class PutuskanPerubahan
         Notification::send($penerima, new PerubahanPkptDiputuskan($p, $setujui));
 
         return $p;
+    }
+
+    private function komentar(?string $komentar, bool $setujui): ?string
+    {
+        $komentar = trim((string) $komentar);
+        if (! $setujui && $komentar === '') {
+            throw ValidationException::withMessages(['komentar' => 'Alasan penolakan wajib diisi.']);
+        }
+        if (mb_strlen($komentar) > 1000) {
+            throw ValidationException::withMessages(['komentar' => 'Komentar maksimal 1000 karakter.']);
+        }
+
+        return $komentar === '' ? null : $komentar;
     }
 
     /** Applies the operations in order; data_lama is recorded now, not when the draft was written. */
