@@ -211,4 +211,22 @@ class PegawaiTest extends TestCase
         $this->assertStringContainsString('wire:click="confirmDelete('.$p->id.')"', $html);
         $this->assertStringContainsString('wire:key="pegawai-'.$p->id.'"', $html);
     }
+
+    public function test_email_is_optional_validated_unique_and_shown(): void
+    {
+        $ada = Pegawai::factory()->create(['nama_bergelar' => 'Ani', 'email' => 'ani@example.test']);
+        $this->page()->call('create')->set('nama', 'X')->set('nip', '198703122010011001')->call('save')->assertHasNoErrors();
+        $this->assertNull(Pegawai::where('nip', '198703122010011001')->value('email'));
+
+        $this->page()->call('create')->set('nama', 'X')->set('nip', '198703122010011002')->set('email', 'salah')->call('save')
+            ->assertHasErrors('email')->assertSee('Format email tidak valid.');
+        $this->page()->call('create')->set('nama', 'X')->set('nip', '198703122010011002')->set('email', 'ANI@example.test')->call('save')
+            ->assertSee('Email sudah dipakai pegawai lain.');
+        $this->page()->call('create')->set('nama', 'Y')->set('nip', '198703122010011003')->set('email', ' Baru@Example.test ')->call('save')->assertHasNoErrors();
+        $this->assertSame('baru@example.test', Pegawai::where('nip', '198703122010011003')->value('email'));
+
+        // Own email stays valid on edit; the column shows it.
+        $this->page()->call('edit', $ada->id)->assertSet('email', 'ani@example.test')->call('save')->assertHasNoErrors()
+            ->assertSee('Email')->assertSee('ani@example.test');
+    }
 }

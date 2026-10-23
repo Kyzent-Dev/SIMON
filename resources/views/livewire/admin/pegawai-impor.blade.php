@@ -28,7 +28,7 @@
     @if ($step === 1)
         <x-ui.card class="max-w-2xl p-6">
             <x-ui.file-upload name="file" label="Berkas Excel (.xlsx)" accept=".xlsx" wire:model="file"
-                helper="Format .xlsx, maksimal 5 MB dan 2000 baris. Kolom: nama_bergelar, nip, pangkat, golongan, jabatan, aktif."
+                helper="Format .xlsx, maksimal 5 MB dan 2000 baris. Kolom: nama_bergelar, nip, pangkat, golongan, jabatan, email (opsional), aktif."
                 :error="$errors->first('file')" :filename="$file && $errors->has('file') ? $file->getClientOriginalName() : null" remove-action="hapusFile" />
             <div wire:loading wire:target="file" class="mt-3 text-sm text-neutral-600" role="status">Memeriksa berkas…</div>
             <div class="mt-4">
@@ -64,6 +64,7 @@
                 <x-ui.th>NIP</x-ui.th>
                 <x-ui.th>Pangkat/Golongan</x-ui.th>
                 <x-ui.th>Jabatan</x-ui.th>
+                <x-ui.th>Email</x-ui.th>
                 <x-ui.th>Aktif</x-ui.th>
                 <x-ui.th>Status</x-ui.th>
             </x-slot:head>
@@ -74,6 +75,7 @@
                     <td class="whitespace-nowrap">{{ $r['data']['nip'] ?: '—' }}</td>
                     <td class="min-w-32">{{ collect([$r['data']['pangkat'], $r['data']['golongan']])->filter()->implode(' / ') ?: '—' }}</td>
                     <td class="min-w-32">{{ $r['data']['jabatan'] ?: '—' }}</td>
+                    <td class="min-w-40 break-all">{{ $r['data']['email'] ?: '–' }}</td>
                     <td>{{ $r['data']['aktif'] ? 'Ya' : 'Tidak' }}</td>
                     <td class="min-w-64 py-2">
                         @if ($r['status'] === 'error')

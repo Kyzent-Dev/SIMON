@@ -5,6 +5,7 @@ namespace App\Actions\Spt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\EmailPegawai;
 use App\Notifications\PengajuanDiputuskan;
 use App\Services\PenerimaNotifikasi;
 use Closure;
@@ -40,7 +41,12 @@ trait PutuskanPengajuan
             return [$spt, $alasan];
         }, attempts: 3);
 
-        Notification::send(app(PenerimaNotifikasi::class)->irban($spt->irban_id), new PengajuanDiputuskan($spt, $alasan));
+        $penerima = app(PenerimaNotifikasi::class);
+        $akun = $penerima->irban($spt->irban_id);
+        Notification::send($akun, new PengajuanDiputuskan($spt, $alasan));
+        if ($email = $penerima->emailPegawai($spt->diinputOleh, $akun)) {
+            Notification::route('mail', $email)->notify(new EmailPegawai(new PengajuanDiputuskan($spt, $alasan), $spt->diinputOleh->nama_bergelar));
+        }
 
         return $spt;
     }

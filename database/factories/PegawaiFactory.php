@@ -18,7 +18,13 @@ class PegawaiFactory extends Factory
             'pangkat' => fake()->randomElement(['Penata', 'Pembina', 'Penata Muda']),
             'golongan' => fake()->randomElement(['III/a', 'III/c', 'IV/a']),
             'jabatan' => fake()->jobTitle(),
+            'email' => null,
             'aktif' => true,
         ];
+    }
+
+    public function denganEmail(): static
+    {
+        return $this->state(fn () => ['email' => fake()->unique()->safeEmail()]);
     }
 }

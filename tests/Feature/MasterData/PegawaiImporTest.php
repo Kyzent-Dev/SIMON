@@ -191,7 +191,7 @@ class PegawaiImporTest extends TestCase
     {
         $r = (new PegawaiImportParser)->parse($this->xlsx([['Budi', $this->nip(1), 'Auditor']], ['nama_bergelar', 'nip', 'jabatan']));
         $this->assertSame('valid', $r[0]['status']);
-        $this->assertSame(['nama' => 'Budi', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => 'Auditor', 'aktif' => true], $r[0]['data']);
+        $this->assertSame(['nama' => 'Budi', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => 'Auditor', 'email' => '', 'aktif' => true], $r[0]['data']);
     }
 
     public function test_malformed_raw_is_reported_as_errors(): void
@@ -210,5 +210,36 @@ class PegawaiImporTest extends TestCase
         $big = array_fill(0, 2001, ['baris' => 2, 'nama_bergelar' => 'N', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => '', 'aktif' => '']);
         $c->set('raw', $big)->call('impor')->assertSet('step', 1)->assertHasErrors('file');
         $this->assertSame(0, Pegawai::count());
+    }
+
+    public function test_email_column(): void
+    {
+        Pegawai::factory()->create(['nip' => $this->nip(8), 'email' => 'ada@example.test']);
+        Pegawai::factory()->create(['nip' => $this->nip(9), 'email' => 'sama@example.test']);
+        $h = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'email', 'aktif'];
+        $r = (new PegawaiImportParser)->parse($this->xlsx([
+            ['A', $this->nip(1), '', '', '', 'Budi@Example.test', ''],
+            ['B', $this->nip(2), '', '', '', 'bukan-email', ''],
+            ['C', $this->nip(3), '', '', '', 'budi@example.test', ''],
+            ['D', $this->nip(4), '', '', '', 'ada@example.test', ''],
+            ['E', $this->nip(9), '', '', '', 'sama@example.test', ''],
+            ['F', $this->nip(5), '', '', '', '', ''],
+        ], $h));
+
+        $this->assertSame(['valid', 'error', 'error', 'error', 'warning', 'valid'], array_column($r, 'status'));
+        $this->assertSame('budi@example.test', $r[0]['data']['email']);
+        $this->assertSame(['email', 'Format email tidak valid.'], array_values($r[1]['errors'][0]));
+        $this->assertSame(['email', 'Email ganda dengan baris 2.'], array_values($r[2]['errors'][0]));
+        $this->assertSame(['email', 'Email sudah dipakai pegawai lain.'], array_values($r[3]['errors'][0]));
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)
+            ->set('file', $this->upload($this->xlsx([['A', $this->nip(1), '', '', '', 'Budi@Example.test', '']], $h)))
+            ->call('impor')->assertSet('diimpor', 1);
+        $this->assertSame('budi@example.test', Pegawai::where('nip', $this->nip(1))->value('email'));
+    }
+
+    public function test_template_headers_include_email(): void
+    {
+        $this->assertSame(['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'email', 'aktif'], PegawaiImportParser::HEADERS);
     }
 }

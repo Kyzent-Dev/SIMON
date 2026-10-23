@@ -10,7 +10,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class PegawaiImportParser
 {
-    public const HEADERS = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'aktif'];
+    public const HEADERS = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'email', 'aktif'];
 
     public const MAX_ROWS = 2000;
 
@@ -84,17 +84,30 @@ class PegawaiImportParser
         $existing = Pegawai::whereIn('nip', array_column($raw, 'nip'))->pluck('nip')->flip();
         $rules = SavePegawai::rules();
         $rules['nip'] = ['required', 'digits:18']; // uniqueness is a warning here, not an error
+        $rules['email'] = ['nullable', 'string', 'max:255', 'email:rfc']; // uniqueness is checked below against the row's NIP
+        $emailDipakai = Pegawai::whereIn('email', array_filter(array_map(fn ($r) => mb_strtolower($r['email']), $raw)))->pluck('nip', 'email')->mapWithKeys(fn ($nip, $e) => [mb_strtolower($e) => $nip]);
         $seen = [];
+        $seenEmail = [];
         $out = [];
 
         foreach ($raw as $r) {
             $errors = [];
             $aktif = self::AKTIF[strtolower($r['aktif'])] ?? ($r['aktif'] === '' ? true : null);
-            $data = ['nama' => $r['nama_bergelar'], 'nip' => $r['nip'], 'pangkat' => $r['pangkat'], 'golongan' => $r['golongan'], 'jabatan' => $r['jabatan'], 'aktif' => $aktif ?? true];
+            $data = ['nama' => $r['nama_bergelar'], 'nip' => $r['nip'], 'pangkat' => $r['pangkat'], 'golongan' => $r['golongan'], 'jabatan' => $r['jabatan'], 'email' => mb_strtolower($r['email']), 'aktif' => $aktif ?? true];
 
             $v = Validator::make($data, $rules, SavePegawai::messages(), ['nama' => 'Nama bergelar', 'pangkat' => 'Pangkat', 'golongan' => 'Golongan', 'jabatan' => 'Jabatan']);
             foreach ($v->errors()->messages() as $field => $msgs) {
                 $errors[] = ['kolom' => $field === 'nama' ? 'nama_bergelar' : $field, 'pesan' => $msgs[0]];
+            }
+            if ($data['email'] !== '' && ! $v->errors()->has('email')) {
+                if (isset($seenEmail[$data['email']])) {
+                    $errors[] = ['kolom' => 'email', 'pesan' => "Email ganda dengan baris {$seenEmail[$data['email']]}."];
+                } else {
+                    $seenEmail[$data['email']] = $r['baris'];
+                    if (isset($emailDipakai[$data['email']]) && $emailDipakai[$data['email']] !== $r['nip']) {
+                        $errors[] = ['kolom' => 'email', 'pesan' => SavePegawai::messages()['email.unique']];
+                    }
+                }
             }
             if ($aktif === null) {
                 $errors[] = ['kolom' => 'aktif', 'pesan' => 'Isi aktif dengan ya/tidak, 1/0, atau true/false.'];

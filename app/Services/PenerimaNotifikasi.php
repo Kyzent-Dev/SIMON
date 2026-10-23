@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\Role;
 use App\Models\Komentar;
+use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -35,6 +36,17 @@ class PenerimaNotifikasi
     public function pengguna(User $user): Collection
     {
         return User::whereKey($user->id)->get();
+    }
+
+    /** The pegawai's own address, unless inactive, empty, or already covered by an account address that got the same notification. */
+    public function emailPegawai(?Pegawai $p, Collection $akun): ?string
+    {
+        if (! $p?->aktif || blank($p->email)) {
+            return null;
+        }
+        $sudah = $akun->flatMap(fn (User $u) => $u->routeNotificationForMail() ?? [])->map(fn ($a) => mb_strtolower($a));
+
+        return $sudah->contains(mb_strtolower($p->email)) ? null : $p->email;
     }
 
     /** @return Collection<int, User> */

@@ -6,6 +6,7 @@ use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\EmailPegawai;
 use App\Notifications\NomorDibatalkan;
 use App\Services\PenerimaNotifikasi;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,12 @@ class BatalkanNomor
             return $spt;
         });
 
-        Notification::send(app(PenerimaNotifikasi::class)->irban($spt->irban_id), new NomorDibatalkan($spt, $alasan));
+        $penerima = app(PenerimaNotifikasi::class);
+        $akun = $penerima->irban($spt->irban_id);
+        Notification::send($akun, new NomorDibatalkan($spt, $alasan));
+        if ($email = $penerima->emailPegawai($spt->diinputOleh, $akun)) {
+            Notification::route('mail', $email)->notify(new EmailPegawai(new NomorDibatalkan($spt, $alasan), $spt->diinputOleh->nama_bergelar));
+        }
 
         return $spt;
     }

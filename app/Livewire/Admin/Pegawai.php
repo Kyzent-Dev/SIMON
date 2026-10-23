@@ -46,6 +46,8 @@ class Pegawai extends Component
 
     public string $jabatan = '';
 
+    public string $email = '';
+
     public bool $aktif = true;
 
     public bool $deleteOpen = false;
@@ -90,7 +92,7 @@ class Pegawai extends Component
     {
         Gate::authorize('manage-master-data');
         $this->resetValidation();
-        $this->reset('editingId', 'nama', 'nip', 'pangkat', 'golongan', 'jabatan');
+        $this->reset('editingId', 'nama', 'nip', 'pangkat', 'golongan', 'jabatan', 'email');
         $this->aktif = true;
         $this->open = true;
     }
@@ -106,6 +108,7 @@ class Pegawai extends Component
         $this->pangkat = (string) $p->pangkat;
         $this->golongan = (string) $p->golongan;
         $this->jabatan = (string) $p->jabatan;
+        $this->email = (string) $p->email;
         $this->aktif = $p->aktif;
         $this->open = true;
     }
@@ -113,6 +116,7 @@ class Pegawai extends Component
     public function save(SavePegawai $action): void
     {
         Gate::authorize('manage-master-data');
+        $this->email = trim($this->email);
         $data = $this->validate(SavePegawai::rules($this->editingId), SavePegawai::messages(), ['nama' => 'Nama bergelar']);
         $p = $action->handle($this->editingId ? Model::findOrFail($this->editingId) : null, $data);
 
@@ -157,7 +161,7 @@ class Pegawai extends Component
         $perPage = in_array($this->perPage, [25, 50, 100], true) ? $this->perPage : 25;
         $query = fn () => Model::query()
             ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->whereRaw("nama_bergelar like ? escape '!'", ["%{$term}%"])->orWhereRaw("nip like ? escape '!'", ["%{$term}%"])))
+                ->whereRaw("nama_bergelar like ? escape '!'", ["%{$term}%"])->orWhereRaw("nip like ? escape '!'", ["%{$term}%"])->orWhereRaw("email like ? escape '!'", ["%{$term}%"])))
             ->when($this->filter === 'aktif', fn ($q) => $q->where('aktif', true))
             ->when($this->filter === 'nonaktif', fn ($q) => $q->where('aktif', false))
             ->orderBy($this->sortBy === 'nip' ? 'nip' : 'nama_bergelar', $this->sortDir === 'desc' ? 'desc' : 'asc')

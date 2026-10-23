@@ -29,7 +29,7 @@
                     <input id="cari" type="search" wire:model.live.debounce.300ms="search" placeholder="Cari…" autocomplete="off"
                         class="block h-12 w-full rounded-md border-border-strong bg-white pr-3 pl-10 text-base text-neutral-900 focus:border-mint-700 focus:ring-2 focus:ring-mint-600 lg:h-10 lg:text-sm">
                 </div>
-                <p class="mt-1.5 text-xs text-neutral-500">Nama atau NIP.</p>
+                <p class="mt-1.5 text-xs text-neutral-500">Nama, NIP, atau email.</p>
             </div>
             <x-ui.select label="Status" name="filter" wire:model.live="filter" :options="['semua' => 'Semua', 'aktif' => 'Aktif', 'nonaktif' => 'Nonaktif']" />
         </div>
@@ -40,6 +40,7 @@
                 <x-ui.th sortable :direction="$dir('nip')" wire:click="sort('nip')">NIP</x-ui.th>
                 <x-ui.th>Pangkat/Golongan</x-ui.th>
                 <x-ui.th>Jabatan</x-ui.th>
+                <x-ui.th>Email</x-ui.th>
                 <x-ui.th>Status</x-ui.th>
                 <x-ui.th><span class="sr-only">Aksi</span></x-ui.th>
             </x-slot:head>
@@ -49,6 +50,7 @@
                     <td class="whitespace-nowrap">{{ $row->nip }}</td>
                     <td class="min-w-32">{{ collect([$row->pangkat, $row->golongan])->filter()->implode(' / ') ?: '—' }}</td>
                     <td class="min-w-32">{{ $row->jabatan ?: '—' }}</td>
+                    <td class="min-w-40 break-all">{{ $row->email ?: '–' }}</td>
                     <td>
                         @if ($row->aktif)
                             <span class="inline-flex items-center gap-1.5 text-success-700">{{ svg('heroicon-m-check-circle', 'size-5') }}Aktif</span>
@@ -68,7 +70,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="!h-auto !p-0">
+                    <td colspan="7" class="!h-auto !p-0">
                         <x-ui.empty-state icon="magnifying-glass" title="Tidak ada pegawai yang cocok." description="Ubah kata kunci atau filter status." />
                     </td>
                 </tr>
@@ -93,6 +95,7 @@
                 <x-ui.input label="Golongan" name="golongan" wire:model="golongan" autocomplete="off" :error="$errors->first('golongan')" />
             </div>
             <x-ui.input label="Jabatan" name="jabatan" wire:model="jabatan" autocomplete="off" :error="$errors->first('jabatan')" />
+            <x-ui.input label="Email" name="email" type="email" wire:model="email" autocomplete="off" helper="Opsional. Untuk salinan email notifikasi SPT yang diinput pegawai ini." :error="$errors->first('email')" />
             <x-ui.switch label="Aktif" name="aktif" wire:model="aktif" description="Pegawai nonaktif tidak muncul sebagai pilihan baru." />
         </form>
         <x-slot:footer>

@@ -67,10 +67,16 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
 
     public function toMail(object $notifiable): MailMessage
     {
+        return $this->pesanEmail();
+    }
+
+    /** The one email builder; $salam/$penutup are only set for pegawai emails (EmailPegawai). */
+    public function pesanEmail(?string $salam = null, ?string $penutup = null): MailMessage
+    {
         // Lines must come before action(): MailMessage files later lines as outro.
         return (new MailMessage)
             ->subject('[SIMON-SPT] '.$this->subjek())
-            ->markdown('mail.notifikasi', ['catatan' => $this->catatan()])
+            ->markdown('mail.notifikasi', ['catatan' => $this->catatan(), 'salam' => $salam, 'penutup' => $penutup])
             ->lines($this->isi())
             ->action($this->labelTombol(), url($this->url()));
     }
