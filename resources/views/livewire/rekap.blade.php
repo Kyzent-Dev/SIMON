@@ -5,7 +5,7 @@
 <div>
     <x-ui.page-header :title="$judul" description="Rencana dan realisasi SPT per triwulan.">
         <x-slot:actions>
-            <x-app.export-buttons />
+            <x-app.export-buttons aksi="bukaEkspor" />
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -151,5 +151,34 @@
                 @endif
             </section>
         @endforeach
+    </div>
+
+    {{-- Export section picker (spec Task 2 §2.1). Focus: first checkbox on open (autofocus, honoured by x-trap), the export button on close/Esc (the menu item that opened it is gone). --}}
+    <div x-data="{ buka: false }" x-effect="const v = $wire.pilihEkspor; if (buka && ! v) setTimeout(() => document.querySelector('[data-ekspor]')?.focus(), 80); buka = v">
+        <x-ui.modal name="rekap-ekspor" title="Pilih isi ekspor" wire:model="pilihEkspor">
+            <div x-ref="bagian" class="space-y-4">
+                <fieldset>
+                    <legend class="mb-1 text-sm font-semibold text-neutral-900">Ringkasan</legend>
+                    <div class="flex flex-col">
+                        @foreach (['rr' => 'Rencana vs Realisasi', 'klasifikasi' => 'Per Klasifikasi', 'jenis' => 'Per Jenis Penugasan'] as $kode => $teks)
+                            <x-ui.checkbox :label="$teks" name="bagianEkspor[]" id="ekspor-{{ $kode }}" :value="$kode" wire:model="bagianEkspor" :autofocus="$loop->first" />
+                        @endforeach
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend class="mb-1 text-sm font-semibold text-neutral-900">Detail</legend>
+                    <x-ui.checkbox label="Detail Realisasi" name="bagianEkspor[]" id="ekspor-detail" value="detail" wire:model="bagianEkspor" />
+                </fieldset>
+                @error('bagianEkspor')
+                    <p id="ekspor-galat" role="alert" class="flex items-center gap-1.5 text-sm text-danger-700">{{ svg('heroicon-m-exclamation-circle', 'size-5 shrink-0', ['aria-hidden' => 'true']) }}{{ $message }}</p>
+                @enderror
+            </div>
+            <x-slot:footer>
+                <x-ui.button variant="secondary" type="button" x-on:click="$dispatch('close-modal', {name: 'rekap-ekspor'})">Batal</x-ui.button>
+                <x-ui.button type="button" wire:click="unduhEkspor" wire:loading.class="opacity-60" wire:loading.attr="aria-busy" wire:target="unduhEkspor">
+                    <span wire:loading.remove wire:target="unduhEkspor">{{ $this->formatEkspor === 'pdf' ? 'Unduh PDF' : 'Unduh Excel' }}</span><span wire:loading wire:target="unduhEkspor">Memproses…</span>
+                </x-ui.button>
+            </x-slot:footer>
+        </x-ui.modal>
     </div>
 </div>

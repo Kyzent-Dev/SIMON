@@ -21,3 +21,9 @@ Spec: `fase-9.2-spesifikasi.md`. Plan: `docs/plans/fase-9.2-ekspor-perubahan-pro
 - Nama file: sufiks kode bagian ditempel ke nama dasar yang sudah ada (tanpa `-tw2`; contoh spesifikasi dibaca ilustratif). Tanpa kunci `bagian` (tombol ekspor lama, sebelum modal Task 3) dipakai default tab `irban`, jadi nama file kini `...-rr-klasifikasi-jenis`; test lama di `HalamanRekapTest`/`DetailRealisasiTest` disesuaikan (nama file, filter berisi `bagian`, baca semua sheet, detail tanpa baris nama irban karena irban = sheet).
 - Baris kosong di `RekapSheet` ditulis `[null]`: Laravel Excel membuang baris `[]` (sehingga baris 4 dan jeda antarbagian hilang).
 - PDF: setiap blok tabel dibungkus `.blok { page-break-inside: avoid }`; blok Detail yang lebih tinggi dari satu halaman tetap terpecah ke halaman berikut (dites).
+
+## Fase 9.2, Task 3
+- `ekspor()` dihapus dari `Rekap`; `x-app.export-buttons` mendapat prop `aksi` (default `ekspor`) dan atribut `data-ekspor` pada tombol utama sebagai target fokus kembali.
+- Fokus awal modal lewat `autofocus` pada kotak centang pertama (dihormati `x-trap`); fokus kembali ke tombol Ekspor lewat `x-effect` yang membaca `$wire.pilihEkspor`. `$wire.$watch` dan `setTimeout` setelah buka tidak andal (trap menimpa fokus).
+- Tombol "Unduh" tidak memakai `wire:loading.attr="disabled"` karena tombol yang disabled kehilangan fokus sehingga Esc tidak lagi sampai ke modal setelah galat validasi; diganti `opacity-60` + `aria-busy`.
+- Test `DetailRealisasiTest` tab detail: `assertDontSee('Rencana vs Realisasi')` diganti `assertDontSeeHtml('id="rekap-bagian-0"')` karena modal memuat nama bagian.

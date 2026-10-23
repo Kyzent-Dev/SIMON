@@ -135,7 +135,7 @@ class HalamanRekapTest extends TestCase
         }
         $this->assertTrue(collect($rows)->contains('Irban A Total 6 3 50'));
         $this->assertTrue(collect($rows)->contains('Irban B Total 3 1 33'));
-        $this->halaman($this->pimpinan, ['irban' => (string) $this->a->id])->call('ekspor', 'xlsx')->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'-rr-klasifikasi-jenis.xlsx');
+        $this->halaman($this->pimpinan, ['irban' => (string) $this->a->id])->call('bukaEkspor', 'xlsx')->call('unduhEkspor')->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->a->kode_nomor.'-rr-klasifikasi-jenis.xlsx');
     }
 
     /** PRD §14 butir 6: for tw=1 every numeric row the page shows (Per Irban and Gabungan tabs) is in the xlsx for the same filter. */
@@ -195,5 +195,28 @@ class HalamanRekapTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
         $p->otorisasi(User::factory()->create(['role' => Role::BagianUmum]));
+    }
+
+    public function test_export_modal_defaults_per_tab_and_validates(): void
+    {
+        foreach (['irban' => ['rr', 'klasifikasi', 'jenis'], 'gabungan' => ['rr', 'klasifikasi', 'jenis'], 'detail' => ['detail']] as $tab => $bagian) {
+            $this->halaman($this->pimpinan, ['tab' => $tab])->call('bukaEkspor', 'pdf')
+                ->assertSet('bagianEkspor', $bagian)->assertSet('formatEkspor', 'pdf')->assertSet('pilihEkspor', true);
+        }
+
+        $t = $this->halaman($this->pimpinan)->call('bukaEkspor', 'xlsx')->set('bagianEkspor', [])->call('unduhEkspor');
+        $t->assertHasErrors(['bagianEkspor' => 'Pilih minimal satu bagian.'])->assertSet('pilihEkspor', true)->assertNoFileDownloaded();
+
+        $this->halaman($this->pimpinan)->call('bukaEkspor', 'xlsx')->set('bagianEkspor', ['detail'])->call('unduhEkspor')
+            ->assertFileDownloaded('rekap-triwulan-2026-detail.xlsx')->assertSet('pilihEkspor', false);
+
+        $this->halaman($this->pimpinan)->call('bukaEkspor', 'csv')->assertSet('pilihEkspor', false)->assertSet('formatEkspor', '');
+    }
+
+    public function test_export_modal_requires_rekap_access(): void
+    {
+        $this->halaman($this->irbanA)->call('bukaEkspor', 'xlsx')->assertSet('pilihEkspor', true);
+        $lain = User::factory()->create(['role' => Role::BagianUmum]);
+        Livewire::actingAs($lain)->test(Rekap::class)->assertForbidden();
     }
 }

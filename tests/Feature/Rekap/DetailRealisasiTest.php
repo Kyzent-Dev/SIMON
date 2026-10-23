@@ -88,7 +88,7 @@ class DetailRealisasiTest extends TestCase
         $t = $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['tw' => '1']);
 
         $t->assertSet('tab', 'detail')->assertSee('Kesesuaian dengan Jadwal PKPT')->assertSee('Permasalahan/Kendala')
-            ->assertDontSee('Rencana vs Realisasi')->assertDontSee('Per Klasifikasi');
+            ->assertDontSeeHtml('id="rekap-bagian-0"'); // the export modal also lists the section names
         $html = $t->html();
         $this->assertMatchesRegularExpression('/<h2[^>]*>\s*Irban A\s*<\/h2>/', $html);
         $this->assertStringContainsString('href="'.route('spt.show', $this->spt).'"', $html);

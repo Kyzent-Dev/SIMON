@@ -46,14 +46,42 @@ class Rekap extends Component
         Gate::authorize('rekap', Spt::class);
     }
 
-    public function ekspor(string $format)
+    /** Export modal "Pilih isi ekspor": sections picked in $bagianEkspor, format fixed by the button that opened it. */
+    public array $bagianEkspor = [];
+
+    public string $formatEkspor = '';
+
+    public bool $pilihEkspor = false;
+
+    public function bukaEkspor(string $format): void
     {
         Gate::authorize('rekap', Spt::class);
         if (! in_array($format, ['xlsx', 'pdf'], true)) {
+            return;
+        }
+        $this->resetErrorBag('bagianEkspor');
+        $this->formatEkspor = $format;
+        $this->bagianEkspor = PembangunRekap::BAGIAN_DEFAULT[$this->tab] ?? PembangunRekap::BAGIAN_DEFAULT['irban'];
+        $this->pilihEkspor = true;
+    }
+
+    public function unduhEkspor()
+    {
+        Gate::authorize('rekap', Spt::class);
+        if (! in_array($this->formatEkspor, ['xlsx', 'pdf'], true)) {
+            $this->pilihEkspor = false;
+
             return null;
         }
+        $bagian = array_values(array_intersect(PembangunRekap::BAGIAN, $this->bagianEkspor));
+        if (! $bagian) {
+            $this->addError('bagianEkspor', 'Pilih minimal satu bagian.');
 
-        return app(Ekspor::class)->minta(auth()->user(), 'rekap', $format, $this->only(self::FILTER));
+            return null;
+        }
+        $this->pilihEkspor = false;
+
+        return app(Ekspor::class)->minta(auth()->user(), 'rekap', $this->formatEkspor, $this->only(self::FILTER) + ['bagian' => $bagian]);
     }
 
     public function render()
