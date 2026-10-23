@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\EksporController;
+use App\Http\Controllers\PerubahanSkController;
 use App\Http\Controllers\Publik\BerandaController;
 use App\Http\Controllers\SptDokumenController;
 use App\Livewire\Admin\Dasbor as AdminDasbor;
@@ -61,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ekspor/{ekspor}', EksporController::class)->name('ekspor.unduh');
     Route::get('/spt/{spt}', SptDetail::class)->name('spt.show');
     Route::get('/spt/{spt}/dokumen/{dokumen}', SptDokumenController::class)->name('spt.dokumen');
+    Route::get('/perubahan-pkpt/{perubahan}/sk', PerubahanSkController::class)->name('perubahan-pkpt.sk');
     Route::get('/dashboard', fn () => redirect()->route(auth()->user()->role->dashboardRoute()))->name('dashboard');
 
     Route::get('/admin', AdminDasbor::class)->name('admin.dashboard')->middleware('role:admin');

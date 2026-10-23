@@ -16,7 +16,13 @@ class KesesuaianPkpt
 
     public function sesuai(PkptItem $item, DateTimeInterface|string $mulai, DateTimeInterface|string $selesai): bool
     {
-        [$m, $s] = $this->rentang($item);
+        return $this->sesuaiRentang($this->rentang($item), $mulai, $selesai);
+    }
+
+    /** @param array{0: DateTimeInterface|string, 1: DateTimeInterface|string} $rentang PKPT range; also for a range that is not saved yet (Perubahan PKPT impact). */
+    public function sesuaiRentang(array $rentang, DateTimeInterface|string $mulai, DateTimeInterface|string $selesai): bool
+    {
+        [$m, $s] = [CarbonImmutable::parse($rentang[0])->startOfDay(), CarbonImmutable::parse($rentang[1])->startOfDay()];
 
         return $m->lte(CarbonImmutable::parse($mulai)->startOfDay()) && CarbonImmutable::parse($selesai)->startOfDay()->lte($s);
     }

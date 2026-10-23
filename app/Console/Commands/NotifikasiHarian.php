@@ -3,7 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Enums\StatusPengajuan;
+use App\Enums\StatusPerubahan;
+use App\Models\PkptPerubahan;
 use App\Models\Spt;
+use App\Notifications\PengingatPerubahanPkpt;
+use App\Notifications\PengingatSkPerubahan;
 use App\Notifications\PengingatSptFinal;
 use App\Notifications\SptTerlambat;
 use App\Services\PenandaSpt;
@@ -16,7 +20,7 @@ class NotifikasiHarian extends Command
 {
     protected $signature = 'notifikasi:harian';
 
-    protected $description = 'Kirim notifikasi SPT terlambat dan pengingat SPT final (sekali per SPT).';
+    protected $description = 'Kirim notifikasi SPT terlambat dan pengingat SPT final (sekali per SPT), serta pengingat harian Perubahan PKPT dan SK-nya.';
 
     public function handle(PenandaSpt $penanda, PenerimaNotifikasi $penerima, Settings $settings): int
     {
@@ -43,7 +47,29 @@ class NotifikasiHarian extends Command
                 }
             });
 
-        $this->info("Terlambat: {$terlambat} notifikasi, pengingat SPT final: {$pengingat} notifikasi.");
+        // Perubahan PKPT: at most one reminder per package per day (pengingat_terakhir_pada), the first one the day after submission/approval.
+        $perubahan = $sk = 0;
+        PkptPerubahan::with('pkpt')
+            ->where(fn ($q) => $q->whereNull('pengingat_terakhir_pada')->orWhere('pengingat_terakhir_pada', '<', $hariIni))
+            ->where(fn ($q) => $q
+                ->where(fn ($q) => $q->where('status', StatusPerubahan::Diajukan)->where('diajukan_pada', '<', $hariIni))
+                ->orWhere(fn ($q) => $q->where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')->whereNull('sk_lengkap_pada')
+                    ->whereNull('pengingat_sk_dimatikan_pada')->where('diputuskan_pada', '<', $hariIni)))
+            ->chunkById(100, function ($semua) use (&$perubahan, &$sk, $penerima) {
+                foreach ($semua as $p) {
+                    if ($p->status === StatusPerubahan::Diajukan) {
+                        Notification::send($penerima->pimpinan(), new PengingatPerubahanPkpt($p));
+                        $perubahan++;
+                    } else {
+                        Notification::send($penerima->admin(), new PengingatSkPerubahan($p));
+                        $sk++;
+                    }
+                    $p->forceFill(['pengingat_terakhir_pada' => now()])->save();
+                }
+            });
+
+        $this->info("Terlambat: {$terlambat} notifikasi, pengingat SPT final: {$pengingat} notifikasi, "
+            ."pengingat perubahan PKPT: {$perubahan} notifikasi, pengingat SK perubahan: {$sk} notifikasi.");
 
         return self::SUCCESS;
     }

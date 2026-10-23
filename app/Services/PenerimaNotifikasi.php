@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\Role;
 use App\Models\Komentar;
 use App\Models\Pegawai;
+use App\Models\PkptPerubahan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -15,6 +16,29 @@ class PenerimaNotifikasi
     public function bagianUmum(): Collection
     {
         return User::where('role', Role::BagianUmum)->get();
+    }
+
+    /** @return Collection<int, User> */
+    public function admin(): Collection
+    {
+        return User::where('role', Role::Admin)->get();
+    }
+
+    /** The Admin who created the package, or every Admin when that account is gone or no longer Admin. @return Collection<int, User> */
+    public function pembuatPerubahan(PkptPerubahan $p): Collection
+    {
+        $pembuat = $p->pembuat()->first();
+
+        return $pembuat?->role === Role::Admin ? User::whereKey($pembuat->id)->get() : $this->admin();
+    }
+
+    /** Approved package: its creator, the other Pimpinan, and the Irban accounts of every affected irban. @return Collection<int, User> */
+    public function perubahanDisetujui(PkptPerubahan $p, User $pemutus): Collection
+    {
+        $irban = User::where('role', Role::Irban)->whereIn('irban_id', app(PerubahanPkpt::class)->irbanTerdampak($p))->get();
+
+        return $this->pembuatPerubahan($p)->merge($this->pimpinan())->merge($irban)
+            ->reject(fn (User $u) => $u->id === $pemutus->id)->unique('id')->values();
     }
 
     /** @return Collection<int, User> */
