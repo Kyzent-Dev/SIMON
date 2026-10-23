@@ -7,7 +7,7 @@
     @page { margin: 28px 32px; }
     body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #151C1A; }
     h1 { font-size: 15px; margin: 0 0 4px; }
-    h2 { font-size: 12px; margin: 16px 0 0; }
+    h2 { font-size: 12px; margin: 16px 0 0; page-break-after: avoid; }
     h3 { font-size: 10px; margin: 8px 0 0; }
     p { margin: 0 0 3px; color: #4B5955; }
     table { width: 60%; border-collapse: collapse; margin-top: 4px; }
@@ -17,6 +17,12 @@
     td.n, th.n { text-align: right; }
     tr.total td, tr.total th { font-weight: bold; border-top: 2px solid #B8C4C0; }
     tr, .blok { page-break-inside: avoid; }
+    table.grafik-tabel, table.grafik-bar { width: 100%; margin-top: 0; }
+    .grafik-tabel td, .grafik-bar td { border: 0; padding: 1px 3px; }
+    .grafik-label { width: 28%; color: #151C1A; }
+    .grafik-area { width: 78%; }
+    .grafik-angka { color: #151C1A; padding-left: 4px; }
+    .legenda { color: #4B5955; }
 </style>
 </head>
 <body>
@@ -42,6 +48,9 @@
                 </table>
             </div>
         @endforeach
+        @isset($grafik[$s['kode']])
+            @include('pdf.partials.grafik-batang', ['kode' => $s['kode'], ...$grafik[$s['kode']]])
+        @endisset
     @endforeach
     @if (in_array('detail', $pilihan, true))
         <h2>{{ $detailJudul }}</h2>

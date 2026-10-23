@@ -27,3 +27,9 @@ Spec: `fase-9.2-spesifikasi.md`. Plan: `docs/plans/fase-9.2-ekspor-perubahan-pro
 - Fokus awal modal lewat `autofocus` pada kotak centang pertama (dihormati `x-trap`); fokus kembali ke tombol Ekspor lewat `x-effect` yang membaca `$wire.pilihEkspor`. `$wire.$watch` dan `setTimeout` setelah buka tidak andal (trap menimpa fokus).
 - Tombol "Unduh" tidak memakai `wire:loading.attr="disabled"` karena tombol yang disabled kehilangan fokus sehingga Esc tidak lagi sampai ke modal setelah galat validasi; diganti `opacity-60` + `aria-busy`.
 - Test `DetailRealisasiTest` tab detail: `assertDontSee('Rencana vs Realisasi')` diganti `assertDontSeeHtml('id="rekap-bagian-0"')` karena modal memuat nama bagian.
+
+## Fase 9.2, Task 4
+- `App\Support\PaletGrafik` is the PHP copy of the chart palette in `resources/js/grafik.js` (DESIGN §9); the two must stay in sync. PDF charts are print output: no motion, plain HTML/CSS (tables and divs), labels always after the bar in `TEKS`.
+- Bar width is relative to the chart's own maximum (paired: largest value; stacked: largest total). Deviation: the `persen` chart uses max(100, largest %) so a 33% bar is a third of the track, not stretched to the best jenis.
+- Klasifikasi label format: `Berjalan n · Selesai m`; zero rows stay as empty rows with their label. Jenis: only rencana > 0, descending by %, `75% (3/4)`.
+- With one irban filter the Rencana vs Realisasi chart uses TW I-IV (or the selected TW) of that irban; otherwise one pair per irban. Added `page-break-after: avoid` on `h2` in the PDF so a section title is not stranded at a page bottom.

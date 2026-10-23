@@ -10,6 +10,7 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
+use App\Support\PaletGrafik;
 use App\Support\Tanggal;
 use Illuminate\Support\Facades\Gate;
 
@@ -145,10 +146,54 @@ class PembangunRekap implements Pembangun
             'tahun' => $filter['tahun'], 'tw' => $filter['tw'] ? self::TW[$filter['tw']] : 'Semua TW',
             'irban' => $filter['irban'] ? Irban::whereKey($filter['irban'])->value('nama') : null,
             'pkptDisahkan' => $data['pkpt_disahkan'], 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL,
-            'detail' => in_array('detail', $pilihan, true) ? $this->detail($filter) : [], 'pilihan' => $pilihan,
+            'detail' => in_array('detail', $pilihan, true) ? $this->detail($filter) : [], 'pilihan' => $pilihan, 'grafik' => $this->grafik($data, $filter),
             'bagian' => array_values(array_filter($this->bagian($data, $filter['tw'], 'semua'), fn ($s) => in_array($s['kode'], $pilihan, true))),
             'dibuat' => now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB',
         ])->render();
+    }
+
+    /**
+     * Bar chart data per selected summary section for the PDF (partial pdf.partials.grafik-batang). Values follow the filter's TW (0 = the year).
+     *
+     * @return array<string, array{jenis: string, judul: string, baris: list<array>, legenda: list<array>}>
+     */
+    public function grafik(array $rekap, array $filter): array
+    {
+        $tw = $filter['tw'];
+        $ambil = fn (array $b) => $tw ? $b['tw'][$tw] : $b['total'];
+        $rr = [['label' => 'Rencana', 'isi' => PaletGrafik::RENCANA_ISI, 'garis' => PaletGrafik::RENCANA_GARIS], ['label' => 'Realisasi', 'isi' => PaletGrafik::REALISASI, 'garis' => PaletGrafik::REALISASI]];
+        $pasang = fn (array $s) => [$s['rencana'] ?? 0, $s['realisasi'] ?? 0];
+        $hasil = [];
+        foreach ($filter['bagian'] as $kode) {
+            if ($kode === 'rr') {
+                $baris = $filter['irban']
+                    ? array_map(fn ($n) => ['label' => self::TW[$n], 'nilai' => $pasang($rekap['irban']['total']['tw'][$n])], $tw ? [$tw] : array_keys(self::TW))
+                    : array_map(fn ($b) => ['label' => $b['nama'], 'nilai' => $pasang($ambil($b))], $rekap['irban']['baris']);
+                $hasil['rr'] = ['jenis' => 'berpasangan', 'judul' => 'Grafik Rencana vs Realisasi', 'baris' => $baris, 'legenda' => $rr];
+            } elseif ($kode === 'klasifikasi') {
+                $hasil['klasifikasi'] = ['jenis' => 'bertumpuk', 'judul' => 'Grafik Per Klasifikasi', 'legenda' => [
+                    ['label' => 'Berjalan', 'isi' => PaletGrafik::BERJALAN_ISI, 'garis' => PaletGrafik::BERJALAN_GARIS],
+                    ['label' => 'Selesai', 'isi' => PaletGrafik::SELESAI, 'garis' => PaletGrafik::SELESAI]],
+                    'baris' => array_map(function ($b) use ($ambil) {
+                        [$jalan, $selesai] = [$ambil($b)['berjalan'] ?? 0, $ambil($b)['selesai'] ?? 0];
+
+                        return ['label' => $b['nama'], 'nilai' => [$jalan, $selesai], 'teks' => "Berjalan {$jalan} · Selesai {$selesai}"];
+                    }, $rekap['klasifikasi']['baris'])];
+            } elseif ($kode === 'jenis') {
+                $baris = [];
+                foreach ($rekap['jenis']['baris'] as $b) {
+                    [$rencana, $realisasi] = [$ambil($b)['rencana'] ?? 0, $ambil($b)['realisasi'] ?? 0];
+                    if ($rencana > 0) {
+                        $persen = (int) round($realisasi / $rencana * 100);
+                        $baris[] = ['label' => $b['nama'], 'nilai' => [$persen], 'teks' => "{$persen}% ({$realisasi}/{$rencana})"];
+                    }
+                }
+                usort($baris, fn ($a, $b) => $b['nilai'][0] <=> $a['nilai'][0]);
+                $hasil['jenis'] = ['jenis' => 'persen', 'judul' => 'Grafik Per Jenis Penugasan (% realisasi)', 'baris' => $baris, 'legenda' => [$rr[1]]];
+            }
+        }
+
+        return $hasil;
     }
 
     /** Failure notification target: Irban accounts have their own rekap page. */
