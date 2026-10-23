@@ -87,6 +87,15 @@ class AdminPkptTest extends TestCase
             ->assertSee('href="'.route('admin.pkpt.show', $d).'"', false);
     }
 
+    public function test_list_count_excludes_dihapus_items(): void
+    {
+        $d = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
+        PkptItem::factory()->count(2)->create(['pkpt_id' => $d->id]);
+        PkptItem::factory()->dihapus()->create(['pkpt_id' => $d->id]);
+
+        $this->assertSame(2, $this->list()->viewData('rows')->firstWhere('id', $d->id)->items_count);
+    }
+
     public function test_empty_state(): void
     {
         $this->list()->assertSee('Belum ada PKPT. Tambahkan PKPT tahun ini.');

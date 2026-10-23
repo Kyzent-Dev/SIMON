@@ -14,6 +14,7 @@ use App\Models\PkptUsulan;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -55,6 +56,10 @@ class MigrasiRevisiJadwalTest extends TestCase
 
     public function test_migrates_revisions_and_drops_the_table(): void
     {
+        // MySQL commits the RefreshDatabase transaction on DDL, so this test's rows are not rolled back: force the next
+        // RefreshDatabase test to migrate:fresh (Laravel also does this when it finds no open transaction; made explicit here).
+        // Not DatabaseTruncation: it truncates the migration-seeded rows (klasifikasi) at setUp and leaves this test's rows behind.
+        $this->beforeApplicationDestroyed(fn () => RefreshDatabaseState::$migrated = false);
         $this->buatTabelLama();
         $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
         $draf = Pkpt::factory()->create(['tahun' => 2027]);

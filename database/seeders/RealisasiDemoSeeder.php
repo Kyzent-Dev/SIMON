@@ -29,7 +29,7 @@ class RealisasiDemoSeeder extends Seeder
             return;
         }
 
-        $item = PkptItem::query()->select('pkpt_item.*')->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')
+        $item = PkptItem::aktif()->select('pkpt_item.*')->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')
             ->where('pkpt.tahun', $hari->year)->where('pkpt.status', StatusPkpt::Disahkan->value)
             ->whereDate('pkpt_item.tanggal_selesai', '<', $hari)->orderBy('pkpt_item.id')->get();
         $kecamatan = Objek::where('jenis', 'kecamatan')->orderBy('id')->pluck('id')->all();

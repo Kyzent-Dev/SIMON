@@ -67,7 +67,7 @@ class SptSeeder extends Seeder
     {
         $hari = CarbonImmutable::now('Asia/Jakarta')->startOfDay();
         // An item whose window does not include today, so an SPT linked to it is Tidak Sesuai PKPT (PRD §9.3).
-        $item = PkptItem::where('irban_id', $irban->id)->whereDate('tanggal_selesai', '<', $hari)->orderByDesc('tanggal_selesai')->first();
+        $item = PkptItem::aktif()->where('irban_id', $irban->id)->whereDate('tanggal_selesai', '<', $hari)->orderByDesc('tanggal_selesai')->first();
 
         $riwayat = function (Spt $spt, string $kejadian, CarbonImmutable $waktu, ?array $lama = null, ?array $baru = null, ?string $alasan = null) use ($user, $penginput) {
             $spt->riwayat()->create(['kejadian' => $kejadian, 'nilai_lama' => $lama, 'nilai_baru' => $baru, 'alasan' => $alasan, 'oleh' => $user->id, 'diinput_oleh' => $penginput])

@@ -100,7 +100,7 @@ class Pkpt extends Component
     public function render()
     {
         return view('livewire.admin.pkpt', [
-            'rows' => Model::withCount('items')->orderByDesc('tahun')->get(),
+            'rows' => Model::withCount(['items' => fn ($q) => $q->aktif()])->orderByDesc('tahun')->get(),
             'deleting' => $this->deletingId ? Model::withCount('items')->find($this->deletingId) : null,
         ]);
     }
