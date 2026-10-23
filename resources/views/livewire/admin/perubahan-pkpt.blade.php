@@ -76,7 +76,7 @@
                 </div>
                 <div class="mt-4">
                     @if (count($operasi))
-                        @include('livewire.admin.partials.operasi-perubahan', ['operasi' => $operasi, 'bisaUbah' => $bisaUbah])
+                        <x-app.operasi-perubahan :operasi="$operasi" :bisa-ubah="$bisaUbah" />
                     @else
                         <p class="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">{{ $bisaUbah ? 'Belum ada operasi. Pilih "Tambah item", "Ubah item", atau "Hapus item".' : 'Tidak ada operasi.' }}</p>
                     @endif

@@ -7,6 +7,8 @@ use App\Enums\StatusPermintaan;
 use App\Livewire\Pimpinan\Dasbor;
 use App\Models\Irban;
 use App\Models\Komentar;
+use App\Models\Pkpt;
+use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\MonitoringSpt;
@@ -74,18 +76,18 @@ class DasborPimpinanTest extends TestCase
         $h = $this->halaman(['tahun' => 2026]);
         $kartu = $this->kartu($h);
 
-        $this->assertSame(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka'],
+        $this->assertSame(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka', 'Perubahan PKPT Menunggu'],
             array_column($h->viewData('kartu'), 'label'));
-        $this->assertSame([3, 6, 4, 1, 2], array_column($h->viewData('kartu'), 'nilai'));
+        $this->assertSame([3, 6, 4, 1, 2, 0], array_column($h->viewData('kartu'), 'nilai'));
         $this->assertTrue($kartu['Terlambat']['alert']);
         $this->assertFalse($kartu['Berjalan']['alert']);
-        $h->assertSeeHtmlInOrder(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka']);
+        $h->assertSeeHtmlInOrder(['Berjalan', 'Selesai', 'Terlambat', 'Tidak Sesuai PKPT', 'Permintaan Penjelasan Terbuka', 'Perubahan PKPT Menunggu']);
     }
 
     public function test_each_monitoring_card_equals_the_row_count_behind_its_link(): void
     {
         foreach ($this->kartu($this->halaman(['tahun' => 2026])) as $label => $k) {
-            if ($label === 'Permintaan Penjelasan Terbuka') {
+            if (in_array($label, ['Permintaan Penjelasan Terbuka', 'Perubahan PKPT Menunggu'], true)) {
                 continue;
             }
             $this->assertStringStartsWith(route('pimpinan.monitoring').'?', $k['href'], $label);
@@ -167,11 +169,18 @@ class DasborPimpinanTest extends TestCase
         $this->assertSame('', $h->get('tw'));
     }
 
-    /** Fase 9.2: the old schedule revision card and approval panel are gone (Perubahan PKPT replaces them in Task 8). */
-    public function test_no_revisi_jadwal_card_or_panel_and_no_edit_controls(): void
+    /** Fase 9.2: the Perubahan PKPT card (alert when > 0, links to the list) and panel (max 5, "Lihat semua") replace the revisi ones. */
+    public function test_perubahan_pkpt_card_and_panel(): void
     {
-        $this->halaman(['tahun' => 2026])->assertDontSee('Revisi Jadwal')->assertDontSee('Menunggu Persetujuan Anda')
-            ->assertDontSee('Setujui')->assertDontSee('Tolak')->assertDontSee('wire:click', false);
+        $this->halaman(['tahun' => 2026])->assertSee('Perubahan PKPT Menunggu')->assertDontSee('Revisi Jadwal')
+            ->assertDontSee('Menunggu Persetujuan Anda')->assertDontSee('wire:click', false)
+            ->assertSeeHtml('href="'.route('pimpinan.perubahan-pkpt').'"');
+
+        $paket = PkptPerubahan::factory()->diajukan()->count(6)->create(['pkpt_id' => Pkpt::where('tahun', 2026)->value('id')]);
+        $h = $this->halaman(['tahun' => 2026])->assertSee('Menunggu Persetujuan Anda')->assertSee('Lihat semua (6)')
+            ->assertSeeHtml('href="'.route('pimpinan.perubahan-pkpt.show', $paket[0]).'"')
+            ->assertDontSeeHtml('href="'.route('pimpinan.perubahan-pkpt.show', $paket[5]).'"')->assertDontSee('Setujui')->assertDontSee('Tolak');
+        $this->assertStringContainsString('border-l-danger-700', $h->html());
     }
 
     public function test_link_cards(): void

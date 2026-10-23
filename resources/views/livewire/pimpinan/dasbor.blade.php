@@ -1,5 +1,5 @@
 {{-- Dasbor Pimpinan (design/dashboard/pimpinan.md Hierarchy, Stat cards, Chart, Approval list, Motion; _shared.md §1; DESIGN §7.2–7.4, §8, §9, §10).
-     Read-only: no edit or approve controls. Motion: count-up on the cards (first load only) and the
+     Read-only: no edit or approve controls (the Perubahan PKPT panel only links to the decision page). Motion: count-up on the cards (first load only) and the
      Chart.js draw-in; both off under prefers-reduced-motion. The chart canvas is wire:ignore and gets new data via the `grafik-realisasi` event;
      its summary (role="img") and table twin are server-rendered and always in the DOM. --}}
 @php
@@ -16,7 +16,7 @@
     </x-ui.page-header>
 
     <section aria-label="Ringkasan SPT {{ $this->tahun }}">
-        <ul class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <ul class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             @foreach ($kartu as $k)
                 <li class="flex" wire:key="kartu-{{ $loop->index }}">
                     <x-ui.stat-card class="w-full" :label="$k['label']" :value="$k['nilai']" :href="$k['href']" :variant="$k['alert'] ? 'alert' : 'default'" :count-up="$animasi" />
@@ -24,6 +24,26 @@
             @endforeach
         </ul>
     </section>
+
+    @if ($jumlahMenunggu)
+        <section aria-labelledby="menunggu-judul" class="mt-6 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5">
+            <h2 id="menunggu-judul" class="font-display text-[22px] leading-[30px] font-bold text-neutral-900">Menunggu Persetujuan Anda</h2>
+            <ul role="list" class="mt-3 divide-y divide-neutral-200">
+                @foreach ($menunggu as $p)
+                    <li wire:key="menunggu-{{ $p->id }}" class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="min-w-0 text-sm">
+                            <span class="font-semibold text-neutral-900">Perubahan PKPT {{ $p->pkpt->tahun }}</span>
+                            <span class="text-neutral-600"> · {{ $p->jenis->label() }} · <span class="tabular-nums">{{ $p->operasi_count }}</span> operasi · diajukan <span class="tabular-nums">{{ $p->diajukan_pada?->timezone('Asia/Jakarta')->translatedFormat('d F Y') }}</span></span>
+                        </p>
+                        <a href="{{ route('pimpinan.perubahan-pkpt.show', $p) }}" wire:navigate class="inline-flex h-11 shrink-0 items-center justify-center rounded-md px-3 text-sm font-medium text-mint-700 hover:bg-mint-50 max-sm:border max-sm:border-mint-700 lg:h-9">Tinjau<span class="sr-only"> Perubahan PKPT {{ $p->pkpt->tahun }}</span></a>
+                    </li>
+                @endforeach
+            </ul>
+            @if ($jumlahMenunggu > $menunggu->count())
+                <a href="{{ route('pimpinan.perubahan-pkpt') }}" wire:navigate class="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-mint-700 hover:underline lg:min-h-8">Lihat semua ({{ $jumlahMenunggu }})</a>
+            @endif
+        </section>
+    @endif
 
     <div class="mt-6">
         <section aria-labelledby="grafik-judul" class="min-w-0 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5">

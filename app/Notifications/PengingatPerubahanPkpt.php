@@ -36,8 +36,7 @@ class PengingatPerubahanPkpt extends NotifikasiSimon
 
     public function url(): string
     {
-        // shortcut: literal path of route pimpinan.perubahan-pkpt.show (E7), which Task 8 registers; switch to route() then.
-        return "/pimpinan/perubahan-pkpt/{$this->perubahanId}";
+        return route('pimpinan.perubahan-pkpt.show', ['perubahan' => $this->perubahanId], false);
     }
 
     public function isi(): array

@@ -11,6 +11,7 @@ use App\Actions\Pkpt\Perubahan\SimpanOperasi;
 use App\Actions\Pkpt\Perubahan\SimpanSkPerubahan;
 use App\Enums\AksiPerubahan;
 use App\Enums\StatusPerubahan;
+use App\Livewire\Concerns\MenampilkanOperasi;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
@@ -20,7 +21,6 @@ use App\Models\PkptPerubahanItem;
 use App\Services\PerubahanPkpt as AturanPerubahan;
 use App\Services\Settings;
 use App\Support\Tanggal;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -35,6 +35,7 @@ use Livewire\WithFileUploads;
  */
 class PerubahanPkpt extends Component
 {
+    use MenampilkanOperasi;
     use WithFileUploads;
 
     private const OPERASI = ['aksi', 'pkpt_item_id', 'irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
@@ -309,47 +310,5 @@ class PerubahanPkpt extends Component
     private function opItemSaatIni(PkptPerubahan $p): ?int
     {
         return $this->opId ? $p->operasi->firstWhere('id', $this->opId)?->pkpt_item_id : null;
-    }
-
-    /**
-     * Display rows of one operation: item chip source and the changed fields before → after.
-     * Before = data_lama once applied, else the item's current values; tambah has no before, hapus no after.
-     *
-     * @return array{op: PkptPerubahanItem, chip: array, baris: list<array{label: string, sebelum: ?string, sesudah: ?string}>}
-     */
-    private function tampilOperasi(PkptPerubahanItem $op, array $irban, $jenis): array
-    {
-        $sebelum = $op->aksi === AksiPerubahan::Tambah ? null : ($op->data_lama ?? ($op->item ? AturanPerubahan::data($op->item) : null));
-        $sesudah = $op->aksi === AksiPerubahan::Hapus ? null : $op->data_baru;
-        $teks = function (?array $d) use ($irban, $jenis): ?array {
-            if (! $d) {
-                return null;
-            }
-            $tgl = filled($d['tanggal_mulai'] ?? null) && filled($d['tanggal_selesai'] ?? null)
-                ? Tanggal::rentang(CarbonImmutable::parse($d['tanggal_mulai']), CarbonImmutable::parse($d['tanggal_selesai'])) : '—';
-
-            return [
-                'Irban' => $irban[$d['irban_id'] ?? 0] ?? '—',
-                'Jenis penugasan' => $jenis[$d['jenis_penugasan_id'] ?? 0]->nama ?? '—',
-                'Jadwal' => $tgl,
-                'Keterangan' => filled($d['keterangan'] ?? null) ? $d['keterangan'] : '—',
-                'Target SPT' => filled($d['target_spt'] ?? null) ? (string) $d['target_spt'] : '—',
-            ];
-        };
-        [$a, $b] = [$teks($sebelum), $teks($sesudah)];
-        $baris = collect($a ?? $b)->keys()
-            ->filter(fn ($k) => $op->aksi !== AksiPerubahan::Ubah || $a[$k] !== $b[$k])
-            ->map(fn ($k) => ['label' => $k, 'sebelum' => $a[$k] ?? null, 'sesudah' => $b[$k] ?? null])->values()->all();
-        $sumber = $sebelum ?? $sesudah ?? [];
-
-        return [
-            'op' => $op,
-            'chip' => [
-                'jenis' => $jenis[$sumber['jenis_penugasan_id'] ?? 0] ?? null,
-                'irban' => $irban[$sumber['irban_id'] ?? 0] ?? null,
-                'jadwal' => ($a ?? $b)['Jadwal'] ?? null,
-            ],
-            'baris' => $baris,
-        ];
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Livewire\Pimpinan;
 
 use App\Enums\StatusPengajuan;
+use App\Enums\StatusPerubahan;
 use App\Models\Komentar;
+use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Services\Ekspor\PembangunRekap;
 use App\Services\MonitoringSpt;
@@ -14,7 +16,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Dasbor Pimpinan (pimpinan.md): five stat cards and the "Realisasi vs Rencana per Irban" chart with table twin.
+ * Dasbor Pimpinan (pimpinan.md): six stat cards and the "Realisasi vs Rencana per Irban" chart with table twin.
  * Read-only. Card counts come from MonitoringSpt::jumlah() with the same filter as the card's link, so the number equals the monitoring rows.
  */
 #[Title('Dasbor Pimpinan')]
@@ -59,17 +61,22 @@ class Dasbor extends Component
         $tahunList = Spt::where('status_pengajuan', StatusPengajuan::Diterima)->whereNotNull('tahun')->distinct()->pluck('tahun')
             ->push((int) now('Asia/Jakarta')->year, $tahun)->unique()->sortDesc()->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
 
+        // Packages waiting for a decision count regardless of year (they are work to do); oldest first.
+        $menunggu = PkptPerubahan::with('pkpt:id,tahun')->withCount('operasi')->where('status', StatusPerubahan::Diajukan)->orderBy('diajukan_pada')->orderBy('id')->get();
+
         return view('livewire.pimpinan.dasbor', [
-            'kartu' => $this->kartu($monitoring, $tahun),
+            'kartu' => $this->kartu($monitoring, $tahun, $menunggu->count()),
             'animasi' => ! $this->berubah,
             'grafik' => $grafik,
             'pkptDisahkan' => $rekap['pkpt_disahkan'],
             'tahunList' => $tahunList,
+            'menunggu' => $menunggu->take(5),
+            'jumlahMenunggu' => $menunggu->count(),
         ]);
     }
 
     /** @return list<array{label: string, nilai: int, href: string, alert: bool}> */
-    private function kartu(MonitoringSpt $monitoring, int $tahun): array
+    private function kartu(MonitoringSpt $monitoring, int $tahun, int $menunggu): array
     {
         $kartu = [];
         foreach ([
@@ -85,6 +92,7 @@ class Dasbor extends Component
         // All years (open requests are work regardless of year); the link opens the monitoring rows of the selected year.
         $kartu[] = ['label' => 'Permintaan Penjelasan Terbuka', 'nilai' => Komentar::permintaanTerbuka()->count(),
             'href' => route('pimpinan.monitoring', ['tahun' => $tahun, 'penjelasan' => 'terbuka']), 'alert' => false];
+        $kartu[] = ['label' => 'Perubahan PKPT Menunggu', 'nilai' => $menunggu, 'href' => route('pimpinan.perubahan-pkpt'), 'alert' => $menunggu > 0];
 
         return $kartu;
     }

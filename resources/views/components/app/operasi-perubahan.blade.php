@@ -1,6 +1,8 @@
-{{-- Operasi of a Perubahan PKPT, before → after (Fase 9.2 Task 7; Task 8 extracts this into x-app.operasi-perubahan for the Pimpinan page).
+{{-- Operasi of a Perubahan PKPT, before → after (Fase 9.2 Task 7; shared by the Admin and Pimpinan pages since Task 8).
      Input: $operasi (PerubahanPkpt::tampilOperasi rows: op, chip{jenis, irban, jadwal}, baris[{label, sebelum, sesudah}]), $bisaUbah (show Ubah/Hapus).
      Meaning is in text: aksi tag with icon + label, "Sebelum"/"Sesudah" column headers, never color alone (DESIGN §3.5). No animation (§7.5). --}}
+@props(['operasi', 'bisaUbah' => false])
+
 @php $ikon = ['tambah' => 'plus', 'ubah' => 'pencil', 'hapus' => 'trash']; @endphp
 
 <ol role="list" class="space-y-3">

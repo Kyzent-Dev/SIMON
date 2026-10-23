@@ -45,7 +45,7 @@ class SnapshotPengesahanTest extends TestCase
     public function test_old_revisi_jadwal_route_redirects_and_nav_has_no_entry(): void
     {
         $pimpinan = User::factory()->pimpinan()->create();
-        $this->actingAs($pimpinan)->get('/pimpinan/revisi-jadwal')->assertRedirect(route('pimpinan.dashboard'));
+        $this->actingAs($pimpinan)->get('/pimpinan/revisi-jadwal')->assertRedirect(route('pimpinan.perubahan-pkpt'));
         $this->assertSame(url('/pimpinan/revisi-jadwal'), route('pimpinan.revisi-jadwal'));
         $this->actingAs(User::factory()->irban()->create())->get('/pimpinan/revisi-jadwal')->assertForbidden();
 

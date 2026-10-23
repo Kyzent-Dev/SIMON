@@ -1,0 +1,165 @@
+<?php
+
+namespace Tests\Feature\Pkpt;
+
+use App\Actions\Pkpt\Perubahan\AjukanPerubahan;
+use App\Actions\Pkpt\Perubahan\BuatPerubahan;
+use App\Actions\Pkpt\Perubahan\PutuskanPerubahan;
+use App\Actions\Pkpt\Perubahan\SimpanOperasi;
+use App\Enums\Role;
+use App\Enums\StatusItemPkpt;
+use App\Enums\StatusPerubahan;
+use App\Livewire\Pimpinan\PerubahanPkpt as Daftar;
+use App\Livewire\Pimpinan\PerubahanPkptDetail as Detail;
+use App\Models\Irban;
+use App\Models\JenisPenugasan;
+use App\Models\Pkpt;
+use App\Models\PkptItem;
+use App\Models\PkptPerubahan;
+use App\Models\Spt;
+use App\Models\User;
+use App\Services\PerubahanPkpt;
+use App\Support\Navigation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+/** Fase 9.2 Task 8: Pimpinan Perubahan PKPT screens (list, detail with impact, Setujui/Tolak, access). */
+class PimpinanPerubahanPkptTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+
+    private User $pimpinan;
+
+    private Pkpt $pkpt;
+
+    private PkptItem $a;
+
+    private Spt $spt;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+        Notification::fake();
+        $this->admin = User::factory()->admin()->create();
+        $this->pimpinan = User::factory()->pimpinan()->create();
+        $this->pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
+        $irban = Irban::factory()->create(['nama' => 'Irban I']);
+        $jenis = JenisPenugasan::factory()->create(['nama' => 'Reviu Laporan Keuangan']);
+        $this->a = PkptItem::factory()->disahkanDari()->create(['pkpt_id' => $this->pkpt->id, 'irban_id' => $irban->id, 'jenis_penugasan_id' => $jenis->id,
+            'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20', 'keterangan' => 'Item A']);
+        $this->spt = Spt::factory()->diterima()->create(['irban_id' => $irban->id, 'pkpt_item_id' => $this->a->id,
+            'tanggal_mulai' => '2026-04-06', 'tanggal_selesai' => '2026-04-08']);
+    }
+
+    /** A submitted package moving item A so that the accepted SPT flips from Tidak Sesuai PKPT to Sesuai. */
+    private function diajukan(): PkptPerubahan
+    {
+        $p = app(BuatPerubahan::class)->handle($this->admin, $this->pkpt, ['jenis' => 'perubahan', 'alasan' => 'Menggeser jadwal Item A.']);
+        app(SimpanOperasi::class)->handle($this->admin, $p, null, ['aksi' => 'ubah', 'pkpt_item_id' => $this->a->id,
+            'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-10']);
+
+        return app(AjukanPerubahan::class)->handle($this->admin, $p);
+    }
+
+    public function test_list_shows_menunggu_and_riwayat_and_empty_state(): void
+    {
+        $this->actingAs($this->pimpinan);
+        Livewire::test(Daftar::class)->assertSee('Tidak ada perubahan PKPT yang menunggu persetujuan.')->assertSee('Belum ada perubahan yang diputuskan.');
+
+        $p = $this->diajukan();
+        PkptPerubahan::factory()->create(['pkpt_id' => $this->pkpt->id, 'status' => StatusPerubahan::Ditolak, 'diputuskan_pada' => now()]);
+        $this->get(route('pimpinan.perubahan-pkpt'))->assertOk()->assertSee('Perubahan PKPT 2026')->assertSee('Menggeser jadwal Item A.')
+            ->assertSee('Tinjau')->assertSee(route('pimpinan.perubahan-pkpt.show', $p), false)->assertSee('Ditolak')
+            ->assertDontSee('Tidak ada perubahan PKPT yang menunggu persetujuan.');
+    }
+
+    public function test_detail_shows_operasi_and_dampak(): void
+    {
+        $p = $this->diajukan();
+        $this->actingAs($this->pimpinan)->get(route('pimpinan.perubahan-pkpt.show', $p))->assertOk()
+            ->assertSee('Ubah item')->assertSee('Sebelum')->assertSee('Sesudah')
+            ->assertSee('Dampak per irban')->assertSee('Irban I')->assertSee('SPT yang kesesuaiannya berubah')
+            ->assertSee($this->spt->nomor_lengkap)->assertSee('Tidak Sesuai PKPT')
+            ->assertSee('Setujui Perubahan PKPT 2026', false)->assertSee('Tolak Perubahan PKPT 2026', false);
+    }
+
+    public function test_setujui_applies_and_moves_focus(): void
+    {
+        $p = $this->diajukan();
+        $this->actingAs($this->pimpinan);
+        Livewire::test(Detail::class, ['perubahan' => $p])->call('setujui')
+            ->assertDispatched('fokus-ke', id: 'judul-perubahan')->assertDispatched('toast')
+            ->assertDontSee('Keputusan');
+        $this->assertSame(StatusPerubahan::Disetujui, $p->fresh()->status);
+        $this->assertSame('2026-04-10', $this->a->fresh()->tanggal_selesai->toDateString());
+    }
+
+    public function test_tolak_needs_komentar(): void
+    {
+        $p = $this->diajukan();
+        $this->actingAs($this->pimpinan);
+        Livewire::test(Detail::class, ['perubahan' => $p])->set('komentar', '  ')->call('tolak')
+            ->assertHasErrors(['komentar'])->assertSee('Alasan penolakan wajib diisi.');
+        $this->assertSame(StatusPerubahan::Diajukan, $p->fresh()->status);
+
+        Livewire::test(Detail::class, ['perubahan' => $p])->set('komentar', 'Jadwal bentrok.')->call('tolak')
+            ->assertHasNoErrors()->assertDispatched('fokus-ke', id: 'judul-perubahan');
+        $this->assertSame([StatusPerubahan::Ditolak, 'Jadwal bentrok.'], [$p->fresh()->status, $p->fresh()->komentar_putusan]);
+        $this->assertSame(StatusItemPkpt::Aktif, $this->a->fresh()->status);
+    }
+
+    public function test_spt_created_after_submission_shows_the_reason_alert_and_status_stays(): void
+    {
+        $p = app(BuatPerubahan::class)->handle($this->admin, $this->pkpt, ['jenis' => 'perubahan', 'alasan' => 'Hapus item.']);
+        $b = PkptItem::factory()->disahkanDari()->create(['pkpt_id' => $this->pkpt->id, 'irban_id' => $this->a->irban_id, 'jenis_penugasan_id' => $this->a->jenis_penugasan_id]);
+        app(SimpanOperasi::class)->handle($this->admin, $p, null, ['aksi' => 'hapus', 'pkpt_item_id' => $b->id]);
+        $p = app(AjukanPerubahan::class)->handle($this->admin, $p);
+        Spt::factory()->create(['pkpt_item_id' => $b->id]);
+
+        $this->actingAs($this->pimpinan);
+        Livewire::test(Detail::class, ['perubahan' => $p])->call('setujui')
+            ->assertSee('Perubahan belum dapat disetujui')->assertSee(PerubahanPkpt::K7_HAPUS)
+            ->assertSeeHtml('role="alert"')->assertDispatched('fokus-ke', id: 'alert-gagal')
+            ->assertSee('Keputusan');
+        $this->assertSame(StatusPerubahan::Diajukan, $p->fresh()->status);
+    }
+
+    public function test_stale_decision_is_a_toast(): void
+    {
+        $p = $this->diajukan();
+        $this->actingAs($this->pimpinan);
+        $c = Livewire::test(Detail::class, ['perubahan' => $p]);
+        app(PutuskanPerubahan::class)->handle($this->pimpinan, $p, false, 'Tidak.');
+        $c->call('setujui')->assertDispatched('toast', type: 'error', message: PutuskanPerubahan::SUDAH_DIPUTUSKAN);
+    }
+
+    public function test_other_roles_get_403_on_routes_and_direct_actions(): void
+    {
+        $p = $this->diajukan();
+        foreach ([$this->admin, User::factory()->irban()->create(), User::factory()->bagianUmum()->create()] as $user) {
+            $this->actingAs($user);
+            $this->get(route('pimpinan.perubahan-pkpt'))->assertForbidden();
+            $this->get(route('pimpinan.perubahan-pkpt.show', $p))->assertForbidden();
+            Livewire::test(Daftar::class)->assertForbidden();
+            Livewire::test(Detail::class, ['perubahan' => $p])->assertForbidden();
+        }
+        // An action called after the role changed mid-session is refused too.
+        $this->actingAs($this->pimpinan);
+        $c = Livewire::test(Detail::class, ['perubahan' => $p]);
+        $this->pimpinan->forceFill(['role' => Role::Admin])->save();
+        $c->call('setujui')->assertForbidden();
+        $this->assertSame(StatusPerubahan::Diajukan, $p->fresh()->status);
+    }
+
+    public function test_nav_item_and_old_route_redirect(): void
+    {
+        $item = collect(Navigation::groups(Role::Pimpinan))->flatMap(fn ($g) => $g['items'])->firstWhere('label', 'Perubahan PKPT');
+        $this->assertSame(['pimpinan.perubahan-pkpt', 'arrow-path', ['pimpinan.perubahan-pkpt.show']], [$item['route'], $item['icon'], $item['aktif']]);
+        $this->actingAs($this->pimpinan)->get('/pimpinan/revisi-jadwal')->assertRedirect(route('pimpinan.perubahan-pkpt'));
+    }
+}

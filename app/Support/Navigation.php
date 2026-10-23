@@ -28,6 +28,7 @@ class Navigation
             Role::Pimpinan => [...$dasbor, ['label' => null, 'items' => [
                 $item('Monitoring SPT', 'pimpinan.monitoring', 'table-cells'),
                 $item('Rekap Triwulanan', 'pimpinan.rekap', 'chart-bar'),
+                $item('Perubahan PKPT', 'pimpinan.perubahan-pkpt', 'arrow-path', ['pimpinan.perubahan-pkpt.show']),
             ]]],
             Role::Admin => [...$dasbor,
                 ['label' => null, 'items' => [$item('Pengguna', 'admin.pengguna', 'users')]],
