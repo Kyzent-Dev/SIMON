@@ -8,7 +8,10 @@
     $penuh = fn ($d) => $d->translatedFormat('j F Y');
     // aria-label range per jadwal.md: "3 Maret–21 Maret 2026" (start year shown only when it differs).
     $label = fn (array $i) => "{$i['jenis']['nama']}, {$i['irban']}, {$i['wilayah']}, "
-        .$i['mulai']->translatedFormat($i['mulai']->year === $i['selesai']->year ? 'j F' : 'j F Y').'–'.$penuh($i['selesai']);
+        .$i['mulai']->translatedFormat($i['mulai']->year === $i['selesai']->year ? 'j F' : 'j F Y').'–'.$penuh($i['selesai'])
+        .($i['tambahan_ke'] ? ", Tambahan · Perubahan ke-{$i['tambahan_ke']}" : '');
+    // Added by an approved Perubahan PKPT: only its number is public (never alasan, SK or usulan).
+    $tambahan = fn (array $i) => $i['tambahan_ke'] ? "Tambahan · Perubahan ke-{$i['tambahan_ke']}" : null;
     $jenis = collect($item)->pluck('jenis')->unique('id')->values();
     $hariIni = $linimasa['hariIni'] ?? null;
     // Column 5 of a month with only 4 PKPT weeks (MingguPkpt) is empty and hatched; decorative, inside aria-hidden grids.
@@ -187,6 +190,7 @@
                                                         <span class="block text-sm font-semibold text-neutral-900">{{ $i['jenis']['nama'] }}</span>
                                                         <span class="block text-[13px] text-neutral-600">{{ $i['irban'] }} · {{ $i['wilayah'] }}</span>
                                                         <span class="block text-xs text-neutral-500 tabular-nums">{{ Tanggal::rentang($i['mulai'], $i['selesai']) }}</span>
+                                                        @if ($t = $tambahan($i))<span class="block text-xs font-medium text-neutral-600">{{ $t }}</span>@endif
                                                     </span>
                                                 </button>
                                             </li>
@@ -220,7 +224,7 @@
                         <tbody>
                             @foreach ($item as $i)
                                 <tr class="border-t border-neutral-200 [&>td]:h-12 [&>td]:px-4 [&>td]:py-1">
-                                    <td><x-app.type-chip :color="$i['jenis']['warna']" :label="$i['jenis']['nama']" /></td>
+                                    <td><x-app.type-chip :color="$i['jenis']['warna']" :label="$i['jenis']['nama']" />@if ($t = $tambahan($i))<span class="block text-xs text-neutral-600">{{ $t }}</span>@endif</td>
                                     <td class="whitespace-nowrap">{{ $i['irban'] }}</td>
                                     <td>{{ $i['wilayah'] }}</td>
                                     <td class="whitespace-nowrap">{{ $penuh($i['mulai']) }}</td>
@@ -242,6 +246,9 @@
                 @foreach ($item as $i)
                     <div x-show="aktif === {{ $i['id'] }}">
                         <h2 id="detail-{{ $i['id'] }}"><x-app.type-chip :color="$i['jenis']['warna']" :label="$i['jenis']['nama']" class="text-base font-semibold" /></h2>
+                        @if ($t = $tambahan($i))
+                            <x-app.tag icon="plus-circle" variant="info" class="mt-2">{{ $t }}</x-app.tag>
+                        @endif
                         <dl class="mt-3 space-y-2 text-sm">
                             <div><dt class="text-xs text-neutral-500">Irban</dt><dd class="text-neutral-900">{{ $i['irban'] }}</dd></div>
                             <div><dt class="text-xs text-neutral-500">Jadwal</dt><dd class="text-neutral-900 tabular-nums">{{ $penuh($i['mulai']) }} – {{ $penuh($i['selesai']) }}</dd></div>

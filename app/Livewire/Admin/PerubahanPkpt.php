@@ -9,8 +9,12 @@ use App\Actions\Pkpt\Perubahan\BuatPerubahan;
 use App\Actions\Pkpt\Perubahan\HapusOperasi;
 use App\Actions\Pkpt\Perubahan\SimpanOperasi;
 use App\Actions\Pkpt\Perubahan\SimpanSkPerubahan;
+use App\Actions\Pkpt\Usulan\TampungUsulan;
+use App\Actions\Pkpt\Usulan\TutupUsulan;
 use App\Enums\AksiPerubahan;
+use App\Enums\AksiUsulan;
 use App\Enums\StatusPerubahan;
+use App\Enums\StatusUsulan;
 use App\Livewire\Concerns\MenampilkanOperasi;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
@@ -18,6 +22,7 @@ use App\Models\Pkpt;
 use App\Models\PkptItem;
 use App\Models\PkptPerubahan;
 use App\Models\PkptPerubahanItem;
+use App\Models\PkptUsulan;
 use App\Services\PerubahanPkpt as AturanPerubahan;
 use App\Services\Settings;
 use App\Support\Tanggal;
@@ -30,7 +35,7 @@ use Livewire\WithFileUploads;
 
 /**
  * Admin page of one Perubahan PKPT (Fase 9.2 Task 7): jenis/alasan, operasi (tambah/ubah/hapus item), validation strip from
- * PerubahanPkpt::cek(), SK block, Ajukan/Buang, pengingat SK toggle, riwayat. Every rule lives in the actions (they authorize through
+ * PerubahanPkpt::cek(), panel "Usulan dari Irban" (Task 9: tampung / tutup), SK block, Ajukan/Buang, pengingat SK toggle, riwayat. Every rule lives in the actions (they authorize through
  * PkptPerubahanPolicy); this component authorizes `update` (Admin) on mount and on every request, and scopes every lookup to the route's PKPT.
  */
 class PerubahanPkpt extends Component
@@ -83,6 +88,14 @@ class PerubahanPkpt extends Component
     public bool $buangOpen = false;
 
     public bool $pengingatOpen = false;
+
+    /** "Tutup usulan" modal. */
+    public bool $tutupOpen = false;
+
+    #[Locked]
+    public ?int $tutupId = null;
+
+    public string $catatan_penutupan = '';
 
     public string $nomor_sk = '';
 
@@ -167,6 +180,44 @@ class PerubahanPkpt extends Component
         }
     }
 
+    /** Takes an open usulan of this PKPT into the package; a `lainnya` usulan opens its placeholder operation for editing. */
+    public function tampung(int $usulanId, TampungUsulan $tampung): void
+    {
+        $op = null;
+        $ok = $this->jalankan([], function (PkptPerubahan $p) use ($usulanId, $tampung, &$op) {
+            $op = $tampung->handle(auth()->user(), $this->usulan($usulanId), $p);
+        });
+        if (! $ok) {
+            return;
+        }
+        $this->dispatch('toast', type: 'success', message: 'Usulan ditampung ke perubahan.');
+        if ($op->usulan?->aksi_usulan === AksiUsulan::Lainnya) {
+            $this->bukaOperasi(AksiPerubahan::Ubah->value, $op->id);
+
+            return;
+        }
+        $this->dispatch('fokus-ke', id: 'judul-usulan');
+    }
+
+    public function bukaTutup(int $usulanId): void
+    {
+        $this->paket();
+        $this->resetValidation();
+        $this->tutupId = $this->usulan($usulanId)->id;
+        $this->catatan_penutupan = '';
+        $this->tutupOpen = true;
+    }
+
+    public function tutupUsulan(TutupUsulan $tutup): void
+    {
+        $ok = $this->jalankan(['catatan_penutupan'], fn () => $tutup->handle(auth()->user(), $this->usulan((int) $this->tutupId), $this->catatan_penutupan));
+        if ($ok) {
+            $this->tutupOpen = false;
+            $this->dispatch('toast', type: 'success', message: 'Usulan ditutup.');
+            $this->dispatch('fokus-ke', id: 'judul-usulan');
+        }
+    }
+
     public function simpanSk(SimpanSkPerubahan $sk): void
     {
         $ok = $this->jalankan(['nomor_sk', 'tanggal_sk', 'berkas_sk'],
@@ -226,7 +277,7 @@ class PerubahanPkpt extends Component
                 } elseif ($operasi && $messages[0] === AturanPerubahan::TIDAK_BERUBAH) {
                     $this->addError('operasi', $messages[0]);
                 } else {
-                    $this->reset('opOpen', 'hapusOpen', 'buangOpen', 'pengingatOpen');
+                    $this->reset('opOpen', 'hapusOpen', 'buangOpen', 'pengingatOpen', 'tutupOpen');
                     $this->dispatch('toast', type: 'error', message: $messages[0]);
                     $this->dispatch('fokus-ke', id: 'judul-perubahan');
                 }
@@ -245,6 +296,12 @@ class PerubahanPkpt extends Component
         Gate::authorize('update', $p);
 
         return $p;
+    }
+
+    /** An usulan of this page's PKPT; another PKPT's usulan is a 404. */
+    private function usulan(int $id): PkptUsulan
+    {
+        return PkptUsulan::where('pkpt_id', $this->pkptId)->findOrFail($id);
     }
 
     private function isiForm(PkptPerubahan $p): void
@@ -302,6 +359,8 @@ class PerubahanPkpt extends Component
             'judul' => $judul,
             'irbans' => $irban,
             'jenisOptions' => $jenis->map->nama->all(),
+            'usulan' => PkptUsulan::where('pkpt_id', $this->pkptId)->where('status', StatusUsulan::Terbuka->value)
+                ->with(['irban:id,nama', 'item.jenisPenugasan', 'jenisPenugasan', 'diinputOleh', 'diajukanOleh:id,name'])->oldest()->orderBy('id')->get(),
             'maksMb' => (int) app(Settings::class)->get('upload.maks_mb'),
         ])->title($judul);
     }

@@ -16,11 +16,11 @@ class KalenderPkpt
 
     /**
      * @return list<array{bulan: int, nama: string, minggu: array<int, array{ada: bool, mulai: ?CarbonImmutable, selesai: ?CarbonImmutable, ini: bool, item: list<array>}>}>
-     *                                                                                                                                                                       item = {id, jenis: {id, nama, warna, warna_teks}, keterangan, mulai, selesai, semula: ?array{0,1}, direvisi, selesai_spt, target}
+     *                                                                                                                                                                       item = {id, jenis: {id, nama, warna, warna_teks}, keterangan, mulai, selesai, semula: ?array{0,1}, direvisi, tambahan_ke: ?int, selesai_spt, target}
      */
     public function untuk(int $tahun, int $irbanId): array
     {
-        $item = $this->realisasi->itemDisahkan($tahun, $irbanId);
+        $item = $this->realisasi->itemDisahkan($tahun, $irbanId)->load('ditambahkanOleh:id,nomor_urut');
         $ids = $item->pluck('id');
         $jenis = DB::table('jenis_penugasan')->whereIn('id', $item->pluck('jenis_penugasan_id')->unique())->get(['id', 'nama', 'warna', 'warna_teks'])->keyBy('id');
         $selesai = Spt::query()->berstatus(StatusSpt::Selesai)->whereIn('pkpt_item_id', $ids)
@@ -37,6 +37,7 @@ class KalenderPkpt
                 'selesai' => $akhir,
                 'semula' => $i->semula(),
                 'direvisi' => $i->direvisi(),
+                'tambahan_ke' => $i->ditambahkanOleh?->nomor_urut,
                 'selesai_spt' => (int) ($selesai[$i->id] ?? 0),
                 'target' => $i->target_spt ?? 1,
             ];

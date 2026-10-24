@@ -9,6 +9,7 @@ use App\Models\JenisPenugasan;
 use App\Models\Objek;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
+use App\Models\PkptPerubahan;
 use App\Models\User;
 use Database\Seeders\IrbanSeeder;
 use Database\Seeders\JenisPenugasanSeeder;
@@ -81,13 +82,32 @@ class KalenderIrbanTest extends TestCase
             ->assertDontSee('Kecamatan Milik Lain')->assertDontSee('Jenis Rahasia Irban Lain')->assertDontSee('Keterangan irban lain');
     }
 
-    /** Fase 9.2 Task 5: the old "Ajukan Revisi Jadwal" flow is gone; "Usulkan Perubahan" arrives in Task 9. */
-    public function test_no_revision_controls_in_calendar_or_table(): void
+    /** Fase 9.2 Task 9: the old "Ajukan Revisi Jadwal" flow is replaced by "Usulkan Perubahan" in the calendar detail and the table. */
+    public function test_usulkan_perubahan_in_calendar_and_table(): void
     {
+        $id = $this->item('2026-06-29')->id;
         foreach (['kalender', 'tabel'] as $tampilan) {
             $this->actingAs($this->user)->get('/irban/pkpt?tampilan='.$tampilan)->assertOk()
-                ->assertDontSee('Ajukan Revisi')->assertDontSee('wire:click="buka', false)->assertDontSee('Usulkan Perubahan');
+                ->assertDontSee('Ajukan Revisi')->assertSee('Usulkan Perubahan')->assertSee('wire:click="bukaUsulan('.$id.')"', false)
+                ->assertSee('Usulkan item baru');
         }
+    }
+
+    /** Fase 9.2 Task 9: an item added by an approved package carries "Tambahan · Perubahan ke-N" on the card and in the detail. */
+    public function test_tambahan_label_and_semula_in_calendar(): void
+    {
+        $p = PkptPerubahan::factory()->disetujui(3)->create(['pkpt_id' => Pkpt::where('tahun', 2026)->value('id')]);
+        $baru = $this->item('2026-06-29');
+        $baru->update(['ditambahkan_perubahan_id' => $p->id]);
+        $geser = PkptItem::where('irban_id', $this->irban->id)->whereKeyNot($baru->id)->orderBy('tanggal_mulai')->firstOrFail();
+        $geser->update(['tanggal_mulai_disahkan' => $geser->tanggal_mulai, 'tanggal_selesai_disahkan' => $geser->tanggal_selesai,
+            'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+
+        $html = $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()->getContent();
+        // Card(s) + popover detail + drawer detail.
+        $this->assertGreaterThanOrEqual(3, substr_count($html, 'Tambahan · Perubahan ke-3'));
+        $this->assertStringContainsString('Jadwal semula', $html);
+        $this->assertStringContainsString('2–6 November 2026', $html);
     }
 
     public function test_moved_item_shows_marker_and_semula_and_dihapus_is_hidden(): void

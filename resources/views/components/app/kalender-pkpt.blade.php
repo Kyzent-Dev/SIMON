@@ -2,8 +2,9 @@
      ≥1280 two blocks per row, 768–1279 one per row (5 columns kept; 2 columns at 1024 leave ~40px cells beside the sidebar), <768 accordion month cards with vertical week sections.
      A card opens the item detail: popover ≥768, x-ui.drawer bottom sheet <768 (Alpine `kalenderPkpt`, resources/js/kalender.js).
      `aksi`: Livewire method of the host page called with the item id for "Usulkan Perubahan" (null = read-only).
+     `riwayat`: PerubahanPkpt::riwayatItemUntuk() keyed by item id, shown in the detail (x-app.riwayat-perubahan).
      No animation (DESIGN §7.5) apart from the drawer's own transition; the accordion and popover switch instantly. --}}
-@props(['kalender', 'tahun', 'aksi' => null])
+@props(['kalender', 'tahun', 'aksi' => null, 'riwayat' => []])
 
 @php
     $semua = collect($kalender)->flatMap(fn ($b) => collect($b['minggu'])->flatMap(fn ($m) => $m['item']))->unique('id')->values();
@@ -117,7 +118,7 @@
         x-on:click.outside="luar($event)"
         class="fixed z-50 max-h-[calc(100dvh-5rem)] w-80 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 text-sm shadow-md">
         @foreach ($semua as $i)
-            <div wire:key="kal-p-{{ $i['id'] }}" x-show="aktif === {{ $i['id'] }}"><x-app.kalender-pkpt-detail :item="$i" :aksi="$aksi" v="p" /></div>
+            <div wire:key="kal-p-{{ $i['id'] }}" x-show="aktif === {{ $i['id'] }}"><x-app.kalender-pkpt-detail :item="$i" :aksi="$aksi" :riwayat="$riwayat[$i['id']] ?? []" v="p" /></div>
         @endforeach
         <div class="mt-4 flex justify-end">
             <x-ui.button type="button" size="sm" variant="ghost" x-on:click="tutup()">Tutup</x-ui.button>
@@ -127,7 +128,7 @@
     {{-- Drawer <768 (bottom sheet). --}}
     <x-ui.drawer name="kalender-detail" title="Detail penugasan" posisi="bawah" x-model="drawerBuka">
         @foreach ($semua as $i)
-            <div wire:key="kal-d-{{ $i['id'] }}" x-show="aktif === {{ $i['id'] }}"><x-app.kalender-pkpt-detail :item="$i" :aksi="$aksi" v="d" /></div>
+            <div wire:key="kal-d-{{ $i['id'] }}" x-show="aktif === {{ $i['id'] }}"><x-app.kalender-pkpt-detail :item="$i" :aksi="$aksi" :riwayat="$riwayat[$i['id']] ?? []" v="d" /></div>
         @endforeach
     </x-ui.drawer>
 </div>

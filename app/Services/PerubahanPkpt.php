@@ -15,7 +15,9 @@ use App\Models\PkptItem;
 use App\Models\PkptPerubahan;
 use App\Models\PkptPerubahanItem;
 use App\Models\Spt;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /** Rules of a Perubahan PKPT, shared by the actions (throwing) and the screens (non-throwing `cek`). */
@@ -59,7 +61,7 @@ class PerubahanPkpt
             $sumber = $op->aksi === AksiPerubahan::Tambah ? ($op->data_baru ?? []) : ($item?->only(self::KOLOM) ?? $op->data_baru ?? []);
             $label = 'Operasi '.$op->urutan.' ('.collect([$op->aksi->label(), $jenis[$sumber['jenis_penugasan_id'] ?? 0] ?? null, $irban[$sumber['irban_id'] ?? 0] ?? null])->filter()->implode(' · ').')';
 
-            $galat = $this->galat($pkpt, $op->aksi, $item, $op->data_baru ?? [], (bool) ($spt[$op->pkpt_item_id] ?? false));
+            $galat = $this->galat($pkpt, $op->aksi, $item, $op->data_baru ?? [], (bool) ($spt[$op->pkpt_item_id ?? 0] ?? false));
             if ($op->pkpt_item_id && in_array($op->pkpt_item_id, $dipakai, true)) {
                 $galat[] = self::ITEM_GANDA;
             }
@@ -197,6 +199,20 @@ class PerubahanPkpt
         }
 
         return $hasil;
+    }
+
+    /**
+     * riwayatItem() plus `boleh_unduh` per entry: the `unduhSk` gate of that package for $user, checked once per package.
+     *
+     * @param  list<int>  $itemIds
+     */
+    public function riwayatItemUntuk(User $user, array $itemIds): array
+    {
+        $riwayat = $this->riwayatItem($itemIds);
+        $paket = collect($riwayat)->flatten(1)->where('ada_sk', true)->pluck('perubahan_id')->unique()->values();
+        $boleh = PkptPerubahan::whereIn('id', $paket)->get()->mapWithKeys(fn (PkptPerubahan $p) => [$p->id => Gate::forUser($user)->allows('unduhSk', $p)]);
+
+        return array_map(fn (array $baris) => array_map(fn (array $r) => $r + ['boleh_unduh' => (bool) ($boleh[$r['perubahan_id']] ?? false)], $baris), $riwayat);
     }
 
     /** The E4 json shape of an item's current values. */

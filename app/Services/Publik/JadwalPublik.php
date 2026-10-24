@@ -18,7 +18,7 @@ class JadwalPublik
 
     /**
      * @return list<array{id: int, jenis: array, irban: string, mulai: CarbonImmutable, selesai: CarbonImmutable,
-     *   semula: ?array{0: CarbonImmutable, 1: CarbonImmutable}, wilayah: string, selesaiSpt: int, target: int}>
+     *   semula: ?array{0: CarbonImmutable, 1: CarbonImmutable}, tambahan_ke: ?int, wilayah: string, selesaiSpt: int, target: int}>
      *   ordered by jenis name, effective start, id
      */
     public function item(int $tahun, ?int $irban): array
@@ -27,6 +27,8 @@ class JadwalPublik
         if ($item->isEmpty()) {
             return [];
         }
+        // Only the package number reaches the public page ("Tambahan · Perubahan ke-N"): never its alasan, SK or usulan.
+        $item->load('ditambahkanOleh:id,nomor_urut');
         $ids = $item->pluck('id');
         $jenis = DB::table('jenis_penugasan')->whereIn('id', $item->pluck('jenis_penugasan_id')->unique())->get(['id', 'nama', 'warna', 'warna_teks'])->keyBy('id');
         $namaIrban = DB::table('irban')->whereIn('id', $item->pluck('irban_id')->unique())->pluck('nama', 'id');
@@ -52,6 +54,7 @@ class JadwalPublik
                 'mulai' => $mulai,
                 'selesai' => $akhir,
                 'semula' => $i->semula(),
+                'tambahan_ke' => $i->ditambahkanOleh?->nomor_urut,
                 'wilayah' => $wilayah[$i->id] ?? self::BELUM_DITENTUKAN,
                 'selesaiSpt' => (int) ($selesai[$i->id] ?? 0),
                 'target' => $i->target_spt ?? 1,

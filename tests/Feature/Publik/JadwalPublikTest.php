@@ -41,7 +41,7 @@ class JadwalPublikTest extends TestCase
         $item = $this->svc()->item(2026, null);
         // Ordered by jenis name (Dua before Satu), then effective start: b1; a1 (Jan), tanpaSpt (Aug). d1 (Draf PKPT) absent.
         $this->assertSame([$this->b1->id, $this->a1->id, $tanpaSpt->id], array_column($item, 'id'));
-        $this->assertSame(['id', 'jenis', 'irban', 'mulai', 'selesai', 'semula', 'wilayah', 'selesaiSpt', 'target'], array_keys($item[0]));
+        $this->assertSame(['id', 'jenis', 'irban', 'mulai', 'selesai', 'semula', 'tambahan_ke', 'wilayah', 'selesaiSpt', 'target'], array_keys($item[0]));
 
         [$b1, $a1, $t] = $item;
         $this->assertSame(['Irban B', '2026-04-01', '2026-06-30', null, 1], [$b1['irban'], $b1['mulai']->toDateString(), $b1['selesai']->toDateString(), $b1['semula'], $b1['target']]);

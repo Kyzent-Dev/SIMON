@@ -107,7 +107,7 @@ class KalenderPkptTest extends TestCase
         $this->assertSame(['3-3'], $ini);
 
         $item = $k[0]['minggu'][2]['item'][0];
-        $this->assertSame(['id', 'jenis', 'keterangan', 'mulai', 'selesai', 'semula', 'direvisi', 'selesai_spt', 'target'], array_keys($item));
+        $this->assertSame(['id', 'jenis', 'keterangan', 'mulai', 'selesai', 'semula', 'direvisi', 'tambahan_ke', 'selesai_spt', 'target'], array_keys($item));
         $this->assertSame(['id', 'nama', 'warna', 'warna_teks'], array_keys($item['jenis']));
         $this->assertSame([null, false, 0, 1], [$item['semula'], $item['direvisi'], $item['selesai_spt'], $item['target']]);
     }

@@ -14,6 +14,7 @@ use App\Models\PkptPerubahan;
 use App\Models\PkptUsulan;
 use App\Models\User;
 use App\Notifications\PerubahanPkptDiputuskan;
+use App\Notifications\UsulanPerubahanDiputuskan;
 use App\Services\PenerimaNotifikasi;
 use App\Services\PerubahanPkpt;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,8 @@ class PutuskanPerubahan
     public function handle(User $user, PkptPerubahan $p, bool $setujui, ?string $komentar): PkptPerubahan
     {
         Gate::forUser($user)->authorize('putuskan', $p);
-        $p = DB::transaction(function () use ($user, $p, $setujui, $komentar) {
+        $diterapkan = [];
+        $p = DB::transaction(function () use ($user, $p, $setujui, $komentar, &$diterapkan) {
             // PKPT row first: two approvals of one PKPT queue here, so nomor_urut and the re-validation never race.
             Pkpt::whereKey($p->pkpt_id)->lockForUpdate()->first();
             $p = PkptPerubahan::whereKey($p->id)->lockForUpdate()->first();
@@ -64,7 +66,9 @@ class PutuskanPerubahan
                 $p->sk_lengkap_pada ??= now();
             }
             $p->save();
-            PkptUsulan::where('perubahan_id', $p->id)->where('status', StatusUsulan::Ditampung->value)->update(['status' => StatusUsulan::Diterapkan->value]);
+            $tampung = PkptUsulan::where('perubahan_id', $p->id)->where('status', StatusUsulan::Ditampung->value);
+            $diterapkan = $tampung->pluck('id')->all();
+            $tampung->update(['status' => StatusUsulan::Diterapkan->value]);
             $this->catat($p, 'disetujui', $user, $komentar);
 
             return $p;
@@ -72,6 +76,9 @@ class PutuskanPerubahan
 
         $penerima = $setujui ? $this->penerima->perubahanDisetujui($p, $user) : $this->penerima->pembuatPerubahan($p);
         Notification::send($penerima, new PerubahanPkptDiputuskan($p, $setujui));
+        // One notification per applied usulan (irban accounts + "Diinput oleh" pegawai email).
+        PkptUsulan::with(['pkpt', 'perubahan', 'item.jenisPenugasan', 'jenisPenugasan', 'diinputOleh'])->whereKey($diterapkan)->get()
+            ->each(fn (PkptUsulan $u) => UsulanPerubahanDiputuskan::kirim($u));
 
         return $p;
     }

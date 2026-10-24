@@ -39,7 +39,8 @@
     </x-ui.page-header>
 
     @unless ($draf)
-        <x-ui.tabs :tabs="['item' => 'Item', 'perubahan' => 'Perubahan']" :active="$tabAktif" model="tab" label="Bagian PKPT" panel="panel-pkpt" />
+        <x-ui.tabs :tabs="['item' => 'Item', 'perubahan' => 'Perubahan']" :active="$tabAktif" model="tab" label="Bagian PKPT" panel="panel-pkpt"
+            :badges="['perubahan' => [$usulanTerbuka, $usulanTerbuka.' usulan dari Irban terbuka']]" />
         <div role="tabpanel" id="panel-pkpt" aria-labelledby="panel-pkpt-tab-{{ $tabAktif }}">
     @endunless
 
@@ -108,7 +109,7 @@
                         </td>
                         <td class="min-w-56 align-top !py-3">
                             <x-app.jadwal-berlaku :item="$item" :mulai="$mulai" :selesai="$selesai" />
-                            {{-- Task 9: riwayat perubahan --}}
+                            <x-app.riwayat-perubahan :riwayat="$riwayat[$item->id] ?? []" class="mt-1" />
                         </td>
                         <td class="min-w-32 align-top !py-3">
                             @if ($item->keterangan){{ $item->keterangan }}@else<span class="text-neutral-500">—</span>@endif
