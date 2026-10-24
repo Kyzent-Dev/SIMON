@@ -4,10 +4,12 @@ namespace App\Actions\Pkpt\Usulan;
 
 use App\Actions\Pkpt\SavePkptItem;
 use App\Enums\AksiUsulan;
+use App\Enums\StatusItemPkpt;
 use App\Enums\StatusPkpt;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
+use App\Models\PkptPerubahanItem;
 use App\Models\PkptUsulan;
 use App\Models\User;
 use App\Notifications\UsulanPerubahanBaru;
@@ -23,6 +25,28 @@ use Illuminate\Validation\ValidationException;
  */
 class AjukanUsulan
 {
+    /** Stale tab: the item was this irban's but an approved Perubahan PKPT removed it or moved it to another irban (key `item`, a toast). */
+    public const ITEM_BASI = 'Item ini sudah dihapus atau dipindahkan oleh Perubahan PKPT.';
+
+    /**
+     * Own active item of a Disahkan PKPT. An item that was this irban's (it still carries the irban but is dihapus, or an applied operation
+     * recorded this irban in data_lama) throws ITEM_BASI; any other id is a 404, so foreign ids stay indistinguishable from missing ones.
+     */
+    public static function itemSendiri(User $user, int $id, ?int $pkptId = null): PkptItem
+    {
+        $item = PkptItem::whereHas('pkpt', fn ($q) => $q->where('status', StatusPkpt::Disahkan->value))
+            ->when($pkptId, fn ($q) => $q->where('pkpt_id', $pkptId))->find($id);
+        $irban = (int) $user->irban_id;
+        if ($item && $item->irban_id === $irban && $item->status === StatusItemPkpt::Aktif) {
+            return $item;
+        }
+        $pernah = $item && ($item->irban_id === $irban || PkptPerubahanItem::where('pkpt_item_id', $item->id)->whereNotNull('data_lama')->get()
+            ->contains(fn (PkptPerubahanItem $op) => (int) ($op->data_lama['irban_id'] ?? 0) === $irban));
+        abort_unless($pernah, 404);
+
+        throw ValidationException::withMessages(['item' => self::ITEM_BASI]);
+    }
+
     public function handle(User $user, Pkpt $pkpt, ?PkptItem $item, array $data): PkptUsulan
     {
         // Before the policy (which also requires Disahkan) so the irban sees the reason instead of a 403.
@@ -46,8 +70,7 @@ class AjukanUsulan
             if (! $item) {
                 throw ValidationException::withMessages(['pkpt_item_id' => 'Pilih item PKPT.']);
             }
-            // Scoped lookup: another irban's item, another PKPT's item or a removed item is simply not found.
-            $item = PkptItem::where('pkpt_id', $pkpt->id)->where('irban_id', $user->irban_id)->aktif()->findOrFail($item->id);
+            $item = self::itemSendiri($user, $item->id, $pkpt->id);
         }
 
         $tanggal = in_array($aksi, [AksiUsulan::Geser, AksiUsulan::Tambah], true) ? SavePkptItem::tanggal($pkpt, $data, $errors) : [];

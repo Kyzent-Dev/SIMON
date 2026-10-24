@@ -74,7 +74,9 @@ class Pkpt extends Component
         $this->resetValidation();
         $this->reset('tanggal_mulai', 'tanggal_selesai', 'jenis_penugasan_id', 'alasan');
         if ($id !== null) {
-            $item = $this->item($id);
+            if (! $item = $this->item($id)) {
+                return;
+            }
             $this->usulanItemId = $item->id;
             $this->aksi_usulan = AksiUsulan::Geser->value;
             $this->tanggal_mulai = $item->tanggal_mulai->toDateString();
@@ -103,6 +105,9 @@ class Pkpt extends Component
     {
         $user = $this->irban();
         $item = $this->usulanItemId ? $this->item($this->usulanItemId) : null;
+        if ($this->usulanItemId && ! $item) {
+            return;
+        }
         $pkpt = $item?->pkpt ?? $this->pkptDisahkan() ?? PkptModel::where('tahun', (int) $this->tahun)->firstOrFail();
         // The radio offers "Item baru" only without an item and the other kinds only with one.
         $aksi = $item ? ($this->aksi_usulan === AksiUsulan::Tambah->value ? '' : $this->aksi_usulan) : AksiUsulan::Tambah->value;
@@ -136,11 +141,18 @@ class Pkpt extends Component
         return $user;
     }
 
-    /** An active item of this irban in a Disahkan PKPT; anything else is a 404. */
-    private function item(int $id): PkptItem
+    /** An active item of this irban in a Disahkan PKPT; null after a stale-tab toast (item removed or moved since); a foreign id is a 404. */
+    private function item(int $id): ?PkptItem
     {
-        return PkptItem::where('irban_id', $this->irban()->irban_id)->aktif()
-            ->whereHas('pkpt', fn ($q) => $q->where('status', StatusPkpt::Disahkan->value))->findOrFail($id);
+        try {
+            return AjukanUsulan::itemSendiri($this->irban(), $id);
+        } catch (ValidationException $e) {
+            $this->usulanOpen = false;
+            $this->dispatch('toast', type: 'error', message: AjukanUsulan::ITEM_BASI);
+            $this->dispatch('usulan-fokus', id: null);
+
+            return null;
+        }
     }
 
     private function pkptDisahkan(): ?PkptModel

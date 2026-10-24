@@ -3,13 +3,10 @@
      cards below (DESIGN §11) | usulan: "Usulan saya", table ≥768, cards below. "Usulkan Perubahan" per item (table, cards, calendar detail) and
      "Usulkan item baru" in the header open one modal; "Diinput oleh" sits in its footer. Status = rectangular x-app.tag (pills stay for SPT).
      No animation on tables, cards or the form (DESIGN §7.5); only the modal's own transition. --}}
-@use('App\Enums\AksiUsulan')
-@use('App\Enums\StatusUsulan')
 @use('App\Support\Tanggal')
 @php
     $tahun = (int) $this->tahun;
     $disahkan = $pkpt?->status === \App\Enums\StatusPkpt::Disahkan;
-    $tgl = fn ($d) => $d?->timezone('Asia/Jakarta')->translatedFormat('d F Y');
 @endphp
 {{-- After the modal: back to the visible trigger (table/card button, else the calendar card), else the h1 (pitfall "Fokus setelah aksi"). --}}
 <div x-on:usulan-fokus.window="setTimeout(() => { const v = (s) => [...document.querySelectorAll(s)].find((e) => e.offsetParent); const id = $event.detail.id;

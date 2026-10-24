@@ -1,7 +1,6 @@
 {{-- "Usulan saya" (?tampilan=usulan, Fase 9.2 Task 9): this irban's usulan for the year's PKPT, newest first. Table ≥768, cards below
      (DESIGN §11). Status = x-app.tag (icon + label); catatan penutupan when ditutup, "Perubahan ke-N" when diterapkan. No animation (§7.5). --}}
 @use('App\Enums\AksiUsulan')
-@use('App\Enums\StatusUsulan')
 @use('App\Support\Tanggal')
 @php
     $tgl = fn ($d) => $d?->timezone('Asia/Jakarta')->translatedFormat('d F Y');

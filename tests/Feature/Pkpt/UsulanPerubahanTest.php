@@ -29,12 +29,12 @@ use App\Notifications\UsulanPerubahanBaru;
 use App\Notifications\UsulanPerubahanDiputuskan;
 use App\Services\PerubahanPkpt;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /** Fase 9.2 Task 9: Usulan Perubahan by Irban → Admin tampung/tutup → Pimpinan approval → diterapkan, notifications, scope. */
@@ -245,15 +245,40 @@ class UsulanPerubahanTest extends TestCase
 
     public function test_scope_irban_cannot_propose_for_another_irbans_item(): void
     {
-        $this->expectException(ModelNotFoundException::class);
+        $this->expectException(NotFoundHttpException::class);
         $this->ajukan($this->milikLain, ['aksi_usulan' => 'hapus']);
+    }
+
+    /** Stale tab: an item that was this irban's but was removed or moved by an approved Perubahan PKPT → toast + h1 focus, not a 404. */
+    public function test_stale_item_removed_or_moved_shows_toast_not_404(): void
+    {
+        $p = PkptPerubahan::factory()->disetujui(1)->create(['pkpt_id' => $this->pkpt->id]);
+        $p->operasi()->create(['aksi' => 'ubah', 'pkpt_item_id' => $this->c->id, 'urutan' => 1,
+            'data_lama' => PerubahanPkpt::data($this->c), 'data_baru' => ['irban_id' => $this->irban2->id] + PerubahanPkpt::data($this->c)]);
+
+        // Modal opened, then the item is removed before sending.
+        $h = Livewire::actingAs($this->irban)->test(HalamanIrban::class, ['tampilan' => 'tabel'])->call('bukaUsulan', $this->b->id)->assertSet('usulanOpen', true)
+            ->set('aksi_usulan', 'hapus')->set('alasan', 'Item ini tidak perlu.')->set('diinput_oleh', $this->penginput->id);
+        $this->b->update(['status' => StatusItemPkpt::Dihapus]);
+        $h->call('kirimUsulan')->assertStatus(200)->assertSet('usulanOpen', false)
+            ->assertDispatched('toast', type: 'error', message: AjukanUsulan::ITEM_BASI)->assertDispatched('usulan-fokus', id: null);
+
+        // Table loaded, then the item moved to another irban: opening shows the toast.
+        $this->c->update(['irban_id' => $this->irban2->id]);
+        Livewire::actingAs($this->irban)->test(HalamanIrban::class)->call('bukaUsulan', $this->c->id)->assertStatus(200)
+            ->assertSet('usulanOpen', false)->assertDispatched('toast', type: 'error', message: AjukanUsulan::ITEM_BASI);
+        $this->galat(fn () => $this->ajukan($this->c, ['aksi_usulan' => 'hapus']), 'item', AjukanUsulan::ITEM_BASI);
+        $this->galat(fn () => $this->ajukan($this->b, ['aksi_usulan' => 'hapus']), 'item', AjukanUsulan::ITEM_BASI);
+        $this->assertSame(0, PkptUsulan::count());
+
+        // Never this irban's (even when dihapus or moved between other irbans): still a 404.
+        $this->milikLain->update(['status' => StatusItemPkpt::Dihapus]);
+        Livewire::actingAs($this->irban)->test(HalamanIrban::class)->call('bukaUsulan', $this->milikLain->id)->assertNotFound();
     }
 
     public function test_scope_in_the_irban_page_and_non_irban_cannot_propose(): void
     {
         Livewire::actingAs($this->irban)->test(HalamanIrban::class)->call('bukaUsulan', $this->milikLain->id)->assertNotFound();
-        $this->b->update(['status' => StatusItemPkpt::Dihapus]);
-        Livewire::actingAs($this->irban)->test(HalamanIrban::class)->call('bukaUsulan', $this->b->id)->assertNotFound();
         Livewire::actingAs($this->admin)->test(HalamanIrban::class)->assertForbidden();
 
         $this->expectException(AuthorizationException::class);
@@ -317,6 +342,13 @@ class UsulanPerubahanTest extends TestCase
         $this->actingAs($this->irban);
         $h->call('tampung', $baru->id)->assertForbidden();
         $this->assertSame(StatusUsulan::Terbuka, $baru->fresh()->status);
+        $h = $halaman()->call('bukaTutup', $baru->id)->set('catatan_penutupan', 'Ditutup lewat panggilan langsung.');
+        $this->actingAs($this->irban);
+        $h->call('tutupUsulan')->assertForbidden();
+        $baru->refresh();
+        $this->assertSame(StatusUsulan::Terbuka, $baru->status);
+        $this->assertNull($baru->catatan_penutupan);
+        $this->actingAs($this->admin);
         $halaman($this->irban)->assertForbidden();
         foreach ([fn () => app(TampungUsulan::class)->handle($this->irban, $baru, $p), fn () => app(TutupUsulan::class)->handle($this->pimpinan, $baru, 'Ditutup oleh pimpinan.')] as $fn) {
             try {

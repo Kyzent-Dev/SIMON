@@ -12,6 +12,6 @@
                 'inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors duration-[var(--dur-fast)] -mb-px lg:min-h-10',
                 'border-mint-700 text-mint-700' => $key === $active,
                 'border-transparent text-neutral-600 hover:text-neutral-900' => $key !== $active,
-            ])>{{ $text }}@if (($badges[$key][0] ?? 0) > 0)<span aria-hidden="true" class="ml-2 inline-flex min-w-5 items-center justify-center rounded border border-neutral-300 bg-neutral-100 px-1.5 text-xs font-semibold text-neutral-900 tabular-nums">{{ $badges[$key][0] }}</span><span class="sr-only">, {{ $badges[$key][1] }}</span>@endif</button>
+            ])>{{ $text }}@if (($badges[$key][0] ?? 0) > 0)<span aria-hidden="true" class="ml-2 inline-flex min-w-5 items-center justify-center rounded border border-neutral-300 bg-neutral-100 px-1.5 text-xs font-semibold text-neutral-600 tabular-nums">{{ $badges[$key][0] }}</span><span class="sr-only">, {{ $badges[$key][1] }}</span>@endif</button>
     @endforeach
 </div>
