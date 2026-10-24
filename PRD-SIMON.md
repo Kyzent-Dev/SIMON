@@ -20,7 +20,7 @@ Inspektorat memproses Surat Perintah Tugas (SPT) lewat Google Form, stambook fis
 Aplikasi ini menggantikan Google Form, Sistem A, dan Sistem B dengan satu website Laravel:
 1. Irban mengajukan nomor SPT, Bagian Umum memutuskan, dan sistem memberi nomor otomatis dari stambook digital.
 2. Status SPT berjalan otomatis berdasarkan tanggal. Irban hanya menandai Selesai dengan upload cover LHP.
-3. Pimpinan memantau, memberi arahan, dan menyetujui revisi jadwal.
+3. Pimpinan memantau, memberi arahan, dan menyetujui Perubahan PKPT.
 4. Rekap per triwulan terbentuk otomatis dan bisa diunduh ke PDF dan Excel.
 5. Publik melihat jadwal PKPT dan realisasi SPT Reguler yang sudah selesai lewat landing page.
 
@@ -40,10 +40,10 @@ Aplikasi ini menggantikan Google Form, Sistem A, dan Sistem B dengan satu websit
 - Landing page publik: Home, Jadwal PKPT, Realisasi SPT.
 - Autentikasi dan 4 peran internal.
 - Master data: pegawai, irban, tim, objek pemeriksaan, jenis penugasan, klasifikasi SPT, konten landing page.
-- PKPT per tahun beserta revisi jadwal.
+- PKPT per tahun beserta Perubahan PKPT (paket perubahan jadwal dan Usulan dari Irban).
 - Pengajuan nomor SPT, keputusan Bagian Umum, stambook digital.
 - Data SPT, personel per SPT, status otomatis, penanda (flag).
-- Komentar per SPT dan persetujuan revisi jadwal oleh pimpinan.
+- Komentar per SPT dan persetujuan Perubahan PKPT oleh pimpinan.
 - Notifikasi di website (ikon lonceng) dan email.
 - Dashboard internal, rekap triwulan, ekspor PDF dan Excel.
 - Impor data lama dari Sistem A/B lewat template Excel.
@@ -121,7 +121,13 @@ Pimpinan menyetujui atau menolak (komentar bila menolak; dampak ditampilkan)
 Admin melengkapi SK Perubahan (nomor, tanggal, berkas PDF) setelah disetujui; ada pengingat
 Admin dapat menutup Usulan tanpa menerapkannya (dengan catatan)                     [ditutup]
 ```
-Aturan: **K4** hanya PKPT Disahkan yang dapat diubah lewat paket; **K5** persetujuan dan penerapan bersifat atomik; **K6** jadwal semula (snapshot saat pengesahan) selalu tersimpan dan tampil sebagai "Jadwal semula"; **K7** item yang sudah punya SPT tidak dapat dihapus dan irban/jenisnya tidak dapat diubah (hanya tanggal, keterangan, target). Item baru dari paket ditandai "Tambahan", item yang tanggalnya bergeser ditandai "direvisi". Item yang dihapus tetap tersimpan (status `dihapus`) dan tidak muncul lagi di tampilan aktif, rekap, atau pilihan SPT.
+Aturan:
+- **K4** Hanya Admin yang mengubah PKPT yang sudah Disahkan, lewat paket Perubahan PKPT; setiap paket wajib disetujui Pimpinan. Fitur revisi jadwal oleh Irban dihapus dan diganti Usulan Perubahan.
+- **K5** Perubahan berlaku setelah disetujui Pimpinan, walaupun SK belum dilampirkan. Admin menerima pengingat harian sampai SK lengkap dan dapat mematikannya per paket.
+- **K6** Perubahan pada rekap triwulan yang sudah lewat diterima apa adanya, dengan riwayat tercatat. Tidak ada snapshot rekap.
+- **K7** Item yang sudah dipakai SPT (status apa pun) tidak boleh dihapus; hanya boleh digeser atau diubah (tanggal, keterangan, target), irban dan jenis penugasannya terkunci.
+
+Persetujuan menerapkan semua operasi secara atomik. Jadwal semula (snapshot saat pengesahan) selalu tersimpan dan tampil sebagai "Jadwal semula". Item baru dari paket ditandai "Tambahan", item yang tanggalnya bergeser ditandai "direvisi". Item yang dihapus tetap tersimpan (status `dihapus`) dan tidak muncul lagi di tampilan aktif, rekap, atau pilihan SPT.
 
 ### 6.3 Komentar dan minta penjelasan
 Pimpinan menulis komentar di halaman detail SPT. Irban dan Bagian Umum membalas di utas yang sama. Pimpinan bisa menandai komentar sebagai **"Minta Penjelasan"**. Permintaan itu tetap terbuka sampai Irban membalas dan pimpinan menutupnya. Dashboard pimpinan menampilkan jumlah permintaan yang masih terbuka.
@@ -146,7 +152,7 @@ Pimpinan menulis komentar di halaman detail SPT. Irban dan Bagian Umum membalas 
 ### 7.2 Halaman Jadwal PKPT (publik)
 Tujuan: orang awam paham dalam beberapa detik siapa mengerjakan apa dan kapan.
 - Filter: tahun, irban.
-- **Tampilan Timeline (default desktop):** baris = jenis penugasan, kolom = 12 bulan dengan sub-kolom minggu 1 sampai 5. Setiap item tampil sebagai batang berwarna. Warna mengikuti jenis penugasan dan legenda tampil di atas. Batang item yang direvisi memperlihatkan jadwal asli sebagai garis putus-putus.
+- **Tampilan Timeline (default desktop):** baris = jenis penugasan, kolom = 12 bulan dengan sub-kolom minggu 1 sampai 5. Setiap item tampil sebagai batang berwarna. Warna mengikuti jenis penugasan dan legenda tampil di atas. Batang item yang direvisi memperlihatkan "Jadwal semula" (snapshot saat pengesahan, lihat 7.5) sebagai garis putus-putus.
 - **Tampilan Bulanan (default mobile):** kartu per bulan berisi daftar penugasan per minggu, mirip tabel PKPT lama tapi lebih bersih.
 - Pengguna bisa berpindah antara dua tampilan.
 - Klik item untuk melihat detail: jenis penugasan, irban, rentang tanggal, wilayah (level kecamatan atau nama OPD), dan progres realisasi ("3 dari 4 SPT selesai").
@@ -327,7 +333,7 @@ Tabel `pkpt_item_revisi` dihapus pada Fase 9.2: migrasi data mengubah setiap rev
 - Semua tanggal memakai zona waktu `Asia/Jakarta`.
 
 ### 9.3 Penanda (flag)
-- **Tidak Sesuai PKPT:** tanggal realisasi tidak berada di dalam rentang item PKPT (memakai revisi yang disetujui kalau ada). SPT tanpa item PKPT tidak dinilai (tampil "Non-PKPT").
+- **Tidak Sesuai PKPT:** tanggal realisasi tidak berada di dalam rentang item PKPT (memakai tanggal item saat ini; Perubahan PKPT yang disetujui menimpa tanggal itu, sedangkan jadwal semula hanya ditampilkan sebagai riwayat dan tidak dipakai untuk menilai). SPT tanpa item PKPT tidak dinilai (tampil "Non-PKPT").
 - **Terlambat:** status Penyusunan Laporan lebih dari N hari. N di Pengaturan, default 14.
 - **SPT Final Belum Diupload:** nomor terbit, tanggal mulai sudah lewat, dokumen final belum ada.
 
@@ -409,7 +415,7 @@ Kerjakan berurutan. Setiap fase diakhiri dengan test hijau dan commit.
 
 **Fase 3: PKPT**
 - CRUD PKPT dan item, impor Excel, status Draf/Disahkan.
-- Alur revisi jadwal dengan persetujuan pimpinan.
+- Alur revisi jadwal dengan persetujuan pimpinan. *(Riwayat: alur revisi per item ini digantikan oleh Perubahan PKPT + Usulan pada Fase 9.2, lihat 6.2.)*
 - *Selesai jika:* revisi disetujui mengubah rentang yang dipakai untuk kesesuaian, dan jadwal asli tetap tersimpan.
 
 **Fase 4: Pengajuan dan penomoran**
@@ -463,7 +469,7 @@ Kerjakan berurutan. Setiap fase diakhiri dengan test hijau dan commit.
 
 1. Irban I mengajukan SPT Reguler dengan dua tim, menghapus satu anggota, dan menambah satu pegawai dari Irban II. Data personel tersimpan dengan peran dan urutan yang benar.
 2. Bagian Umum menerima dua pengajuan dalam waktu bersamaan. Kedua nomor berurutan dan tidak kembar.
-3. SPT dengan tanggal realisasi di luar jadwal PKPT ditandai Tidak Sesuai dan meminta kendala. Setelah revisi jadwal disetujui, penandanya hilang.
+3. SPT dengan tanggal realisasi di luar jadwal PKPT ditandai Tidak Sesuai dan meminta kendala. Setelah Perubahan PKPT yang menggeser jadwal item disetujui, kesesuaian dihitung ulang dengan tanggal item yang baru dan penandanya hilang bila realisasi masuk rentang itu.
 4. SPT yang 15 hari di Penyusunan Laporan ditandai Terlambat dan muncul di dashboard pimpinan.
 5. Pimpinan meminta penjelasan. Irban menerima notifikasi di lonceng dan email, lalu membalas. Pimpinan menutup permintaan.
 6. Rekap TW I diekspor ke Excel dan angkanya sama dengan tabel di layar.
