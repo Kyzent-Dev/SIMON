@@ -95,3 +95,9 @@ Spec: `fase-9.2-spesifikasi.md`. Plan: `docs/plans/fase-9.2-ekspor-perubahan-pro
 - Public: `JadwalPublik` and `KalenderPkpt` add `tambahan_ke` (nomor_urut of `ditambahkanOleh`, one eager load); `/jadwal` shows "Tambahan · Perubahan ke-N" in the detail, the monthly list, the table twin and the bar's aria-label. The public "semula" copy stays "Jadwal direvisi: semula …" (design/public/jadwal.md copy). `PrivasiPublikTest` gains markers for paket alasan, komentar putusan, nomor SK, SK path, usulan alasan and catatan penutupan.
 - Tests rewritten: `KalenderIrbanTest::test_no_revision_controls_in_calendar_or_table` (Task 5 placeholder) → `test_usulkan_perubahan_in_calendar_and_table`; item-key lists in `KalenderPkptTest`/`JadwalPublikTest` gain `tambahan_ke`.
 - Fix round 1 (stale tab): `AjukanUsulan::itemSendiri()` is the one lookup for the Irban page and the action. An own active item is returned; an item of a Disahkan PKPT that "was this irban's" (still carries this irban but is `dihapus`, or an applied operation recorded this irban in `data_lama.irban_id`, i.e. moved away) raises `ITEM_BASI` under key `item`, which the page shows as a toast, closes the modal and focuses the h1; every other id stays a 404 so foreign ids look the same as missing ones. The open-usulan tab badge uses neutral-600 on neutral-100 (§3.4).
+
+## Fase 9.2, Task 10
+- Kolom status/login terakhir dan aksi massal "Wajibkan ganti kata sandi" dari admin.md tidak dibuat: spesifikasi tidak mencantumkannya dan tidak ada datanya.
+- Kata sandi sementara diisi Admin pada form tambah pengguna (`Password::defaults()`, `wajib_ganti_password = true`); form ubah tidak menyentuh kata sandi.
+- Aturan "Admin tidak dapat mengubah peran sendiri" dan "tidak boleh tanpa Admin" ditegakkan di `SimpanPengguna::handle`, bukan hanya disembunyikan di UI.
+- Teks modal reset tidak menyebut sesi lain berakhir; itu baru berlaku setelah `AuthenticateSession` aktif (Task 11).

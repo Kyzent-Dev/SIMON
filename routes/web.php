@@ -18,6 +18,7 @@ use App\Livewire\Admin\Objek;
 use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\PegawaiImpor;
 use App\Livewire\Admin\Pengaturan;
+use App\Livewire\Admin\Pengguna;
 use App\Livewire\Admin\PerubahanPkpt as AdminPerubahanPkpt;
 use App\Livewire\Admin\Pkpt;
 use App\Livewire\Admin\PkptDetail;
@@ -73,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pengaturan', Pengaturan::class)->name('admin.pengaturan');
         Route::get('/klasifikasi', Klasifikasi::class)->name('admin.klasifikasi');
         Route::get('/pegawai', Pegawai::class)->name('admin.pegawai');
+        Route::get('/pengguna', Pengguna::class)->name('admin.pengguna');
         Route::get('/pegawai/impor', PegawaiImpor::class)->name('admin.pegawai.impor');
         Route::get('/irban', Irban::class)->name('admin.irban');
         Route::get('/irban-tahunan', IrbanTahunan::class)->name('admin.irban-tahunan');
