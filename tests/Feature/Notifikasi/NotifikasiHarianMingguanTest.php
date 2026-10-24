@@ -200,6 +200,13 @@ class NotifikasiHarianMingguanTest extends TestCase
         Notification::assertNotSentTo($this->user, RingkasanMingguan::class);
     }
 
+    public function test_queued_payload_with_old_revisi_key_still_renders(): void
+    {
+        $n = new RingkasanMingguan(['awal' => now(), 'akhir' => now(), 'nomor' => 1, 'selesai' => 0, 'menunggu_nomor' => 0, 'revisi' => 3, 'terlambat' => 0, 'daftar' => [], 'lainnya' => 0]);
+        $this->assertStringContainsString('menunggu persetujuan: 3', implode('
+', $n->isi()));
+    }
+
     public function test_weekly_window_is_monday_based_regardless_of_locale(): void
     {
         $pimpinan = User::factory()->pimpinan()->create();

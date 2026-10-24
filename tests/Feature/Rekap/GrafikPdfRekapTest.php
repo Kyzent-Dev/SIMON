@@ -54,6 +54,8 @@ class GrafikPdfRekapTest extends TestCase
         $html = view('pdf.partials.grafik-batang', ['kode' => 'rr', ...$g['rr']])->render();
         $this->assertStringContainsString('width: 100%', $html);
         $this->assertStringContainsString('width: 75%', $html);
+        $this->assertStringContainsString('Rencana 4', $html);
+        $this->assertStringContainsString('Realisasi 3', $html);
     }
 
     public function test_jenis_is_sorted_descending_with_percent_label_and_klasifikasi_keeps_zero_rows(): void

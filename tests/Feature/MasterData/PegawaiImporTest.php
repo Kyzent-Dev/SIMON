@@ -191,7 +191,7 @@ class PegawaiImporTest extends TestCase
     {
         $r = (new PegawaiImportParser)->parse($this->xlsx([['Budi', $this->nip(1), 'Auditor']], ['nama_bergelar', 'nip', 'jabatan']));
         $this->assertSame('valid', $r[0]['status']);
-        $this->assertSame(['nama' => 'Budi', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => 'Auditor', 'email' => '', 'aktif' => true], $r[0]['data']);
+        $this->assertSame(['nama' => 'Budi', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => 'Auditor', 'aktif' => true], $r[0]['data']);
     }
 
     public function test_malformed_raw_is_reported_as_errors(): void
@@ -210,6 +210,17 @@ class PegawaiImporTest extends TestCase
         $big = array_fill(0, 2001, ['baris' => 2, 'nama_bergelar' => 'N', 'nip' => $this->nip(1), 'pangkat' => '', 'golongan' => '', 'jabatan' => '', 'aktif' => '']);
         $c->set('raw', $big)->call('impor')->assertSet('step', 1)->assertHasErrors('file');
         $this->assertSame(0, Pegawai::count());
+    }
+
+    public function test_import_without_email_column_keeps_stored_email(): void
+    {
+        Pegawai::factory()->create(['nip' => $this->nip(1), 'email' => 'tetap@example.test']);
+        Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)
+            ->set('file', $this->upload($this->xlsx([['Baru', $this->nip(1), '', '', '', '']])))
+            ->call('impor')->assertSet('diimpor', 1);
+        $p = Pegawai::where('nip', $this->nip(1))->first();
+        $this->assertSame('Baru', $p->nama_bergelar);
+        $this->assertSame('tetap@example.test', $p->email);
     }
 
     public function test_email_column(): void

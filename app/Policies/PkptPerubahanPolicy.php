@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\Role;
+use App\Enums\StatusPerubahan;
 use App\Models\PkptPerubahan;
 use App\Models\User;
 use App\Services\PerubahanPkpt;
@@ -57,6 +58,8 @@ class PkptPerubahanPolicy
 
     public function unduhSk(User $user, PkptPerubahan $p): bool
     {
-        return $p->berkas_sk !== null && $this->view($user, $p);
+        // An Irban only gets the SK once the package is approved.
+        return $p->berkas_sk !== null && $this->view($user, $p)
+            && ($user->role !== Role::Irban || $p->status === StatusPerubahan::Disetujui);
     }
 }

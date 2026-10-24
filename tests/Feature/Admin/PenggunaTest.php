@@ -57,6 +57,12 @@ class PenggunaTest extends TestCase
         }
     }
 
+    public function test_password_is_cleared_from_state_after_create(): void
+    {
+        $c = Livewire::actingAs(User::factory()->admin()->create())->test(Pengguna::class);
+        $this->isi($c, ['role' => 'pimpinan'])->call('save')->assertHasNoErrors()->assertSet('password', '');
+    }
+
     public function test_irban_requires_irban_and_weak_password_rejected(): void
     {
         $c = Livewire::actingAs($this->admin)->test(Pengguna::class)->call('create');

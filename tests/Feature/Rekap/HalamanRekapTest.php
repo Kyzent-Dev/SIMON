@@ -207,6 +207,9 @@ class HalamanRekapTest extends TestCase
         $t = $this->halaman($this->pimpinan)->call('bukaEkspor', 'xlsx')->set('bagianEkspor', [])->call('unduhEkspor');
         $t->assertHasErrors(['bagianEkspor' => 'Pilih minimal satu bagian.'])->assertSet('pilihEkspor', true)->assertNoFileDownloaded();
 
+        $this->halaman($this->pimpinan)->call('bukaEkspor', 'xlsx')->set('bagianEkspor', [['x']])->call('unduhEkspor')
+            ->assertHasErrors(['bagianEkspor' => 'Pilih minimal satu bagian.'])->assertNoFileDownloaded();
+
         $this->halaman($this->pimpinan)->call('bukaEkspor', 'xlsx')->set('bagianEkspor', ['detail'])->call('unduhEkspor')
             ->assertFileDownloaded('rekap-triwulan-2026-detail.xlsx')->assertSet('pilihEkspor', false);
 

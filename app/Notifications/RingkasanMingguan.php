@@ -35,8 +35,9 @@ class RingkasanMingguan extends NotifikasiSimon
     public function isi(): array
     {
         $h = $this->hasil;
+        $perubahan = $h['perubahan'] ?? $h['revisi'] ?? 0; // a job queued before the rename still carries `revisi`
         $baris = ["Nomor SPT terbit: {$h['nomor']}", "SPT ditandai Selesai: {$h['selesai']}", "Pengajuan menunggu nomor: {$h['menunggu_nomor']}",
-            "Perubahan PKPT menunggu persetujuan: {$h['perubahan']}", "SPT terlambat: {$h['terlambat']}", ...$h['daftar']];
+            "Perubahan PKPT menunggu persetujuan: {$perubahan}", "SPT terlambat: {$h['terlambat']}", ...$h['daftar']];
         if ($h['lainnya'] > 0) {
             $baris[] = "dan {$h['lainnya']} lainnya.";
         }

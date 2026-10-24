@@ -163,12 +163,13 @@ class PembangunRekap implements Pembangun
         $ambil = fn (array $b) => $tw ? $b['tw'][$tw] : $b['total'];
         $rr = [['label' => 'Rencana', 'isi' => PaletGrafik::RENCANA_ISI, 'garis' => PaletGrafik::RENCANA_GARIS], ['label' => 'Realisasi', 'isi' => PaletGrafik::REALISASI, 'garis' => PaletGrafik::REALISASI]];
         $pasang = fn (array $s) => [$s['rencana'] ?? 0, $s['realisasi'] ?? 0];
+        $teksRr = fn (array $n) => ["Rencana {$n[0]}", "Realisasi {$n[1]}"];
         $hasil = [];
         foreach ($filter['bagian'] as $kode) {
             if ($kode === 'rr') {
                 $baris = $filter['irban']
-                    ? array_map(fn ($n) => ['label' => self::TW[$n], 'nilai' => $pasang($rekap['irban']['total']['tw'][$n])], $tw ? [$tw] : array_keys(self::TW))
-                    : array_map(fn ($b) => ['label' => $b['nama'], 'nilai' => $pasang($ambil($b))], $rekap['irban']['baris']);
+                    ? array_map(fn ($n) => ['label' => self::TW[$n], 'nilai' => $v = $pasang($rekap['irban']['total']['tw'][$n]), 'teks' => $teksRr($v)], $tw ? [$tw] : array_keys(self::TW))
+                    : array_map(fn ($b) => ['label' => $b['nama'], 'nilai' => $v = $pasang($ambil($b)), 'teks' => $teksRr($v)], $rekap['irban']['baris']);
                 $hasil['rr'] = ['jenis' => 'berpasangan', 'judul' => 'Grafik Rencana vs Realisasi', 'baris' => $baris, 'legenda' => $rr];
             } elseif ($kode === 'klasifikasi') {
                 $hasil['klasifikasi'] = ['jenis' => 'bertumpuk', 'judul' => 'Grafik Per Klasifikasi', 'legenda' => [

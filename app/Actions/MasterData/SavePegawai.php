@@ -38,8 +38,8 @@ class SavePegawai
             $pegawai->fill([
                 'nama_bergelar' => trim($data['nama']), 'nip' => trim($data['nip']),
                 'pangkat' => $t($data['pangkat'] ?? null), 'golongan' => $t($data['golongan'] ?? null),
-                'jabatan' => $t($data['jabatan'] ?? null), 'email' => ($e = $t($data['email'] ?? null)) ? mb_strtolower($e) : null, 'aktif' => $data['aktif'],
-            ])->save();
+                'jabatan' => $t($data['jabatan'] ?? null), 'aktif' => $data['aktif'],
+            ] + (array_key_exists('email', $data) ? ['email' => ($e = $t($data['email'])) ? mb_strtolower($e) : null] : []))->save();
         } catch (UniqueConstraintViolationException) {
             // Which unique column collided: the NIP is checked first, so anything else is the email.
             $nipDipakai = Pegawai::where('nip', trim($data['nip']))->when($pegawai->exists, fn ($q) => $q->whereKeyNot($pegawai->id))->exists();

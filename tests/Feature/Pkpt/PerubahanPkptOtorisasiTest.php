@@ -136,6 +136,11 @@ class PerubahanPkptOtorisasiTest extends TestCase
         $this->actingAs($u['admin'])->get($url)->assertNotFound(); // row points to a missing file
         Storage::disk('local')->put($this->p->berkas_sk, '%PDF-1.4 SK');
 
+        $this->p->forceFill(['status' => 'diajukan'])->save();
+        $this->actingAs($u['irban'])->get($url)->assertForbidden(); // not approved yet
+        $this->assertFalse($u['irban']->can('unduhSk', $this->p));
+        $this->p->forceFill(['status' => 'disetujui'])->save();
+
         foreach (['admin', 'pimpinan', 'irban'] as $peran) {
             $this->actingAs($u[$peran])->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf');
         }

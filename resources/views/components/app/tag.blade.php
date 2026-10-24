@@ -1,4 +1,4 @@
-{{-- Rectangular tag (`rounded`, 4px) for PKPT and revision states: leading 14px icon + 12px/600 label. Pills stay reserved for SPT status (DESIGN §3.6).
+{{-- Rectangular tag (`rounded`, 4px) for PKPT and Perubahan PKPT states: leading 14px icon + 12px/600 label. Pills stay reserved for SPT status (DESIGN §3.6).
      Variants use §3.4 pairs only: mint (mint-800 on mint-100), neutral (neutral-900 on neutral-100), warning (accent-700 on white), danger (danger-700 on white), info (info-800 on white). --}}
 @props(['icon', 'variant' => 'neutral'])
 

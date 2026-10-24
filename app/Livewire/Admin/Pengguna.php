@@ -91,6 +91,7 @@ class Pengguna extends Component
         $data = $this->validate(SimpanPengguna::rules($u, $this->role), SimpanPengguna::messages(), ['name' => 'Nama', 'email' => 'Email']);
         $u = $action->handle(auth()->user(), $u, $data);
 
+        $this->reset('password');
         $this->open = false;
         $this->dispatch('toast', type: 'success', message: "Pengguna {$u->name} disimpan.");
     }

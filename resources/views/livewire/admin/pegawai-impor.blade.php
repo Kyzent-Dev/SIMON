@@ -75,7 +75,7 @@
                     <td class="whitespace-nowrap">{{ $r['data']['nip'] ?: '—' }}</td>
                     <td class="min-w-32">{{ collect([$r['data']['pangkat'], $r['data']['golongan']])->filter()->implode(' / ') ?: '—' }}</td>
                     <td class="min-w-32">{{ $r['data']['jabatan'] ?: '—' }}</td>
-                    <td class="min-w-40 break-all">{{ $r['data']['email'] ?: '–' }}</td>
+                    <td class="min-w-40 break-all">{{ ($r['data']['email'] ?? '') ?: '–' }}</td>
                     <td>{{ $r['data']['aktif'] ? 'Ya' : 'Tidak' }}</td>
                     <td class="min-w-64 py-2">
                         @if ($r['status'] === 'error')

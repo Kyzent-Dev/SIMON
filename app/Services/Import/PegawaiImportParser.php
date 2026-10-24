@@ -41,6 +41,9 @@ class PegawaiImportParser
             $row = ['baris' => $i + 2];
             foreach (self::HEADERS as $h) {
                 $col = array_search($h, $header, true);
+                if ($h === 'email' && $col === false) {
+                    continue; // no email column: leave the key out so the import keeps stored emails
+                }
                 $v = $col === false ? null : ($cells[$col] ?? null);
                 if ($h === 'nip' && (is_int($v) || is_float($v))) {
                     // Excel keeps only ~15 significant digits of a numeric cell, so the NIP cannot be trusted.
@@ -49,7 +52,7 @@ class PegawaiImportParser
                 }
                 $row[$h] = trim(is_bool($v) ? ($v ? 'true' : 'false') : (string) $v);
             }
-            if (implode('', array_map(fn ($h) => $row[$h], self::HEADERS)) === '' && ! isset($row['nip_numerik'])) {
+            if (implode('', array_map(fn ($h) => $row[$h] ?? '', self::HEADERS)) === '' && ! isset($row['nip_numerik'])) {
                 continue; // blank row
             }
             $raw[] = $row;
@@ -76,6 +79,9 @@ class PegawaiImportParser
             $r = is_array($r) ? $r : [];
             $n = ['baris' => (int) ($r['baris'] ?? 0), 'nip_numerik' => ! empty($r['nip_numerik'])];
             foreach (self::HEADERS as $h) {
+                if ($h === 'email' && ! array_key_exists('email', $r)) {
+                    continue;
+                }
                 $n[$h] = isset($r[$h]) && is_scalar($r[$h]) ? trim((string) $r[$h]) : '';
             }
 
@@ -85,7 +91,7 @@ class PegawaiImportParser
         $rules = SavePegawai::rules();
         $rules['nip'] = ['required', 'digits:18']; // uniqueness is a warning here, not an error
         $rules['email'] = ['nullable', 'string', 'max:255', 'email:rfc']; // uniqueness is checked below against the row's NIP
-        $emailDipakai = Pegawai::whereIn('email', array_filter(array_map(fn ($r) => mb_strtolower($r['email']), $raw)))->pluck('nip', 'email')->mapWithKeys(fn ($nip, $e) => [mb_strtolower($e) => $nip]);
+        $emailDipakai = Pegawai::whereIn('email', array_filter(array_map(fn ($r) => mb_strtolower($r['email'] ?? ''), $raw)))->pluck('nip', 'email')->mapWithKeys(fn ($nip, $e) => [mb_strtolower($e) => $nip]);
         $seen = [];
         $seenEmail = [];
         $out = [];
@@ -93,13 +99,16 @@ class PegawaiImportParser
         foreach ($raw as $r) {
             $errors = [];
             $aktif = self::AKTIF[strtolower($r['aktif'])] ?? ($r['aktif'] === '' ? true : null);
-            $data = ['nama' => $r['nama_bergelar'], 'nip' => $r['nip'], 'pangkat' => $r['pangkat'], 'golongan' => $r['golongan'], 'jabatan' => $r['jabatan'], 'email' => mb_strtolower($r['email']), 'aktif' => $aktif ?? true];
+            $data = ['nama' => $r['nama_bergelar'], 'nip' => $r['nip'], 'pangkat' => $r['pangkat'], 'golongan' => $r['golongan'], 'jabatan' => $r['jabatan'], 'aktif' => $aktif ?? true];
+            if (isset($r['email'])) {
+                $data['email'] = mb_strtolower($r['email']);
+            }
 
             $v = Validator::make($data, $rules, SavePegawai::messages(), ['nama' => 'Nama bergelar', 'pangkat' => 'Pangkat', 'golongan' => 'Golongan', 'jabatan' => 'Jabatan']);
             foreach ($v->errors()->messages() as $field => $msgs) {
                 $errors[] = ['kolom' => $field === 'nama' ? 'nama_bergelar' : $field, 'pesan' => $msgs[0]];
             }
-            if ($data['email'] !== '' && ! $v->errors()->has('email')) {
+            if (($data['email'] ?? '') !== '' && ! $v->errors()->has('email')) {
                 if (isset($seenEmail[$data['email']])) {
                     $errors[] = ['kolom' => 'email', 'pesan' => "Email ganda dengan baris {$seenEmail[$data['email']]}."];
                 } else {

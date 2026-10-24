@@ -73,7 +73,7 @@ class Rekap extends Component
 
             return null;
         }
-        $bagian = array_values(array_intersect(PembangunRekap::BAGIAN, $this->bagianEkspor));
+        $bagian = array_values(array_intersect(PembangunRekap::BAGIAN, array_filter((array) $this->bagianEkspor, 'is_string')));
         if (! $bagian) {
             $this->addError('bagianEkspor', 'Pilih minimal satu bagian.');
 

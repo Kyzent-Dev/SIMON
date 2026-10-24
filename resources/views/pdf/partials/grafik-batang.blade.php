@@ -34,7 +34,7 @@
                         @foreach ($b['nilai'] as $i => $n)
                             <table class="grafik-bar"><tr>
                                 <td class="grafik-area"><div style="width: {{ $pct($n) }}%; height: 10px; background: {{ $warna($i)['isi'] }}; border: 1px solid {{ $warna($i)['garis'] }};"></div></td>
-                                <td class="grafik-angka">{{ $b['teks'] ?? $n }}</td>
+                                <td class="grafik-angka">{{ is_array($b['teks'] ?? null) ? $b['teks'][$i] : ($b['teks'] ?? $n) }}</td>
                             </tr></table>
                         @endforeach
                     @endif
