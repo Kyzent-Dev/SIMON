@@ -25,3 +25,8 @@
 - Middleware `AuthenticateSession` aktif: setiap sesi divalidasi ulang terhadap hash kata sandi. Saat rilis, sesi lama yang belum punya hash tersimpan diisi otomatis pada permintaan berikutnya (tidak ada yang keluar); sejak itu setiap ganti kata sandi (Profil) atau atur ulang oleh Admin mengeluarkan sesi lain akun itu, termasuk perangkat "Ingat saya".
 - Foto/latar profil disimpan di `storage/app/public/profil/` dan butuh `php artisan storage:link` (lihat catatan Konten beranda), GD dengan WebP, dan sebaiknya ekstensi `exif`.
 - Tautan verifikasi email memakai `APP_URL` dan `APP_KEY`: pastikan `APP_URL` sama dengan alamat publik (https), kalau tidak tanda tangan tautan tidak cocok dan pengguna mendapat 403.
+- Berkas SK Perubahan PKPT disimpan di disk privat `storage/app/private/perubahan-pkpt/{id}/{uuid}.pdf` dan hanya diunduh lewat rute `perubahan-pkpt.sk` (otorisasi per peran). Folder harus dapat ditulis proses web, tidak di bawah `public/`, dan ikut dicadangkan bersama database.
+
+## Migrasi revisi jadwal (Fase 9.2)
+- Migrasi `2026_11_20_000020_migrasi_revisi_jadwal` mengubah isi `pkpt_item_revisi` menjadi paket Perubahan (`sumber = migrasi_revisi`) dan Usulan, lalu menghapus tabel lama. **Tidak dapat dibalik** (`down()` melempar exception). Cadangkan database sebelum `php artisan migrate` di produksi; jalankan di jendela rilis dan jangan rollback. `migrate:fresh` pada database lokal tidak terpengaruh.
+- Setelah migrasi, `queue:work` tetap wajib (email pegawai dan notifikasi Perubahan lewat antrean). Isi email pegawai (halaman Pegawai atau impor) agar pegawai "Diinput oleh" menerima pemberitahuan.

@@ -77,15 +77,19 @@ Rancang skema data agar fitur Semester 8 bisa ditambahkan tanpa migrasi besar (l
 | Peran | Akun | Hak utama |
 |---|---|---|
 | Publik | Tanpa login | Lihat Home, Jadwal PKPT, Realisasi (data terbatas, lihat 7.9) |
-| Irban | **Satu akun per irban** (bersama) | Ajukan nomor, isi dan ubah SPT irbannya, upload dokumen, tandai Selesai, isi kendala, ajukan revisi jadwal, balas komentar, lihat rekap irbannya |
+| Irban | **Satu akun per irban** (bersama) | Ajukan nomor, isi dan ubah SPT irbannya, upload dokumen, tandai Selesai, isi kendala, **usulkan perubahan jadwal** (usulan saja, tidak mengubah jadwal), balas komentar, lihat rekap irbannya, kelola Profil terbatas (lihat bawah) |
 | Bagian Umum | Satu atau lebih akun | Kotak masuk pengajuan, terima/revisi/tolak dengan komentar, kelola stambook digital, catat nomor manual, batalkan nomor |
-| Pimpinan | Akun per orang (Inspektur, Sekretaris) | Lihat semua data, komentar, minta penjelasan, setujui/tolak revisi jadwal, ekspor rekap. **Tidak bisa** mengubah data SPT |
-| Admin | Akun per orang | Kelola user, master data, PKPT, konten landing page, pengaturan sistem, impor data |
+| Pimpinan | Akun per orang (Inspektur, Sekretaris) | Lihat semua data, komentar, minta penjelasan, **setujui/tolak Perubahan PKPT**, ekspor rekap. **Tidak bisa** mengubah data SPT atau jadwal secara langsung |
+| Admin | Akun per orang | Kelola pengguna (halaman Pengguna), master data, PKPT, **menyusun dan mengajukan Perubahan PKPT** (jadwal PKPT Disahkan hanya berubah lewat Perubahan yang disetujui Pimpinan), konten landing page, pengaturan sistem, impor data |
 
 **Aturan akun bersama Irban:**
 - Setiap aksi tulis (pengajuan, ubah SPT, ubah status, upload, komentar) wajib mengisi **"Diinput oleh"** dengan memilih pegawai dari daftar anggota irban tahun berjalan. Simpan di log aktivitas.
 - Setiap akun irban punya satu email notifikasi utama dan daftar email tembusan opsional.
 - Admin bisa mewajibkan semua akun irban mengganti kata sandi (dipakai setiap awal tahun saat susunan anggota berubah). Akun yang diwajibkan diarahkan ke halaman ganti kata sandi setelah login.
+
+**Halaman Pengguna (Admin):** daftar akun dengan filter peran; tambah dan ubah akun (nama, username, email, peran, irban untuk peran Irban); atur ulang kata sandi sementara (akun wajib menggantinya saat masuk berikutnya). Admin tidak dapat mengubah peran dirinya sendiri dan sistem tidak boleh tanpa Admin. Atur ulang kata sandi mengeluarkan semua sesi akun itu.
+
+**Profil (semua peran):** halaman `/profil` dari menu pengguna di header: foto (WebP 256x256) dan gambar latar (WebP 1600x400), data akun, ganti email dengan verifikasi tautan bertanda tangan (berlaku 60 menit), dan ganti kata sandi (kata sandi lama wajib; sesi lain keluar). **Akun Irban dibatasi:** tidak dapat mengubah nama, username, dan email (hanya Admin); foto, latar, dan kata sandi tetap boleh diubah dengan mengisi "Diinput oleh", dan dicatat.
 
 ## 6. Alur Utama
 
@@ -103,8 +107,21 @@ Irban upload SPT final bertanda tangan (kapan saja setelah nomor terbit)
 Irban upload cover LHP + nomor dan tanggal LHP -> [Selesai]
 ```
 
-### 6.2 Revisi jadwal
-Irban mengajukan revisi tanggal untuk satu item PKPT beserta alasan. Pimpinan menyetujui atau menolak dengan komentar. Kalau disetujui, sistem memakai jadwal revisi untuk menghitung kesesuaian. Jadwal asli tetap tersimpan dan tampil di riwayat.
+### 6.2 Perubahan PKPT dan Usulan
+Alur revisi jadwal per item oleh Irban digantikan. Jadwal PKPT yang sudah Disahkan hanya berubah lewat **Perubahan PKPT** (paket):
+```
+Irban mengirim Usulan (geser jadwal, hapus, item baru, atau lainnya) + alasan      [terbuka]
+Admin menyusun paket Perubahan: satu atau lebih operasi (tambah / ubah / hapus item),
+   boleh menampung Usulan Irban ke dalam paket                                      [usulan: ditampung]
+Admin mengajukan paket ke Pimpinan                                                  [diajukan]
+Pimpinan menyetujui atau menolak (komentar bila menolak; dampak ditampilkan)
+   - Ditolak -> Admin memperbaiki lalu mengajukan ulang
+   - Disetujui -> semua operasi diterapkan atomik, paket mendapat nomor urut per PKPT
+     ("Perubahan ke-N"), Usulan yang ditampung menjadi [diterapkan]
+Admin melengkapi SK Perubahan (nomor, tanggal, berkas PDF) setelah disetujui; ada pengingat
+Admin dapat menutup Usulan tanpa menerapkannya (dengan catatan)                     [ditutup]
+```
+Aturan: **K4** hanya PKPT Disahkan yang dapat diubah lewat paket; **K5** persetujuan dan penerapan bersifat atomik; **K6** jadwal semula (snapshot saat pengesahan) selalu tersimpan dan tampil sebagai "Jadwal semula"; **K7** item yang sudah punya SPT tidak dapat dihapus dan irban/jenisnya tidak dapat diubah (hanya tanggal, keterangan, target). Item baru dari paket ditandai "Tambahan", item yang tanggalnya bergeser ditandai "direvisi". Item yang dihapus tetap tersimpan (status `dihapus`) dan tidak muncul lagi di tampilan aktif, rekap, atau pilihan SPT.
 
 ### 6.3 Komentar dan minta penjelasan
 Pimpinan menulis komentar di halaman detail SPT. Irban dan Bagian Umum membalas di utas yang sama. Pimpinan bisa menandai komentar sebagai **"Minta Penjelasan"**. Permintaan itu tetap terbuka sampai Irban membalas dan pimpinan menutupnya. Dashboard pimpinan menampilkan jumlah permintaan yang masih terbuka.
@@ -147,7 +164,7 @@ Tujuan: orang awam paham dalam beberapa detik siapa mengerjakan apa dan kapan.
 - Kolom yang **tidak boleh** tampil di publik: nama dan NIP personel, nomor SPT, nama objek di bawah level kecamatan (desa, sekolah, puskesmas), kendala, komentar, dan semua dokumen. Admin bisa mengubah visibilitas nomor SPT dan nama objek di Pengaturan, dengan default disembunyikan.
 
 ### 7.4 Master data (Admin)
-- **Pegawai:** nama bergelar, NIP (18 digit, unik), pangkat, golongan, jabatan, status aktif.
+- **Pegawai:** nama bergelar, NIP (18 digit, unik), pangkat, golongan, jabatan, **email (opsional, unik)**, status aktif. Email dipakai untuk memberi tahu pegawai yang dipilih pada "Diinput oleh" (lihat 7.10).
 - **Irban:** nama (Irban I sampai V), kode nomor (contoh `INSPEKTORAT-I`), email notifikasi dan tembusan.
 - **Irban tahunan:** per tahun, PPJ (pegawai), daftar anggota irban.
 - **Tim:** per irban per tahun (Tim 1, Tim 2, ...), anggota beserta peran default (Supervisor/Dalnis, Ketua, Anggota). Validasi: setiap tim punya tepat satu Supervisor/Dalnis dan satu Ketua.
@@ -156,12 +173,15 @@ Tujuan: orang awam paham dalam beberapa detik siapa mengerjakan apa dan kapan.
 - **Jenis penugasan:** nama dan warna untuk tampilan jadwal (contoh: Evaluasi RB dan Reviu DAK, Pengawasan Dana BOS, Reviu LKjIP).
 - **Klasifikasi SPT:** 5 nilai tetap beserta aturan (lihat 9.4).
 - **Konten landing page:** slide carousel, kontak footer.
-- Impor pegawai dari Excel.
+- Impor pegawai dari Excel (kolom Email opsional; email unik, NIP sama dengan email sama dianggap sah).
 
 ### 7.5 PKPT
 - Satu PKPT per tahun: nomor dan tanggal SK Bupati, status Draf atau Disahkan.
 - Item PKPT: irban, jenis penugasan, tanggal mulai, tanggal selesai, keterangan (contoh "1 tim 1 minggu 2 sekolah"), target jumlah SPT (opsional).
-- Revisi jadwal per item (alur 6.2).
+- **Perubahan PKPT** (alur 6.2): paket per PKPT Disahkan dengan jenis, alasan, operasi (tambah/ubah/hapus item), status draf/diajukan/disetujui/ditolak, riwayat kejadian, dan **SK Perubahan** (nomor, tanggal, berkas PDF privat, diunduh lewat rute berotorisasi). Layar Admin: tab Perubahan di detail PKPT dan halaman paket; layar Pimpinan: daftar dan detail dengan dampak, Setujui/Tolak.
+- **Usulan** dari Irban (geser/hapus/item baru/lainnya) tampil di panel "Usulan dari Irban" pada halaman paket dan dapat ditampung atau ditutup Admin; Irban melihatnya di "Usulan saya".
+- **Snapshot "jadwal semula":** `tanggal_mulai_disahkan`/`tanggal_selesai_disahkan` diisi saat PKPT disahkan (atau saat item tambahan disetujui) dan tidak berubah; tampil di Irban, Admin, dan publik ("Jadwal direvisi: semula ...") serta riwayat perubahan per item.
+- Item dihapus lunak (status `dihapus`); tampilan aktif memakai scope `aktif()`.
 - Impor item PKPT dari Excel.
 - Saat PKPT masih Draf, pengajuan SPT Reguler yang merujuk PKPT itu memunculkan peringatan "PKPT belum disahkan". Admin menentukan di Pengaturan apakah peringatan ini juga memblokir pengajuan.
 
@@ -201,11 +221,14 @@ Irban bisa menyimpan draf sebelum mengirim. Setelah dikirim, form terkunci kecua
 
 ### 7.9 Dashboard dan rekap internal
 - **Dashboard Irban:** SPT irbannya per status, daftar yang butuh tindakan (revisi dari Bagian Umum, penyusunan laporan terlambat, permintaan penjelasan terbuka).
-- **Dashboard Pimpinan:** kartu angka (On Process, Selesai, Terlambat, Tidak Sesuai PKPT, permintaan penjelasan terbuka, revisi jadwal menunggu persetujuan), grafik realisasi vs rencana per irban, tabel monitoring semua SPT dengan filter.
+- **Dashboard Pimpinan:** kartu angka (On Process, Selesai, Terlambat, Tidak Sesuai PKPT, permintaan penjelasan terbuka, Perubahan PKPT menunggu persetujuan) dan panel "Menunggu Persetujuan Anda", grafik realisasi vs rencana per irban, tabel monitoring semua SPT dengan filter.
 - **Dashboard Bagian Umum:** pengajuan menunggu keputusan, nomor terbit bulan ini.
 - **Tabel Monitoring** (pengganti Sistem B): kolom mengikuti format lama: Jenis Penugasan, Periode Penugasan (PKPT), Realisasi Periode, Kesesuaian dengan Jadwal PKPT, Status, Permasalahan/Kendala. Baris dikelompokkan per item PKPT, dengan banyak SPT di bawah satu item.
 - **Rekap Triwulan:** per irban dan gabungan, jumlah rencana vs realisasi, per klasifikasi, per jenis penugasan.
 - **Ekspor:** setiap tabel monitoring dan rekap bisa diunduh ke **Excel (.xlsx)** dan **PDF**. Ekspor mengikuti filter yang aktif. Ekspor besar diproses di antrean dan user mendapat notifikasi saat file siap.
+- **Pilihan isi ekspor Rekap:** tombol Ekspor membuka modal "Pilih isi ekspor" dengan bagian yang dapat dicentang (Rencana vs Realisasi, Klasifikasi, Jenis Penugasan, Detail Realisasi). Nama file memuat kode bagian terpilih; semua bagian = nama dasar.
+- **Workbook per irban:** xlsx Rekap berisi sheet Gabungan (rencana vs realisasi gabungan, Ringkasan per Irban, klasifikasi, jenis; dihilangkan bila hanya Detail dipilih) dan satu sheet per irban (Pimpinan tanpa filter irban); dengan filter irban hanya sheet irban itu. Detail Realisasi ada di sheet irban dengan sel Jenis/Periode digabung per item. Baris judul `Rekap Triwulanan {tahun} · {TW}`, baris 3 waktu dibuat; sel teks berawalan `= + - @` dinetralkan.
+- **PDF Rekap** memuat grafik cetak (HTML/CSS tanpa animasi, palet sama dengan dasbor): Rencana vs Realisasi, Klasifikasi, dan Per Jenis Penugasan; setiap blok tabel tidak terpotong antarhalaman.
 
 ### 7.10 Notifikasi
 Setiap notifikasi masuk ke **website** (ikon lonceng dengan titik merah dan jumlah belum dibaca, daftar notifikasi, tandai sudah dibaca) dan **email**. Email dikirim lewat antrean.
@@ -217,12 +240,19 @@ Setiap notifikasi masuk ke **website** (ikon lonceng dengan titik merah dan juml
 | Nomor dibatalkan | Irban terkait |
 | Komentar baru atau minta penjelasan | Pihak dalam utas |
 | Balasan atas minta penjelasan | Pimpinan peminta |
-| Revisi jadwal diajukan | Pimpinan |
-| Revisi jadwal disetujui atau ditolak | Irban pengaju |
+| Perubahan PKPT diajukan | Pimpinan |
+| Perubahan PKPT disetujui atau ditolak | Admin pembuat; bila disetujui juga Pimpinan dan akun Irban yang terdampak (kecuali pemutus) |
+| Usulan perubahan baru dari Irban | Admin |
+| Usulan diterapkan atau ditutup | Irban pengusul (dan pegawai "Diinput oleh" lewat email) |
+| SK Perubahan belum dilengkapi (pengingat harian, bisa dimatikan per paket) | Admin |
+| Perubahan PKPT menunggu persetujuan (pengingat harian, mulai hari berikutnya) | Pimpinan |
+| Ganti email diminta, email diganti, kata sandi diubah (Profil) | Pemilik akun (email saja) |
 | SPT masuk penanda Terlambat | Irban terkait (pimpinan lewat ringkasan) |
 | Pengingat: SPT final belum diupload 3 hari setelah tanggal mulai | Irban terkait |
 | Ringkasan mingguan (Senin pagi) | Pimpinan |
 | File ekspor siap | Peminta |
+
+**Email ke pegawai:** bila pegawai pada "Diinput oleh" punya email (7.4) yang berbeda dari alamat efektif akun, notifikasi tertentu juga dikirim ke email pegawai (email saja, dengan salam "Yth. {nama bergelar}," dan baris penutup; tanpa lonceng). Email akun tidak memakai salam.
 
 ### 7.11 Impor data lama
 Admin mengunduh template Excel, mengisinya dengan data dari Sistem A/B, lalu mengunggahnya. Sistem memvalidasi setiap baris dan menampilkan pratinjau beserta daftar error sebelum menyimpan. Data impor ditandai sumber "Impor".
@@ -234,8 +264,8 @@ Sistem mencatat setiap perubahan data penting: siapa (akun dan "Diinput oleh"), 
 
 | Tabel | Isi pokok |
 |---|---|
-| `users` | nama, email, password, role, irban_id (untuk role Irban), wajib_ganti_password |
-| `pegawai` | nama_bergelar, nip, pangkat, golongan, jabatan, aktif |
+| `users` | nama, username, email, password, role, irban_id (untuk role Irban), wajib_ganti_password, foto_profil, latar_profil, email_baru (menunggu verifikasi) |
+| `pegawai` | nama_bergelar, nip, pangkat, golongan, jabatan, email (nullable, unik), aktif |
 | `irban` | nama, kode_nomor, email_notifikasi, email_tembusan (json) |
 | `irban_tahunan` | irban_id, tahun, ppj_pegawai_id |
 | `irban_anggota` | irban_tahunan_id, pegawai_id |
@@ -245,8 +275,11 @@ Sistem mencatat setiap perubahan data penting: siapa (akun dan "Diinput oleh"), 
 | `irban_wilayah` | irban_id, tahun, objek_id |
 | `jenis_penugasan` | nama, warna |
 | `pkpt` | tahun, nomor_sk, tanggal_sk, status |
-| `pkpt_item` | pkpt_id, irban_id, jenis_penugasan_id, tanggal_mulai, tanggal_selesai, keterangan, target_spt |
-| `pkpt_item_revisi` | pkpt_item_id, tanggal baru, alasan, status persetujuan, disetujui_oleh, komentar |
+| `pkpt_item` | pkpt_id, irban_id, jenis_penugasan_id, tanggal_mulai, tanggal_selesai, keterangan, target_spt, status (aktif/dihapus), tanggal_mulai_disahkan, tanggal_selesai_disahkan (snapshot), ditambahkan_perubahan_id, dihapus_perubahan_id |
+| `pkpt_perubahan` | pkpt_id, nomor_urut (per PKPT, terisi setelah disetujui), jenis, alasan, status (draf/diajukan/disetujui/ditolak), sumber (admin/migrasi_revisi), dibuat_oleh, diajukan_pada, diputuskan_oleh/pada, komentar_putusan, nomor_sk, tanggal_sk, berkas_sk, hash_sk, sk_lengkap_pada, pengingat SK (dimatikan_oleh/pada, pengingat_terakhir_pada) |
+| `pkpt_perubahan_item` | perubahan_id, urutan, aksi (tambah/ubah/hapus), pkpt_item_id, data_baru, data_lama (json), usulan_id |
+| `pkpt_perubahan_riwayat` | perubahan_id, kejadian, oleh, catatan, created_at |
+| `pkpt_usulan` | pkpt_id, irban_id, pkpt_item_id (nullable), aksi_usulan (geser/hapus/tambah/lainnya), tanggal_mulai/selesai, jenis_penugasan_id, alasan, diajukan_oleh, diinput_oleh, status (terbuka/ditampung/diterapkan/ditutup), perubahan_id, ditutup_oleh, catatan_penutupan |
 | `nomor_counter` | tahun, scope, nomor_terakhir (dikunci saat ambil nomor) |
 | `spt` | nomor_urut, nomor_lengkap, tahun, tanggal_spt, klasifikasi, irban_id, pkpt_item_id (nullable), jenis_penugasan_id, periode_diperiksa, uraian_untuk, tanggal_mulai, tanggal_selesai, status_pengajuan, nomor_lhp, tanggal_lhp, sumber (sistem/manual/impor), diinput_oleh |
 | `spt_objek` | spt_id, objek_id |
@@ -258,6 +291,8 @@ Sistem mencatat setiap perubahan data penting: siapa (akun dan "Diinput oleh"), 
 | `notifications` | tabel bawaan Laravel |
 | `activity_log` | log aktivitas |
 | `landing_slides`, `settings` | konten landing page dan pengaturan sistem |
+
+Tabel `pkpt_item_revisi` dihapus pada Fase 9.2: migrasi data mengubah setiap revisi lama menjadi paket Perubahan (`sumber = migrasi_revisi`) dan Usulan; migrasi ini tidak dapat dibalik.
 
 **Catatan untuk Semester 8:**
 - Simpan semua dokumen dengan hash SHA-256 (untuk verifikasi dokumen nanti).
