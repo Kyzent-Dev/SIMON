@@ -112,18 +112,25 @@
                     </nav>
                 @endif
             </div>
-            {{-- Year switcher is deferred (decisions/fase-2.md). --}}
+            {{-- Year switcher is deferred (decisions/fase-2.md). User menu: _shared.md §1 (avatar, name, role; Profil, Ubah kata sandi, Keluar). --}}
             <div class="flex min-w-0 items-center gap-3">
                 <livewire:notifikasi.lonceng />
-                <span class="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-full bg-mint-100 text-sm font-semibold text-mint-800" aria-hidden="true">{{ $user->initials() }}</span>
-                <div class="min-w-0 leading-tight">
-                    <p title="{{ $user->name }}" class="max-w-[6.5rem] truncate text-sm font-medium text-neutral-900 sm:max-w-xs">{{ $user->name }}</p>
-                    <p class="text-xs text-neutral-600">{{ $user->role->label() }}</p>
-                </div>
-                <form method="POST" action="{{ route('logout') }}" class="shrink-0">
-                    @csrf
-                    <x-ui.button variant="secondary" icon="arrow-right-start-on-rectangle">Keluar</x-ui.button>
-                </form>
+                <x-ui.dropdown label="Menu pengguna {{ $user->name }}" class="min-w-0">
+                    <x-slot:trigger class="-mr-2 flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-neutral-50">
+                        <x-app.avatar :user="$user" class="size-9 text-sm" data-avatar />
+                        <span class="min-w-0 leading-tight">
+                            <span title="{{ $user->name }}" class="block max-w-[6.5rem] truncate text-sm font-medium text-neutral-900 sm:max-w-xs">{{ $user->name }}</span>
+                            <span class="block text-xs text-neutral-600">{{ $user->role->label() }}</span>
+                        </span>
+                        {{ svg('heroicon-m-chevron-down', 'size-5 shrink-0 text-neutral-600') }}
+                    </x-slot:trigger>
+                    <a role="menuitem" href="{{ route('profil') }}" wire:navigate>{{ svg('heroicon-m-user-circle', 'size-5 shrink-0 text-neutral-600') }}Profil</a>
+                    <a role="menuitem" href="{{ route('profil') }}#kata-sandi" wire:navigate>{{ svg('heroicon-m-key', 'size-5 shrink-0 text-neutral-600') }}Ubah kata sandi</a>
+                    <form method="POST" action="{{ route('logout') }}" class="border-t border-neutral-200">
+                        @csrf
+                        <button type="submit" role="menuitem">{{ svg('heroicon-m-arrow-right-start-on-rectangle', 'size-5 shrink-0 text-neutral-600') }}Keluar</button>
+                    </form>
+                </x-ui.dropdown>
             </div>
         </header>
 

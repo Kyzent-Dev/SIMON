@@ -31,6 +31,10 @@ class JenisNotifikasi
         'ringkasan_mingguan' => ['ikon' => 'chart-bar', 'nada' => 'neutral'],
         'ekspor_siap' => ['ikon' => 'arrow-down-tray', 'nada' => 'success'],
         'ekspor_gagal' => ['ikon' => 'exclamation-triangle', 'nada' => 'danger'],
+        // Mail-only (Profil); listed for completeness.
+        'kata_sandi_diubah' => ['ikon' => 'lock-closed', 'nada' => 'warning'],
+        'email_diubah' => ['ikon' => 'envelope', 'nada' => 'info'],
+        'verifikasi_email' => ['ikon' => 'envelope', 'nada' => 'info'],
     ];
 
     /** @return array{ikon: string, nada: string} */

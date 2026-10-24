@@ -81,6 +81,12 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
             ->action($this->labelTombol(), url($this->url()));
     }
 
+    /** User text in a Markdown email: backslash-escape Markdown punctuation so it never becomes links or formatting (< > & are left to HTML escaping). */
+    public static function aman(string $t): string
+    {
+        return preg_replace('/[\\\\`*_{}\[\]()#+!|~:-]/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $t));
+    }
+
     protected function labelTombol(): string
     {
         return in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SIMON-SPT';

@@ -20,3 +20,8 @@
 - Jalankan `php artisan storage:link` sekali di server: gambar slide disimpan di `storage/app/public/slide/` dan dilayani lewat `public/storage`. Tanpa tautan ini gambar hero dan thumbnail Admin tidak tampil. Di shared hosting tanpa symlink, salin/arahkan `public/storage` ke `storage/app/public`.
 - PHP butuh ekstensi GD dengan dukungan WebP (`imagewebp`). `upload_max_filesize` dan `post_max_size` minimal 6M agar gambar slide 5 MB bisa diunggah (batas unggahan sementara Livewire 12 MB). Pemrosesan menaikkan `memory_limit` ke 512M (lihat catatan ekspor tentang `ini_set`).
 - Aktifkan ekstensi PHP `exif` agar foto JPEG dari ponsel diputar sesuai orientasi EXIF sebelum dipotong; tanpa ekstensi itu foto tegak bisa tersimpan miring.
+
+## Profil dan sesi (Fase 9.2)
+- Middleware `AuthenticateSession` aktif: setiap sesi divalidasi ulang terhadap hash kata sandi. Saat rilis, sesi lama yang belum punya hash tersimpan diisi otomatis pada permintaan berikutnya (tidak ada yang keluar); sejak itu setiap ganti kata sandi (Profil) atau atur ulang oleh Admin mengeluarkan sesi lain akun itu, termasuk perangkat "Ingat saya".
+- Foto/latar profil disimpan di `storage/app/public/profil/` dan butuh `php artisan storage:link` (lihat catatan Konten beranda), GD dengan WebP, dan sebaiknya ekstensi `exif`.
+- Tautan verifikasi email memakai `APP_URL` dan `APP_KEY`: pastikan `APP_URL` sama dengan alamat publik (https), kalau tidak tanda tangan tautan tidak cocok dan pengguna mendapat 403.

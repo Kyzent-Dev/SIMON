@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Support\Concerns\OlahGambar;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -10,6 +11,8 @@ use RuntimeException;
 /** Hero slide images (DESIGN §6 Imagery): center-crop to 16:9, write WebP 1920 and 960 variants on the public disk with GD (no package). */
 class GambarSlide
 {
+    use OlahGambar;
+
     public const LEBAR = [1920, 960];
 
     private const MAKS_BYTE = 250 * 1024;
@@ -17,13 +20,7 @@ class GambarSlide
     /** Write both variants for an upload (validated: jpg/png/webp, 960–6000 px) and return the new base path `slide/{uuid}`. Throws RuntimeException when GD cannot decode it. */
     public static function simpan(UploadedFile $file): string
     {
-        // A 6000 x 6000 image decodes to ~144 MB in GD; the default 128M is too tight.
-        if (self::byte(ini_get('memory_limit')) < 512 * 1024 * 1024) {
-            @ini_set('memory_limit', '512M');
-        }
-        $src = @imagecreatefromstring($file->get()) ?: throw new RuntimeException('Gambar tidak dapat dibaca.');
-
-        return self::tulis(self::tegakkan($src, $file));
+        return self::tulis(self::dekode($file));
     }
 
     /** Write both variants from a GD image (seeder) and return the base path. Always frees $src; on failure no variant is left behind. */
@@ -61,50 +58,10 @@ class GambarSlide
         return $base;
     }
 
-    /**
-     * Apply the EXIF orientation of a JPEG (phone photos) before cropping. Needs the `exif` extension; without it the image is used as stored.
-     * Mirrored orientations (2, 4, 5, 7) are rare from cameras and are left as is.
-     */
-    private static function tegakkan(\GdImage $src, UploadedFile $file): \GdImage
-    {
-        if (! function_exists('exif_read_data') || ! in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg'], true)) {
-            return $src;
-        }
-        $exif = @exif_read_data('data://image/jpeg;base64,'.base64_encode($file->get()));
-        $sudut = [3 => 180, 6 => 270, 8 => 90][(int) ($exif['Orientation'] ?? 1)] ?? 0;
-        if ($sudut === 0) {
-            return $src;
-        }
-        $putar = imagerotate($src, $sudut, 0);
-        imagedestroy($src);
-
-        return $putar;
-    }
-
     public static function hapus(?string $base): void
     {
         if ($base) {
             Storage::disk('public')->delete(array_map(fn ($l) => "{$base}-{$l}.webp", self::LEBAR));
         }
-    }
-
-    private static function webp(\GdImage $img, int $kualitas): string
-    {
-        ob_start();
-        imagewebp($img, null, $kualitas);
-
-        return (string) ob_get_clean();
-    }
-
-    private static function byte(string|false $v): int
-    {
-        $v = trim((string) $v);
-        if ($v === '' || $v === '-1') {
-            return PHP_INT_MAX;
-        }
-
-        return (int) $v * match (strtoupper(substr($v, -1))) {
-            'G' => 1024 ** 3, 'M' => 1024 ** 2, 'K' => 1024, default => 1
-        };
     }
 }

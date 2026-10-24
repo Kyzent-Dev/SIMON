@@ -42,5 +42,7 @@ return [
         'file' => 'berkas',
         'gambar' => 'gambar slide',
         'berkas_sk' => 'berkas SK',
+        'foto' => 'foto profil',
+        'latar' => 'latar profil',
     ],
 ];

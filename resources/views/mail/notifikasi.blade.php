@@ -1,7 +1,7 @@
 {{-- Body of every NotifikasiSimon email: no greeting or sign-off (design/dashboard/_shared.md §2), except pegawai emails (EmailPegawai), which pass $salam and $penutup (spec K9). --}}
 @php
-    // User text: backslash-escape Markdown punctuation so it never becomes links or formatting (< > & are left to HTML escaping).
-    $esc = fn (string $t) => preg_replace('/[\\\\`*_{}\[\]()#+!|~:-]/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $t));
+    // User text: Markdown-escaped, see NotifikasiSimon::aman().
+    $esc = \App\Notifications\NotifikasiSimon::aman(...);
 @endphp
 <x-mail::message>
 @if (filled($salam ?? null))

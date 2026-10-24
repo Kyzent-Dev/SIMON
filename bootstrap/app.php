@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Every session is re-validated against the password hash, so a password change or reset logs out other devices.
+        $middleware->authenticateSessions();
         $middleware->appendToGroup('web', EnsurePasswordIsChanged::class);
         $middleware->alias(['role' => EnsureRole::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));

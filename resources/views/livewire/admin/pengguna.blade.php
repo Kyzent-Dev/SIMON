@@ -68,7 +68,7 @@
 
     <x-ui.modal name="pengguna-reset" title="Atur ulang kata sandi" size="sm" wire:model="resetOpen">
         <form novalidate id="pengguna-reset-form" wire:submit="aturUlang" class="space-y-4">
-            <p>Kata sandi <strong class="font-semibold">{{ $resetting?->name }}</strong> akan diganti. Pengguna wajib menggantinya saat masuk berikutnya.</p>
+            <p>Kata sandi <strong class="font-semibold">{{ $resetting?->name }}</strong> akan diganti. Pengguna wajib menggantinya saat masuk berikutnya. Semua sesi pengguna ini yang sedang masuk akan keluar.</p>
             <x-ui.input label="Kata sandi sementara" name="sementara" wire:model="sementara" required autocomplete="off"
                 helper="Minimal 8 karakter, huruf besar dan kecil, serta angka." :error="$errors->first('sementara')" />
         </form>

@@ -8,6 +8,7 @@ use App\Http\Controllers\EksporController;
 use App\Http\Controllers\PerubahanSkController;
 use App\Http\Controllers\Publik\BerandaController;
 use App\Http\Controllers\SptDokumenController;
+use App\Http\Controllers\VerifikasiEmailController;
 use App\Livewire\Admin\Dasbor as AdminDasbor;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
@@ -38,6 +39,7 @@ use App\Livewire\Pimpinan\Dasbor as PimpinanDasbor;
 use App\Livewire\Pimpinan\Monitoring;
 use App\Livewire\Pimpinan\PerubahanPkpt as PimpinanPerubahanPkpt;
 use App\Livewire\Pimpinan\PerubahanPkptDetail as PimpinanPerubahanPkptDetail;
+use App\Livewire\Profil;
 use App\Livewire\Publik\Jadwal as PublikJadwal;
 use App\Livewire\Publik\Realisasi as PublikRealisasi;
 use App\Livewire\Rekap;
@@ -62,6 +64,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/perbarui-kata-sandi', [ForcedPasswordController::class, 'edit'])->name('password.force.edit');
     Route::put('/perbarui-kata-sandi', [ForcedPasswordController::class, 'update'])->name('password.force.update');
 
+    Route::get('/profil', Profil::class)->name('profil');
+    Route::get('/profil/email/verifikasi/{user}/{hash}', VerifikasiEmailController::class)->name('profil.email.verifikasi')->middleware('signed');
     Route::get('/notifikasi', NotifikasiDaftar::class)->name('notifikasi.index');
     Route::get('/ekspor/{ekspor}', EksporController::class)->name('ekspor.unduh');
     Route::get('/spt/{spt}', SptDetail::class)->name('spt.show');

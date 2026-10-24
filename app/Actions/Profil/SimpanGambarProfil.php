@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Actions\Profil;
+
+use App\Models\User;
+use App\Services\Settings;
+use App\Support\DiinputOleh;
+use App\Support\GambarProfil;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
+
+/** Profile photo or background (`jenis` foto|latar). The old file is deleted only after the new one is stored and saved. Irban: "Diinput oleh" required and logged. */
+class SimpanGambarProfil
+{
+    public function __construct(private Settings $settings) {}
+
+    public static function kolom(string $jenis): string
+    {
+        return match ($jenis) {
+            'foto' => 'foto_profil',
+            'latar' => 'latar_profil',
+        };
+    }
+
+    public static function rules(string $jenis): array
+    {
+        return GambarProfil::rules($jenis, (int) app(Settings::class)->get('upload.maks_mb'));
+    }
+
+    public function handle(User $user, string $jenis, mixed $file, mixed $diinputOleh = null): void
+    {
+        $kolom = self::kolom($jenis);
+        Validator::make([$jenis => $file], [$jenis => self::rules($jenis)])->validate();
+        $penginput = DiinputOleh::wajib($user, $diinputOleh);
+
+        try {
+            $baru = GambarProfil::simpan($file, $jenis);
+        } catch (RuntimeException) {
+            // GD could not decode a file that passed the header checks (e.g. truncated); nothing was written.
+            throw ValidationException::withMessages([$jenis => GambarProfil::TIDAK_TERBACA]);
+        }
+        $lama = $user->{$kolom};
+        try {
+            $user->forceFill([$kolom => $baru])->save();
+        } catch (Throwable $e) {
+            GambarProfil::hapus($baru);
+            throw $e;
+        }
+        GambarProfil::hapus($lama);
+
+        if ($penginput) {
+            DiinputOleh::ingat($user, $penginput);
+            // shortcut: Log facade until the Fase 10 activity log table exists; move to it then.
+            Log::info("profil.{$jenis}", ['user_id' => $user->id, 'diinput_oleh' => $penginput]);
+        }
+    }
+}

@@ -12,14 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class ChangeForcedPassword
 {
-    /**
-     * @param  array<string, mixed>  $input
-     *
-     * @throws ValidationException
-     */
-    public function __invoke(User $user, array $input): void
+    /** New-password rules shared with the Profil password change: confirmed, Password::defaults(), different from the current one. */
+    public static function aturan(User $user): array
     {
-        $validated = Validator::make($input, [
+        return [
             'password' => [
                 'required', 'string', 'confirmed', Password::defaults(),
                 function (string $attribute, mixed $value, Closure $fail) use ($user) {
@@ -28,7 +24,17 @@ class ChangeForcedPassword
                     }
                 },
             ],
-        ])->validate();
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     *
+     * @throws ValidationException
+     */
+    public function __invoke(User $user, array $input): void
+    {
+        $validated = Validator::make($input, self::aturan($user))->validate();
 
         $user->forceFill(['password' => $validated['password'], 'wajib_ganti_password' => false, 'remember_token' => Str::random(60)])->save();
     }

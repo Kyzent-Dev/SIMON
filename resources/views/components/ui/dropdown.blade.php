@@ -1,6 +1,7 @@
 {{-- DESIGN §8 x-ui.dropdown: icon trigger (`label` = its accessible name) + menu panel. Opens on click; Esc, outside click or choosing an item closes it.
      The panel is teleported to <body> (z-50, shadow-md) and positioned from the trigger, so a table's overflow-x-auto never clips it.
-     x-trap keeps Tab inside the open menu and returns focus to the trigger on close. Items: <button role="menuitem"> in the slot (class via the panel's [role=menuitem] rule). --}}
+     x-trap keeps Tab inside the open menu and returns focus to the trigger on close. Items: <button role="menuitem"> in the slot (class via the panel's [role=menuitem] rule).
+     Optional slot `trigger` replaces the icon (its `class` styles the button), e.g. the header user menu. --}}
 @props(['label', 'icon' => 'ellipsis-vertical'])
 
 <div x-data="{
@@ -10,8 +11,8 @@
         close() { this.open = false },
     }" x-on:keydown.escape.window="if (open) { close(); $nextTick(() => $refs.trigger.focus()) }" x-on:resize.window="close()" {{ $attributes->class('inline-flex') }}>
     <button type="button" x-ref="trigger" x-on:click="toggle()" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" aria-expanded="false" aria-label="{{ $label }}"
-        class="inline-flex size-11 items-center justify-center rounded-md border border-border-strong bg-white text-mint-700 hover:bg-mint-50 lg:size-10">
-        {{ svg('heroicon-m-'.$icon, 'size-5') }}
+        class="{{ isset($trigger) ? $trigger->attributes->get('class') : 'inline-flex size-11 items-center justify-center rounded-md border border-border-strong bg-white text-mint-700 hover:bg-mint-50 lg:size-10' }}">
+        @isset($trigger) {{ $trigger }} @else {{ svg('heroicon-m-'.$icon, 'size-5') }} @endisset
     </button>
     <template x-teleport="body">
         <div x-show="open" x-cloak x-ref="panel" x-trap="open" role="menu" aria-label="{{ $label }}"

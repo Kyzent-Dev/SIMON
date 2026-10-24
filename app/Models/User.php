@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'username', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -43,6 +44,16 @@ class User extends Authenticatable
     {
         return collect(preg_split('/\s+/', trim($this->name)))->filter()->take(2)
             ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+    }
+
+    public function fotoUrl(): ?string
+    {
+        return $this->foto_profil ? Storage::disk('public')->url($this->foto_profil) : null;
+    }
+
+    public function latarUrl(): ?string
+    {
+        return $this->latar_profil ? Storage::disk('public')->url($this->latar_profil) : null;
     }
 
     /**

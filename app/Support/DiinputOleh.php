@@ -2,10 +2,12 @@
 
 namespace App\Support;
 
+use App\Enums\Role;
 use App\Models\IrbanTahunan;
 use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /** "Diinput oleh" (login.md §5): who on a shared Irban account really did the write. One source for the choices, the rule and the session prefill. */
 class DiinputOleh
@@ -37,6 +39,20 @@ class DiinputOleh
         }
 
         return self::pilihan($user)->contains('id', $id) ? null : 'Penginput harus PPJ atau anggota aktif Irban ini tahun '.self::tahun().'.';
+    }
+
+    /** Irban accounts: the valid id or a ValidationException on `diinput_oleh`; other roles: null (no penginput). */
+    public static function wajib(User $user, mixed $id): ?int
+    {
+        if ($user->role !== Role::Irban) {
+            return null;
+        }
+        $id = filter_var($id, FILTER_VALIDATE_INT) ?: null;
+        if ($galat = self::galat($user, $id)) {
+            throw ValidationException::withMessages(['diinput_oleh' => $galat]);
+        }
+
+        return $id;
     }
 
     /** "Budi Santoso · …0012" */
