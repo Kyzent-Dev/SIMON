@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // One Admin-only gate for every Fase 2 master-data screen (DECISIONS.md).
         Gate::define('manage-master-data', fn (User $user) => $user->role === Role::Admin);
+        Gate::define('lihat-log', fn (User $user) => in_array($user->role, [Role::Admin, Role::Pimpinan], true));
         Password::defaults(fn () => Password::min(8)->mixedCase()->numbers());
     }
 }

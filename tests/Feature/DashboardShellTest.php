@@ -47,8 +47,7 @@ class DashboardShellTest extends TestCase
         // aria-current only on the Dasbor link.
         $this->assertSame(1, substr_count($html, 'aria-current="page"'));
         $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('admin.dashboard'), '#').'"[^>]*aria-current="page"#', $html);
-        // Items without a route never render.
-        $this->assertStringNotContainsString('Log Aktivitas', $html);
+        $this->assertStringContainsString('href="'.route('admin.log').'"', $html);
     }
 
     public function test_empty_groups_are_dropped(): void
@@ -100,7 +99,7 @@ class DashboardShellTest extends TestCase
         }
         $this->assertSame(['Kotak Masuk Pengajuan', 'Register Nomor SPT'], array_column(Navigation::groups(Role::BagianUmum)[1]['items'], 'label'));
         $this->assertSame(['SPT Saya', 'Ajukan Nomor SPT', 'Jadwal PKPT', 'Rekap Saya'], array_column(Navigation::groups(Role::Irban)[1]['items'], 'label'));
-        $this->assertSame(['Monitoring SPT', 'Rekap Triwulanan', 'Perubahan PKPT'], array_column(Navigation::groups(Role::Pimpinan)[1]['items'], 'label'));
+        $this->assertSame(['Monitoring SPT', 'Rekap Triwulanan', 'Perubahan PKPT', 'Log Aktivitas'], array_column(Navigation::groups(Role::Pimpinan)[1]['items'], 'label'));
     }
 
     public function test_admin_dashboard_quick_links_come_from_navigation(): void

@@ -34,6 +34,7 @@ use App\Livewire\Irban\Dasbor as IrbanDasbor;
 use App\Livewire\Irban\Pkpt as IrbanPkpt;
 use App\Livewire\Irban\SptForm;
 use App\Livewire\Irban\SptSaya;
+use App\Livewire\LogAktivitas;
 use App\Livewire\Notifikasi\Daftar as NotifikasiDaftar;
 use App\Livewire\Pimpinan\Dasbor as PimpinanDasbor;
 use App\Livewire\Pimpinan\Monitoring;
@@ -92,10 +93,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/pkpt/{pkpt}/perubahan/{perubahan}', AdminPerubahanPkpt::class)->name('admin.pkpt.perubahan');
         Route::get('/slide', Slide::class)->name('admin.slide');
         Route::get('/kontak', Kontak::class)->name('admin.kontak');
+        Route::get('/log', LogAktivitas::class)->name('admin.log');
     });
     Route::get('/pimpinan', PimpinanDasbor::class)->name('pimpinan.dashboard')->middleware('role:pimpinan');
     Route::get('/pimpinan/monitoring', Monitoring::class)->name('pimpinan.monitoring')->middleware('role:pimpinan');
     Route::get('/pimpinan/rekap', Rekap::class)->name('pimpinan.rekap')->middleware('role:pimpinan');
+    Route::get('/pimpinan/log', LogAktivitas::class)->name('pimpinan.log')->middleware('role:pimpinan');
     Route::get('/pimpinan/perubahan-pkpt', PimpinanPerubahanPkpt::class)->name('pimpinan.perubahan-pkpt')->middleware('role:pimpinan');
     Route::get('/pimpinan/perubahan-pkpt/{perubahan}', PimpinanPerubahanPkptDetail::class)->name('pimpinan.perubahan-pkpt.show')->middleware('role:pimpinan');
     // Legacy bell links of the removed schedule revision page.

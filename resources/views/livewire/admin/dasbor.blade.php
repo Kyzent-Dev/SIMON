@@ -45,4 +45,22 @@
             </ul>
         </section>
     @endif
+
+    <section aria-labelledby="aktivitas-terbaru" class="mt-6">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 id="aktivitas-terbaru" class="font-display text-[22px] leading-[30px] font-bold text-neutral-900">Aktivitas terbaru</h2>
+            <a href="{{ route('admin.log') }}" wire:navigate class="inline-flex min-h-11 items-center text-sm font-medium text-mint-700 underline-offset-2 hover:underline">Lihat semua</a>
+        </div>
+        <x-ui.card>
+            @if ($aktivitas->isEmpty())
+                <p class="text-sm text-neutral-600">Belum ada aktivitas.</p>
+            @else
+                <ul role="list" class="-my-3 divide-y divide-neutral-200">
+                    @foreach ($aktivitas as $a)
+                        <x-app.log-aktivitas-ringkas :a="$a" wire:key="akt-{{ $a->id }}" />
+                    @endforeach
+                </ul>
+            @endif
+        </x-ui.card>
+    </section>
 </div>

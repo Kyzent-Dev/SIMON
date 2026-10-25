@@ -7,6 +7,7 @@ use App\Actions\Spt\SimpanKendala;
 use App\Actions\Spt\TandaiSelesai;
 use App\Actions\Spt\UbahTanggalRealisasi;
 use App\Actions\Spt\UnggahDokumenSpt;
+use App\Models\Aktivitas;
 use App\Models\Spt;
 use App\Services\KesesuaianPkpt;
 use App\Services\PenandaSpt;
@@ -222,6 +223,7 @@ class Detail extends Component
             'blokir' => $modal === 'selesai' ? $selesai->bisa($spt) : null,
             'maksMb' => (int) $settings->get('upload.maks_mb'),
             'kategoriKendala' => (array) $settings->get('kendala.kategori'),
+            'log' => Gate::allows('lihat-log') ? Aktivitas::with('causer')->untukSpt($spt->id)->latest('id')->limit(20)->get() : null,
         ])->title($spt->nomor_lengkap ?? 'Detail SPT');
     }
 }

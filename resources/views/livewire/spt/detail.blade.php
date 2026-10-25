@@ -1,6 +1,6 @@
 {{-- Shared SPT detail page (_shared.md §7). Header (h1 nomor + copy, status + flags, type/klasifikasi/irban, actions), perlu-kendala alert,
      ≥1024 an 8/4 grid; below that the two columns dissolve (`contents`) and `order-*` gives the mobile order Ringkasan, Riwayat, Kendala, Personel, Dokumen, Komentar.
-     Komentar is the child component livewire:spt.komentar (last in DOM and visually); Log Aktivitas is Fase 10 (no placeholder). No animation (§7.5) apart from the modal/toast transitions.
+     Komentar is the child component livewire:spt.komentar (last in DOM and visually); Log Aktivitas (Admin/Pimpinan only) is a collapsed card. No animation (§7.5) apart from the modal/toast transitions.
      Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` (also dispatched by the Komentar child) moves focus when a trigger is gone after an action. --}}
 @use('App\Support\Tanggal')
 @use('App\Enums\KejadianSpt')
@@ -219,6 +219,31 @@
                     <p class="mt-2 text-sm text-neutral-600">Belum ada kendala.</p>
                 @endif
             </x-ui.card>
+
+            @if ($log !== null)
+                <x-ui.card class="order-7 lg:order-none" x-data="{ buka: false }">
+                    <h2 class="{{ $judulKartu }}">
+                        <button type="button" x-on:click="buka = !buka" x-bind:aria-expanded="buka.toString()" aria-expanded="false" aria-controls="log-spt"
+                            class="flex min-h-11 w-full items-center justify-between gap-2 rounded-md text-left">
+                            Log Aktivitas
+                            <span class="inline-flex text-mint-700" x-bind:class="buka || '-rotate-90'">{{ svg('heroicon-m-chevron-down', 'size-5') }}</span>
+                        </button>
+                    </h2>
+                    <div id="log-spt" x-show="buka" x-cloak>
+                        @if ($log->isEmpty())
+                            <p class="mt-2 text-sm text-neutral-600">Belum ada aktivitas.</p>
+                        @else
+                            <ul role="list" class="mt-2 divide-y divide-neutral-200">
+                                @foreach ($log as $a)
+                                    <x-app.log-aktivitas-ringkas :a="$a" wire:key="log-{{ $a->id }}" />
+                                @endforeach
+                            </ul>
+                        @endif
+                        <a href="{{ route(auth()->user()->role === \App\Enums\Role::Admin ? 'admin.log' : 'pimpinan.log', ['spt' => $spt->id]) }}" wire:navigate
+                            class="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-mint-700 underline-offset-2 hover:underline">Lihat semua</a>
+                    </div>
+                </x-ui.card>
+            @endif
         </div>
     </div>
 

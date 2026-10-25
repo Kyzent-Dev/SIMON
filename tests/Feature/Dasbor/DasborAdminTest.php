@@ -51,7 +51,7 @@ class DasborAdminTest extends TestCase
         $this->assertNull($h->viewData('pkpt'));
         $h->assertSee('PKPT 2026')->assertSee('Belum dibuat')->assertSee(route('admin.pkpt'), false)
             ->assertSee('Slide aktif')->assertSee('dari 0 slide')
-            ->assertSee('Perubahan menunggu persetujuan')->assertSee('Tidak ada yang menunggu')->assertSee('SK belum dilengkapi')->assertDontSee('Impor terakhir')->assertDontSee('Aktivitas terbaru');
+            ->assertSee('Perubahan menunggu persetujuan')->assertSee('Tidak ada yang menunggu')->assertSee('SK belum dilengkapi')->assertDontSee('Impor terakhir')->assertSee('Aktivitas terbaru');
 
         $pkpt = Pkpt::factory()->create(['tahun' => 2026]);
         Livewire::actingAs($this->admin)->test(Dasbor::class)->assertSee('Draf')->assertDontSee('Belum dibuat');
