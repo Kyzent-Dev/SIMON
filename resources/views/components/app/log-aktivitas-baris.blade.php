@@ -43,20 +43,20 @@
             @if ($adalahSpt)
                 <a href="{{ route('spt.show', $a->subject_id) }}" wire:navigate class="font-medium text-mint-700 underline-offset-2 hover:underline [overflow-wrap:anywhere]">{{ $nomor ?? '#'.$a->subject_id }}</a>
             @elseif ($a->subject_id)
-                <span class="text-neutral-600">#{{ $a->subject_id }}</span>
+                <span>#{{ $a->subject_id }}</span>
             @endif
         </td>
         <td class="whitespace-nowrap">{{ $a->ip ?? '—' }}</td>
     </tr>
     @if ($adaDetail)
-        <tr id="{{ $idDetail }}" x-show="buka" x-cloak>
-            <td colspan="6" class="!h-auto bg-neutral-50 !py-3">
+        <tr id="{{ $idDetail }}" x-show="buka" x-cloak class="bg-mint-50! hover:bg-mint-50!">
+            <td colspan="6" class="!h-auto bg-mint-50! !py-3">
                 <div class="sticky left-0 max-w-[calc(100vw-3rem)] font-mono text-xs">
                     @if ($impor)
                         <p>{{ LabelAktivitas::jenisImpor((string) $props->get('jenis')) }}: {{ number_format((int) $props->get('jumlah'), 0, ',', '.') }} baris dari {{ $props->get('berkas') }}</p>
                     @else
-                        <table class="w-full table-fixed border-collapse text-left [&_td]:h-auto! [&_td]:pl-0! [&_td]:pr-3! [&_td]:py-0.5! [&_tbody_tr]:bg-transparent! [&_tbody_tr]:border-0!">
-                            <thead><tr class="text-neutral-600"><th scope="col" class="w-1/4 pr-3 pb-1 font-semibold">Kolom</th><th scope="col" class="w-[37.5%] pr-3 pb-1 font-semibold">Lama</th><th scope="col" class="pb-1 font-semibold">Baru</th></tr></thead>
+                        <table class="w-full table-fixed border-collapse text-left [&_td]:h-auto! [&_td]:pl-0! [&_td]:pr-3! [&_td]:py-0.5! [&_tbody_tr]:bg-transparent! [&_tbody_tr]:border-0! [&_th]:bg-mint-50! [&_td]:bg-mint-50!">
+                            <thead><tr class="text-neutral-600"><th scope="col" class="w-[42%] pr-3 pb-1 font-semibold">Kolom</th><th scope="col" class="w-[16%] pr-3 pb-1 font-semibold">Lama</th><th scope="col" class="pb-1 font-semibold">Baru</th></tr></thead>
                             <tbody>
                                 @foreach ($kolom as $k)
                                     <tr class="align-top">
