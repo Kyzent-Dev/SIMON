@@ -167,10 +167,24 @@ class LogAktivitasTest extends TestCase
 
         foreach ($items as $item) {
             $a = Aktivitas::where('subject_type', $item->getMorphClass())->where('subject_id', $item->id)->where('event', 'updated')->sole();
-            // Dates are serialized as UTC ISO strings (Model::serializeDate); read them back in Asia/Jakarta.
-            $this->assertSame($item->tanggal_mulai->format('Y-m-d'), CarbonImmutable::parse($a->properties['attributes']['tanggal_mulai_disahkan'])->timezone('Asia/Jakarta')->format('Y-m-d'));
+            $this->assertSame($item->tanggal_mulai->format('Y-m-d'), $a->properties['attributes']['tanggal_mulai_disahkan']);
             $this->assertNotNull($item->fresh()->tanggal_selesai_disahkan);
         }
+    }
+
+    public function test_tanggal_dicatat_dalam_waktu_jakarta(): void
+    {
+        $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
+        $pkpt = $item->pkpt;
+
+        $item->update(['tanggal_mulai' => '2026-03-03']);
+        $pkpt->forceFill(['disahkan_pada' => CarbonImmutable::parse('2026-03-02 10:15:00', 'Asia/Jakarta')])->save();
+
+        $a = Aktivitas::where('subject_type', $item->getMorphClass())->where('subject_id', $item->id)->where('event', 'updated')->sole();
+        $this->assertSame(['tanggal_mulai' => '2026-03-02'], $a->properties['old']);
+        $this->assertSame(['tanggal_mulai' => '2026-03-03'], $a->properties['attributes']);
+        $b = Aktivitas::where('subject_type', $pkpt->getMorphClass())->where('subject_id', $pkpt->id)->where('event', 'updated')->sole();
+        $this->assertSame('2026-03-02 10:15:00', $b->properties['attributes']['disahkan_pada']);
     }
 
     public function test_kenaikan_nomor_counter_dicatat(): void
