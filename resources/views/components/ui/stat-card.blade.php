@@ -1,12 +1,12 @@
 {{-- DESIGN §8 x-ui.stat-card: default, alert (left 3px danger-700 bar), link (pass `href`), band (no own border/shadow: a cell of the public
      stats band, landing.md). Label caption neutral-600, value in the `stat` style (Jakarta 700, 40/44, mobile 32/36, tnum), optional subtext,
-     icon tile (mint-100 bg, mint-800 icon) and slot (e.g. x-ui.progress). `desimal`/`akhiran` format e.g. `73,8%`; a null value shows `—`.
+     icon tile (mint-100 bg, mint-800 icon) and slot (e.g. x-ui.progress). `teks` shows a ready string verbatim (e.g. `12 baris`, `Belum ada`). `desimal`/`akhiran` format e.g. `73,8%`; a null value shows `—`.
      `countUp` runs the §7.3 count-up once the card scrolls into view: the animated number is aria-hidden and the real value is in an sr-only
      span; reduced motion shows the final value at once (resources/js/countup.js). No hover lift on dashboards. --}}
-@props(['label', 'value', 'href' => null, 'variant' => 'default', 'subtext' => null, 'icon' => null, 'countUp' => false, 'desimal' => 0, 'akhiran' => ''])
+@props(['label', 'value' => null, 'href' => null, 'variant' => 'default', 'subtext' => null, 'icon' => null, 'countUp' => false, 'desimal' => 0, 'akhiran' => '', 'teks' => null])
 
 @php
-    $angka = $value === null ? '—' : number_format((float) $value, $desimal, ',', '.').$akhiran;
+    $angka = $teks ?? ($value === null ? '—' : number_format((float) $value, $desimal, ',', '.').$akhiran);
     $classes = [
         'relative flex min-w-0 flex-col bg-white p-4 lg:p-5',
         'rounded-lg border border-neutral-200 shadow-xs' => $variant !== 'band',

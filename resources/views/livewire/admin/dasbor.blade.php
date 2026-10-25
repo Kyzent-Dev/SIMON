@@ -26,6 +26,15 @@
             </li>
             <li class="flex"><x-ui.stat-card class="w-full" label="SK belum dilengkapi" :value="$skBelum" icon="document-arrow-up" :variant="$skBelum ? 'alert' : 'default'"
                 :subtext="$skBelum ? 'Perubahan disetujui yang SK-nya belum lengkap' : 'Semua SK perubahan lengkap'" /></li>
+            <li class="flex">
+                @if ($imporTerakhir)
+                    <x-ui.stat-card class="w-full" label="Impor terakhir" icon="arrow-up-tray" :href="route('admin.impor')"
+                        :teks="number_format($imporTerakhir->properties['jumlah'] ?? 0, 0, ',', '.').' baris'"
+                        :subtext="\App\Support\LabelAktivitas::jenisImpor($imporTerakhir->properties['jenis'] ?? '').' · '.$imporTerakhir->created_at->translatedFormat('d F Y H.i').' WIB'" />
+                @else
+                    <x-ui.stat-card class="w-full" label="Impor terakhir" icon="arrow-up-tray" teks="Belum ada" :href="route('admin.impor')" />
+                @endif
+            </li>
             <li class="flex"><x-ui.stat-card class="w-full" label="Slide aktif" :value="$slideAktif" :subtext="'dari '.number_format($slideTotal, 0, ',', '.').' slide'" :href="route('admin.slide')" /></li>
         </ul>
     </section>

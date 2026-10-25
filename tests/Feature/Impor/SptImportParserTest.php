@@ -111,6 +111,7 @@ class SptImportParserTest extends TestCase
             'nip dua kali lintas peran' => [['nip_anggota' => self::K], 'nip_anggota', 'NIP '.self::K.' tercantum lebih dari sekali.'],
             'lhp tanpa tanggal' => [['tanggal_lhp' => ''], 'nomor_lhp', 'Nomor dan tanggal LHP diisi bersama.'],
             'lhp tanpa nomor' => [['nomor_lhp' => ''], 'nomor_lhp', 'Nomor dan tanggal LHP diisi bersama.'],
+            'lhp panjang' => [['nomor_lhp' => str_repeat('A', 256)], 'nomor_lhp', 'Nomor LHP maksimal 255 karakter.'],
             'tanggal lhp format' => [['tanggal_lhp' => '20-03-2025'], 'tanggal_lhp', $date],
             'selesai asing' => [['selesai' => 'mungkin'], 'selesai', 'Kolom selesai diisi ya atau tidak.'],
             'kendala tanpa uraian' => [['kendala_kategori' => 'Lainnya'], 'kendala_kategori', 'Kategori dan uraian kendala diisi bersama.'],

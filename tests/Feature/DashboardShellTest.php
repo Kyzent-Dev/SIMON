@@ -21,18 +21,20 @@ class DashboardShellTest extends TestCase
         $this->withoutVite();
     }
 
-    private function fakeMasterDataRoutes(): void
+    /** Simulates a page that is not built yet by removing its route (Navigation hides items without a route). */
+    private function dropRoute(string $name): void
     {
-        Route::middleware(['web', 'auth', 'role:admin'])->group(function () {
-            Route::get('/admin/impor', fn () => 'ok')->name('admin.impor');
-            Route::get('/admin/pengaturan', fn () => 'ok')->name('admin.pengaturan');
-        });
-        Route::getRoutes()->refreshNameLookups();
+        $sisa = new RouteCollection;
+        foreach (Route::getRoutes()->getRoutes() as $r) {
+            if ($r->getName() !== $name) {
+                $sisa->add($r);
+            }
+        }
+        Route::setRoutes($sisa);
     }
 
     public function test_admin_sidebar_marks_active_item_and_shows_existing_master_data_routes(): void
     {
-        $this->fakeMasterDataRoutes();
         $admin = User::factory()->admin()->create();
 
         $html = $this->actingAs($admin)->get('/admin')->assertOk()
@@ -83,7 +85,6 @@ class DashboardShellTest extends TestCase
 
     public function test_other_roles_see_only_dasbor(): void
     {
-        $this->fakeMasterDataRoutes();
         $paths = ['pimpinan' => '/pimpinan', 'irban' => '/irban', 'bagianUmum' => '/bagian-umum'];
 
         foreach ($paths as $state => $path) {
@@ -105,13 +106,17 @@ class DashboardShellTest extends TestCase
     public function test_admin_dashboard_quick_links_come_from_navigation(): void
     {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/impor'));
+        $asli = Route::getRoutes();
+        $this->dropRoute('admin.wilayah-irban'); // page "not built yet": no quick link
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Akses cepat')->assertDontSee(url('/admin/wilayah-irban'));
 
-        $this->fakeMasterDataRoutes();
+        Route::setRoutes($asli); // route back
+        Route::getRoutes()->refreshNameLookups();
         $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertSee('<h1', false)
             ->assertSee('Akses cepat')
-            ->assertSeeInOrder(['Akses cepat', 'Pengaturan Sistem', url('/admin/impor')], false);
+            ->assertSeeInOrder(['Akses cepat', 'Pengaturan Sistem', url('/admin/impor')], false)
+            ->assertSee(url('/admin/wilayah-irban'), false);
     }
 
     public function test_breadcrumbs_render_when_passed(): void

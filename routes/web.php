@@ -10,6 +10,7 @@ use App\Http\Controllers\Publik\BerandaController;
 use App\Http\Controllers\SptDokumenController;
 use App\Http\Controllers\VerifikasiEmailController;
 use App\Livewire\Admin\Dasbor as AdminDasbor;
+use App\Livewire\Admin\Impor;
 use App\Livewire\Admin\Irban;
 use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\JenisPenugasan;
@@ -93,6 +94,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pkpt/{pkpt}/perubahan/{perubahan}', AdminPerubahanPkpt::class)->name('admin.pkpt.perubahan');
         Route::get('/slide', Slide::class)->name('admin.slide');
         Route::get('/kontak', Kontak::class)->name('admin.kontak');
+        Route::get('/impor', Impor::class)->name('admin.impor');
         Route::get('/log', LogAktivitas::class)->name('admin.log');
     });
     Route::get('/pimpinan', PimpinanDasbor::class)->name('pimpinan.dashboard')->middleware('role:pimpinan');

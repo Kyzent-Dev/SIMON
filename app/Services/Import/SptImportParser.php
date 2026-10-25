@@ -290,6 +290,9 @@ class SptImportParser
         if (($r['nomor_lhp'] === '') !== ($r['tanggal_lhp'] === '')) {
             $galat('nomor_lhp', 'Nomor dan tanggal LHP diisi bersama.');
         }
+        if (mb_strlen($r['nomor_lhp']) > 255) {
+            $galat('nomor_lhp', 'Nomor LHP maksimal 255 karakter.');
+        }
         if ($r['tanggal_lhp'] !== '' && $tanggalLhp === null) {
             $galat('tanggal_lhp', self::FORMAT_TANGGAL);
         }
