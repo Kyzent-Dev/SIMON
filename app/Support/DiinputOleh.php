@@ -7,6 +7,7 @@ use App\Models\IrbanTahunan;
 use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Validation\ValidationException;
 
 /** "Diinput oleh" (login.md §5): who on a shared Irban account really did the write. One source for the choices, the rule and the session prefill. */
@@ -59,6 +60,14 @@ class DiinputOleh
     public static function label(Pegawai $p): string
     {
         return $p->nama_bergelar.' · …'.substr($p->nip, -4);
+    }
+
+    /** Tags every activity log row written later in this request/job with the penginput. */
+    public static function catat(?int $pegawaiId): void
+    {
+        if ($pegawaiId !== null) {
+            Context::add('diinput_oleh', $pegawaiId);
+        }
     }
 
     /** Called only after a successful write. */

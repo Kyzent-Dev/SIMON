@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\DicatatAktivitas;
 use Database\Factories\IrbanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class Irban extends Model
 {
     /** @use HasFactory<IrbanFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'irban';
 

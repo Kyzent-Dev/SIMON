@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\DicatatAktivitas;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['spt_id', 'jenis', 'path', 'nama_asli', 'ukuran', 'sha256', 'diunggah_oleh', 'diinput_oleh'])]
 class SptDokumen extends Model
 {
+    use DicatatAktivitas;
+
     protected $table = 'spt_dokumen';
 
     public function spt()

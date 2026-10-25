@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\DicatatAktivitas;
 use Database\Factories\SptKendalaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class SptKendala extends Model
 {
     /** @use HasFactory<SptKendalaFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'spt_kendala';
 

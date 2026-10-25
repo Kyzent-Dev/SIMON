@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Notifications\KataSandiDiubah;
 use App\Support\DiinputOleh;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 /** Profil password change by the signed-in user: old password, the forced-change rules, then every other session is logged out (AuthenticateSession) and the account is mailed. */
@@ -22,6 +21,7 @@ class GantiKataSandi
             ['password_lama.current_password' => 'Kata sandi lama salah.'],
             ['password_lama' => 'Kata sandi lama', 'password' => 'Kata sandi baru'])->validate();
         $penginput = DiinputOleh::wajib($user, $diinputOleh);
+        DiinputOleh::catat($penginput);
 
         $user->forceFill(['password' => $valid['password']])->save();
         // Rehashes once more and refreshes this device's remember cookie; AuthenticateSession stores this session's new hash after the request.
@@ -29,9 +29,8 @@ class GantiKataSandi
 
         if ($penginput) {
             DiinputOleh::ingat($user, $penginput);
-            // shortcut: Log facade until the Fase 10 activity log table exists; move to it then.
-            Log::info('profil.kata_sandi', ['user_id' => $user->id, 'diinput_oleh' => $penginput]);
         }
+        activity()->performedOn($user)->causedBy($user)->event('profil.kata_sandi')->log('profil.kata_sandi');
         $user->notify(new KataSandiDiubah($user->username, $penginput ? Pegawai::find($penginput)?->nama_bergelar : null));
     }
 }

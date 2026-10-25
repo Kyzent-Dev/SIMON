@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SyaratSelesai;
+use App\Models\Concerns\DicatatAktivitas;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['wajib_item_pkpt', 'syarat_selesai', 'tampil_publik'])]
 class Klasifikasi extends Model
 {
+    use DicatatAktivitas;
+
     protected $table = 'klasifikasi';
 
     protected function casts(): array

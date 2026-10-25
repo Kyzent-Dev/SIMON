@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Services\Settings;
 use App\Support\DiinputOleh;
 use App\Support\GambarProfil;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -35,6 +34,7 @@ class SimpanGambarProfil
         $kolom = self::kolom($jenis);
         Validator::make([$jenis => $file], [$jenis => self::rules($jenis)])->validate();
         $penginput = DiinputOleh::wajib($user, $diinputOleh);
+        DiinputOleh::catat($penginput);
 
         try {
             $baru = GambarProfil::simpan($file, $jenis);
@@ -53,8 +53,7 @@ class SimpanGambarProfil
 
         if ($penginput) {
             DiinputOleh::ingat($user, $penginput);
-            // shortcut: Log facade until the Fase 10 activity log table exists; move to it then.
-            Log::info("profil.{$jenis}", ['user_id' => $user->id, 'diinput_oleh' => $penginput]);
         }
+        activity()->performedOn($user)->causedBy($user)->event("profil.{$jenis}")->log("profil.{$jenis}");
     }
 }

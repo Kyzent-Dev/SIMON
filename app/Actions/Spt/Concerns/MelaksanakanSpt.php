@@ -29,6 +29,8 @@ trait MelaksanakanSpt
         $id = filter_var($data['diinput_oleh'] ?? null, FILTER_VALIDATE_INT) ?: null;
         if ($galat = DiinputOleh::galat($user, $id)) {
             $errors['diinput_oleh'] = $galat;
+        } else {
+            DiinputOleh::catat($id);
         }
 
         return $id;

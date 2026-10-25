@@ -204,6 +204,8 @@ class SimpanSpt
         if ($user->role === Role::Irban) {
             if ($galat = DiinputOleh::galat($user, $diinput)) {
                 $e['diinput_oleh'] = $galat;
+            } else {
+                DiinputOleh::catat($diinput);
             }
         }
 

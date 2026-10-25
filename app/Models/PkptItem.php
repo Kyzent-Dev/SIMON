@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusItemPkpt;
+use App\Models\Concerns\DicatatAktivitas;
 use Carbon\CarbonImmutable;
 use Database\Factories\PkptItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 class PkptItem extends Model
 {
     /** @use HasFactory<PkptItemFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'pkpt_item';
 

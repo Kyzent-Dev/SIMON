@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AksiPerubahan;
+use App\Models\Concerns\DicatatAktivitas;
 use Database\Factories\PkptPerubahanItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 class PkptPerubahanItem extends Model
 {
     /** @use HasFactory<PkptPerubahanItemFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'pkpt_perubahan_item';
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\DicatatAktivitas;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['tahun', 'scope'])]
 class NomorCounter extends Model
 {
+    use DicatatAktivitas;
+
     protected $table = 'nomor_counter';
 
     protected function casts(): array

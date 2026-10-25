@@ -87,6 +87,8 @@ class AjukanUsulan
         $diinput = filter_var($data['diinput_oleh'] ?? null, FILTER_VALIDATE_INT) ?: null;
         if ($galat = DiinputOleh::galat($user, $diinput)) {
             $errors['diinput_oleh'] = $galat;
+        } else {
+            DiinputOleh::catat($diinput);
         }
         if ($errors) {
             throw ValidationException::withMessages($errors);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\DicatatAktivitas;
 use Database\Factories\LandingSlideFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 class LandingSlide extends Model
 {
     /** @use HasFactory<LandingSlideFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected function casts(): array
     {

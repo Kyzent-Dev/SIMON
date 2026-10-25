@@ -60,12 +60,17 @@ class Settings
     public function set(string $key, mixed $value): void
     {
         $this->assertKnown($key);
+        $lama = $this->get($key);
         DB::table('settings')->upsert(
             [['key' => $key, 'value' => json_encode($value, JSON_UNESCAPED_UNICODE), 'created_at' => now(), 'updated_at' => now()]],
             ['key'],
             ['value', 'updated_at'],
         );
         Cache::forget(self::CACHE_KEY);
+        if ($lama !== $value) {
+            activity('pengaturan')->event('updated')
+                ->withProperties(['old' => [$key => $lama], 'attributes' => [$key => $value]])->log('updated');
+        }
     }
 
     /** Current values as a nested array (dot keys become nested keys), e.g. ['penomoran' => ['format' => ...]]. */

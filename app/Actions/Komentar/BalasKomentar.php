@@ -36,6 +36,8 @@ class BalasKomentar
             $diinput = filter_var($data['diinput_oleh'] ?? null, FILTER_VALIDATE_INT) ?: null;
             if ($galat = DiinputOleh::galat($user, $diinput)) {
                 $e['diinput_oleh'] = $galat;
+            } else {
+                DiinputOleh::catat($diinput);
             }
         }
         $induk = $spt->komentar()->whereNull('parent_id')->whereKey(filter_var($data['parent_id'] ?? null, FILTER_VALIDATE_INT) ?: 0)->first();

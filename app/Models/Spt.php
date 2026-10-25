@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
 use App\Enums\SumberSpt;
+use App\Models\Concerns\DicatatAktivitas;
 use App\Support\Tanggal;
 use Database\Factories\SptFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 class Spt extends Model
 {
     /** @use HasFactory<SptFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'spt';
 

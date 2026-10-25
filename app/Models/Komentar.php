@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusPermintaan;
+use App\Models\Concerns\DicatatAktivitas;
 use Database\Factories\KomentarFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 class Komentar extends Model
 {
     /** @use HasFactory<KomentarFactory> */
-    use HasFactory;
+    use DicatatAktivitas, HasFactory;
 
     protected $table = 'komentar';
 

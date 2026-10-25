@@ -4,6 +4,7 @@ namespace Tests\Feature\Profil;
 
 use App\Livewire\Admin\Pengguna;
 use App\Livewire\Profil;
+use App\Models\Aktivitas;
 use App\Models\Irban;
 use App\Models\IrbanTahunan;
 use App\Models\Pegawai;
@@ -15,7 +16,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -85,7 +85,6 @@ class ProfilTest extends TestCase
 
     public function test_irban_upload_needs_a_valid_penginput_and_is_logged(): void
     {
-        Log::spy();
         $c = Livewire::actingAs($this->irban)->test(Profil::class)->set('foto', $this->gambar(400, 400));
         $c->call('simpanGambar')->assertHasErrors(['diinput_oleh' => 'Pilih nama penginput terlebih dahulu']);
         $lain = Pegawai::factory()->create();
@@ -95,7 +94,7 @@ class ProfilTest extends TestCase
 
         $c->set('diinput_oleh', $this->penginput->id)->call('simpanGambar')->assertHasNoErrors()->assertRedirect(route('profil'));
         $this->assertNotNull($this->irban->fresh()->foto_profil);
-        Log::shouldHaveReceived('info')->with('profil.foto', ['user_id' => $this->irban->id, 'diinput_oleh' => $this->penginput->id])->once();
+        $this->assertSame([$this->irban->id, $this->penginput->id], array_values(Aktivitas::where('event', 'profil.foto')->sole()->only(['subject_id', 'diinput_oleh'])));
 
         Livewire::actingAs($this->irban)->test(Profil::class)->assertSet('diinput_oleh', $this->penginput->id)
             ->set('diinput_oleh', null)->call('hapusGambar', 'foto')->assertHasErrors(['diinput_oleh']);
@@ -223,7 +222,6 @@ class ProfilTest extends TestCase
 
     public function test_irban_password_change_confirms_first_needs_penginput_and_names_them(): void
     {
-        Log::spy();
         $c = $this->sandiBaru($this->irban)->call('kirimSandi')->assertSet('sandiOpen', true)
             ->assertSee('Semua anggota yang sedang masuk dengan akun ini akan keluar.');
         $this->assertTrue(Hash::check('password', $this->irban->fresh()->password));
@@ -232,7 +230,7 @@ class ProfilTest extends TestCase
         $c->set('diinput_oleh', $this->penginput->id)->call('kirimSandi')->assertHasNoErrors()->assertSet('sandiOpen', false);
         $this->assertTrue(Hash::check('BaruSekali123', $this->irban->fresh()->password));
 
-        Log::shouldHaveReceived('info')->with('profil.kata_sandi', ['user_id' => $this->irban->id, 'diinput_oleh' => $this->penginput->id])->once();
+        $this->assertSame([$this->irban->id, $this->penginput->id], array_values(Aktivitas::where('event', 'profil.kata_sandi')->sole()->only(['subject_id', 'diinput_oleh'])));
         Notification::assertSentTo($this->irban, KataSandiDiubah::class,
             fn ($n) => str_contains(implode(' ', $n->toMail($this->irban)->introLines), 'Diinput oleh Budi Santoso, S.E.'));
     }

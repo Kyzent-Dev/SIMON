@@ -5,7 +5,6 @@ namespace App\Actions\Profil;
 use App\Models\User;
 use App\Support\DiinputOleh;
 use App\Support\GambarProfil;
-use Illuminate\Support\Facades\Log;
 
 /** "Hapus foto" / "Hapus latar": clear the column, then delete the file. Irban: "Diinput oleh" required and logged. */
 class HapusGambarProfil
@@ -14,6 +13,7 @@ class HapusGambarProfil
     {
         $kolom = SimpanGambarProfil::kolom($jenis);
         $penginput = DiinputOleh::wajib($user, $diinputOleh);
+        DiinputOleh::catat($penginput);
         $lama = $user->{$kolom};
         if (! $lama) {
             return;
@@ -23,8 +23,7 @@ class HapusGambarProfil
 
         if ($penginput) {
             DiinputOleh::ingat($user, $penginput);
-            // shortcut: Log facade until the Fase 10 activity log table exists; move to it then.
-            Log::info("profil.hapus_{$jenis}", ['user_id' => $user->id, 'diinput_oleh' => $penginput]);
         }
+        activity()->performedOn($user)->causedBy($user)->event("profil.hapus_{$jenis}")->log("profil.hapus_{$jenis}");
     }
 }
