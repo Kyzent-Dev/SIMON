@@ -84,13 +84,13 @@ class SimpanSpt
                 $spt->save();
 
                 $spt->objek()->sync($objekIds);
-                $spt->personel()->delete();
+                $spt->personel()->get()->each->delete();
                 $spt->personel()->createMany($personel);
 
                 $dihapus = collect();
                 if ($lampiran || $hapusLampiran) {
                     $dihapus = $spt->dokumen()->where('jenis', 'draf')->get();
-                    $spt->dokumen()->whereIn('id', $dihapus->modelKeys())->delete();
+                    $dihapus->each->delete();
                 }
                 if ($lampiran) {
                     $path = BerkasSpt::simpan($spt, $lampiran, 'draf', $user, $kolom['diinput_oleh'])->path;

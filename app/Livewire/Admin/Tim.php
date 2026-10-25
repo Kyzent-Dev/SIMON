@@ -7,6 +7,7 @@ use App\Enums\PeranTim;
 use App\Models\Irban;
 use App\Models\Pegawai;
 use App\Models\Tim as Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
@@ -158,7 +159,11 @@ class Tim extends Component
         Gate::authorize('manage-master-data');
         $tim = Model::where(['irban_id' => $this->irbanId, 'tahun' => $this->tahun])->findOrFail($this->deletingId);
         $this->deleteOpen = false;
-        $tim->delete();
+        // Anggota one by one so each is in the activity log (the FK cascade would skip it).
+        DB::transaction(function () use ($tim) {
+            $tim->anggota()->get()->each->delete();
+            $tim->delete();
+        });
         $this->dispatch('toast', type: 'success', message: "{$tim->nama} dihapus.");
     }
 

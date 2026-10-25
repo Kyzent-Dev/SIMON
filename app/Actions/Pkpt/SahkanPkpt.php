@@ -23,7 +23,10 @@ class SahkanPkpt
         DB::transaction(function () use ($pkpt, $user) {
             $pkpt->forceFill(['status' => StatusPkpt::Disahkan, 'disahkan_pada' => now(), 'disahkan_oleh' => $user->id])->save();
             // Snapshot for "jadwal semula": a later Perubahan PKPT moves the item dates, never these.
-            $pkpt->items()->update(['tanggal_mulai_disahkan' => DB::raw('tanggal_mulai'), 'tanggal_selesai_disahkan' => DB::raw('tanggal_selesai')]);
+            // Per model (not one UPDATE) so each item's snapshot is in the activity log.
+            $pkpt->items()->get()->each(fn ($item) => $item->forceFill([
+                'tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai,
+            ])->save());
         });
 
         return $pkpt;

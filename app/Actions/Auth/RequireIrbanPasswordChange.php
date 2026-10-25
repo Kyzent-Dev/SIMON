@@ -10,6 +10,8 @@ class RequireIrbanPasswordChange
     /** Flags every Irban account for a forced password change; returns how many were flagged. */
     public function __invoke(): int
     {
-        return User::where('role', Role::Irban)->update(['wajib_ganti_password' => true, 'remember_token' => null]);
+        // Per model so each flagged account is in the activity log.
+        return User::where('role', Role::Irban)->get()
+            ->each(fn (User $u) => $u->forceFill(['wajib_ganti_password' => true, 'remember_token' => null])->save())->count();
     }
 }

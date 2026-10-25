@@ -43,7 +43,7 @@ class SaveTim
                 $tim = $tim ?? new Tim(['irban_id' => $irban->id, 'tahun' => $tahun]);
                 $tim->nama = $nama;
                 $tim->save();
-                $tim->anggota()->delete();
+                $tim->anggota()->get()->each->delete();
                 foreach ($members as $i => $m) {
                     $tim->anggota()->create([...$m, 'urutan' => $i + 1]);
                 }

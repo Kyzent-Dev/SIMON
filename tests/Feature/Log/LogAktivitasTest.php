@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Log;
 
+use App\Actions\MasterData\SaveTim;
 use App\Actions\Pengguna\AturUlangKataSandi;
+use App\Actions\Pkpt\SahkanPkpt;
 use App\Actions\Profil\GantiKataSandi;
 use App\Actions\Spt\SimpanSpt;
 use App\Livewire\Admin\Pegawai as PegawaiPage;
@@ -132,6 +134,54 @@ class LogAktivitasTest extends TestCase
         $personel = Aktivitas::where('subject_type', (new SptPersonel)->getMorphClass())->where('event', 'created')->get();
         $this->assertCount(2, $personel);
         $this->assertSame([$anggota->id, $anggota->id], $personel->pluck('diinput_oleh')->all());
+
+        // Editing the draft without the anggota logs the removed personel row with its old values.
+        app(SimpanSpt::class)->handle($user, $spt, [
+            'klasifikasi_id' => $spt->klasifikasi_id, 'diinput_oleh' => $anggota->id,
+            'personel' => [['pegawai_id' => $ppj->id, 'peran' => 'ketua', 'sumber' => 'tambahan', 'tim_id' => null, 'ikut' => true]],
+        ], 'draf');
+        $dihapus = Aktivitas::where('subject_type', (new SptPersonel)->getMorphClass())->where('event', 'deleted')->get()
+            ->filter(fn (Aktivitas $a) => $a->properties['old']['pegawai_id'] === $anggota->id);
+        $this->assertCount(1, $dihapus);
+        $this->assertSame($spt->id, $dihapus->first()->properties['old']['spt_id']);
+        $this->assertTrue(Aktivitas::untukSpt($spt->id)->whereKey($dihapus->first()->id)->exists());
+    }
+
+    public function test_ganti_anggota_tim_mencatat_yang_dihapus(): void
+    {
+        $m = array_map(fn ($p) => ['pegawai_id' => Pegawai::factory()->create()->id, 'peran_default' => $p], ['supervisor_dalnis', 'ketua', 'anggota']);
+        $tim = app(SaveTim::class)->handle(Irban::factory()->create(), (int) now('Asia/Jakarta')->year, null, 'Tim 1', $m);
+
+        app(SaveTim::class)->handle($tim->irban, $tim->tahun, $tim, 'Tim 1', array_slice($m, 0, 2));
+
+        $dihapus = Aktivitas::where('subject_type', (new TimAnggota)->getMorphClass())->where('event', 'deleted')->get();
+        $this->assertContains($m[2]['pegawai_id'], $dihapus->map(fn (Aktivitas $a) => $a->properties['old']['pegawai_id'])->all());
+    }
+
+    public function test_sahkan_pkpt_mencatat_item(): void
+    {
+        $pkpt = Pkpt::factory()->create(['nomor_sk' => 'SK/1', 'tanggal_sk' => '2026-01-02']);
+        $items = PkptItem::factory()->count(2)->create(['pkpt_id' => $pkpt->id]);
+
+        app(SahkanPkpt::class)->handle($pkpt, User::factory()->admin()->create());
+
+        foreach ($items as $item) {
+            $a = Aktivitas::where('subject_type', $item->getMorphClass())->where('subject_id', $item->id)->where('event', 'updated')->sole();
+            // Dates are serialized as UTC ISO strings (Model::serializeDate); read them back in Asia/Jakarta.
+            $this->assertSame($item->tanggal_mulai->format('Y-m-d'), CarbonImmutable::parse($a->properties['attributes']['tanggal_mulai_disahkan'])->timezone('Asia/Jakarta')->format('Y-m-d'));
+            $this->assertNotNull($item->fresh()->tanggal_selesai_disahkan);
+        }
+    }
+
+    public function test_kenaikan_nomor_counter_dicatat(): void
+    {
+        $counter = (new NomorCounter)->forceFill(['tahun' => 2026, 'scope' => 'global', 'nomor_terakhir' => 4]);
+        $counter->save();
+
+        $counter->increment('nomor_terakhir');
+
+        $a = Aktivitas::where('subject_type', $counter->getMorphClass())->where('event', 'updated')->sole();
+        $this->assertSame(['nomor_terakhir' => 5], $a->properties['attributes']);
     }
 
     public function test_log_tidak_bisa_diubah(): void

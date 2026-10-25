@@ -19,8 +19,9 @@ class UrutkanSlide
             if ($kirim !== $ada) {
                 throw ValidationException::withMessages(['urutan' => 'Urutan slide tidak valid. Muat ulang halaman lalu coba lagi.']);
             }
+            $slides = LandingSlide::whereIn('id', $ids)->get()->keyBy('id');
             foreach ($ids as $i => $id) {
-                LandingSlide::whereKey($id)->update(['urutan' => $i + 1]);
+                $slides[$id]->update(['urutan' => $i + 1]);
             }
         });
     }

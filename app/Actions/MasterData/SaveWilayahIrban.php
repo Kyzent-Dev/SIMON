@@ -49,7 +49,7 @@ class SaveWilayahIrban
             throw ValidationException::withMessages(['objek' => "{$conflict->objek->nama} sudah ditugaskan ke {$conflict->irban->nama} pada tahun {$tahun}."]);
         }
 
-        IrbanWilayah::where(['irban_id' => $irban->id, 'tahun' => $tahun])->whereNotIn('objek_id', $ids)->delete();
+        IrbanWilayah::where(['irban_id' => $irban->id, 'tahun' => $tahun])->whereNotIn('objek_id', $ids)->get()->each->delete();
         $have = IrbanWilayah::where(['irban_id' => $irban->id, 'tahun' => $tahun])->pluck('objek_id')->all();
         foreach (array_diff($ids, $have) as $id) {
             IrbanWilayah::create(['irban_id' => $irban->id, 'tahun' => $tahun, 'objek_id' => $id]);

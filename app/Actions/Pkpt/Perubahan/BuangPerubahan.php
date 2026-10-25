@@ -26,7 +26,8 @@ class BuangPerubahan
             if ($p->nomor_urut !== null) {
                 throw ValidationException::withMessages(['perubahan' => self::BASI]);
             }
-            PkptUsulan::where('perubahan_id', $p->id)->update(['status' => StatusUsulan::Terbuka->value, 'perubahan_id' => null]);
+            PkptUsulan::where('perubahan_id', $p->id)->get()->each(fn (PkptUsulan $u) => $u->forceFill(['status' => StatusUsulan::Terbuka, 'perubahan_id' => null])->save());
+            $p->operasi()->get()->each->delete(); // logged one by one; the FK cascade would skip the log
             $p->delete();
 
             return $p->berkas_sk;

@@ -26,7 +26,7 @@ class HapusOperasi
                 return;
             }
             if ($op->usulan_id) {
-                PkptUsulan::whereKey($op->usulan_id)->update(['status' => StatusUsulan::Terbuka->value, 'perubahan_id' => null]);
+                PkptUsulan::whereKey($op->usulan_id)->first()?->forceFill(['status' => StatusUsulan::Terbuka, 'perubahan_id' => null])->save();
             }
             $op->delete();
         });
