@@ -17,6 +17,8 @@ use App\Models\Objek;
 use App\Models\Pegawai;
 use App\Models\Pkpt;
 use App\Models\Spt;
+use App\Models\SptKendala;
+use App\Models\SptPersonel;
 use App\Models\User;
 use App\Services\Import\PegawaiImportParser;
 use App\Services\Import\PkptItemImportParser;
@@ -109,6 +111,30 @@ class ImporSptTest extends TestCase
         $log = Aktivitas::where('log_name', 'impor')->sole();
         $this->assertSame(['impor', $this->admin->id], [$log->event, $log->causer_id]);
         $this->assertSame(['jenis' => 'spt', 'berkas' => 'spt-lama.xlsx', 'jumlah' => 2], $log->properties->all());
+    }
+
+    public function test_impor_hanya_mencatat_spt_dan_ringkasan(): void
+    {
+        $rows = $this->analisis([
+            $this->baris(['nomor_spt' => '700/1/I/SPT/2025', 'kendala_kategori' => 'Lainnya', 'kendala_uraian' => 'Hujan']),
+            $this->baris(['nomor_spt' => '700/2/I/SPT/2025']),
+            $this->baris(['nomor_spt' => '700/3/I/SPT/2025']),
+        ]);
+        $this->assertSame(['valid', 'valid', 'valid'], array_column($rows, 'status'), json_encode(array_column($rows, 'errors')));
+        $sebelum = Aktivitas::max('id') ?? 0;
+
+        $this->assertSame(3, app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx'));
+
+        $this->assertSame(12, SptPersonel::count());
+        $this->assertSame(1, SptKendala::count());
+        $baru = Aktivitas::where('id', '>', $sebelum)->get();
+        $this->assertSame(3, $baru->where('subject_type', (new Spt)->getMorphClass())->where('event', 'created')->count());
+        $this->assertSame(1, $baru->where('log_name', 'impor')->count());
+        $this->assertCount(4, $baru, 'no SptPersonel/SptKendala/objek rows');
+
+        $pegawai = Pegawai::factory()->create(); // logging is enabled again after the import
+        $pegawai->update(['jabatan' => 'Auditor Madya Baru']);
+        $this->assertSame(1, Aktivitas::where('subject_type', $pegawai->getMorphClass())->where('subject_id', $pegawai->id)->where('event', 'updated')->count());
     }
 
     public function test_tidak_selesai_dengan_lhp_tetap_menyimpan_lhp(): void

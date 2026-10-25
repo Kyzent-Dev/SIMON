@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\TolakBersihkanLog;
 use App\Enums\Role;
 use App\Models\User;
 use App\Services\Settings;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Activitylog\CleanActivitylogCommand;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Settings::class);
+        // The package registers activitylog:clean by class name; Artisan resolves it through the container, so this swap wins.
+        $this->app->bind(CleanActivitylogCommand::class, TolakBersihkanLog::class);
     }
 
     /**

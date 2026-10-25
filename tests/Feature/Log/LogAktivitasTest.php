@@ -198,6 +198,37 @@ class LogAktivitasTest extends TestCase
         $this->assertSame(['nomor_terakhir' => 5], $a->properties['attributes']);
     }
 
+    public function test_atur_ulang_berulang_selalu_dicatat(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->pimpinan()->create();
+        app(AturUlangKataSandi::class)->handle($admin, $user, 'SementaraKuat123');
+        app(AturUlangKataSandi::class)->handle($admin, $user, 'SementaraLain456');
+
+        $rows = Aktivitas::where('event', 'pengguna.kata_sandi')->get();
+        $this->assertCount(2, $rows);
+        foreach ($rows as $a) {
+            $this->assertTrue($a->subject->is($user));
+            $this->assertTrue($a->causer->is($admin));
+            $json = json_encode($a->properties);
+            foreach (['"password"', '"remember_token"', 'SementaraKuat123', 'SementaraLain456'] as $rahasia) {
+                $this->assertStringNotContainsString($rahasia, $json);
+            }
+        }
+        $this->assertSame('Kata sandi diatur ulang', LabelAktivitas::aksi('pengguna.kata_sandi'));
+    }
+
+    public function test_activitylog_clean_ditolak(): void
+    {
+        activity()->log('uji');
+        Aktivitas::query()->toBase()->update(['created_at' => now()->subYears(5)]);
+        $jumlah = Aktivitas::count();
+
+        $this->artisan('activitylog:clean', ['--days' => 1, '--force' => true])
+            ->expectsOutputToContain('Log aktivitas tidak boleh dihapus (PRD §7.12).')->assertExitCode(1);
+        $this->assertSame($jumlah, Aktivitas::count());
+    }
+
     public function test_log_tidak_bisa_diubah(): void
     {
         $a = activity()->log('uji');

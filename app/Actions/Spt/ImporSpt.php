@@ -60,13 +60,16 @@ class ImporSpt
             'terlambat_diberitahu_pada' => now(), 'pengingat_final_pada' => now(),
         ])->save();
 
-        $spt->objek()->attach($d['objek_ids']);
-        foreach ($d['personel'] as $i => $p) {
-            $spt->personel()->create(['pegawai_id' => $p['pegawai_id'], 'peran' => $p['peran'], 'urutan' => $i + 1, 'sumber' => 'tambahan', 'tim_id' => null]);
-        }
-        if ($d['kendala_kategori'] !== null) {
-            $spt->kendala()->create(['kategori' => $d['kendala_kategori'], 'uraian' => $d['kendala_uraian'], 'diinput_oleh' => null, 'dibuat_oleh' => $admin->id]);
-        }
-        $spt->riwayat()->create(['kejadian' => KejadianSpt::DIIMPOR, 'nilai_baru' => ['nomor_lengkap' => $d['nomor_lengkap'], 'berkas' => $berkas], 'oleh' => $admin->id]);
+        // Final-review ruling: only the Spt `created` row is logged per SPT; child rows would multiply the log ~6x on a 2000-row file.
+        activity()->withoutLogs(function () use ($spt, $admin, $d, $berkas) {
+            $spt->objek()->attach($d['objek_ids']);
+            foreach ($d['personel'] as $i => $p) {
+                $spt->personel()->create(['pegawai_id' => $p['pegawai_id'], 'peran' => $p['peran'], 'urutan' => $i + 1, 'sumber' => 'tambahan', 'tim_id' => null]);
+            }
+            if ($d['kendala_kategori'] !== null) {
+                $spt->kendala()->create(['kategori' => $d['kendala_kategori'], 'uraian' => $d['kendala_uraian'], 'diinput_oleh' => null, 'dibuat_oleh' => $admin->id]);
+            }
+            $spt->riwayat()->create(['kejadian' => KejadianSpt::DIIMPOR, 'nilai_baru' => ['nomor_lengkap' => $d['nomor_lengkap'], 'berkas' => $berkas], 'oleh' => $admin->id]);
+        });
     }
 }

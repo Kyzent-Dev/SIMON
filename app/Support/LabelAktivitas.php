@@ -66,6 +66,7 @@ class LabelAktivitas
         'profil.hapus_foto' => 'Foto profil dihapus',
         'profil.hapus_latar' => 'Gambar latar dihapus',
         'profil.kata_sandi' => 'Kata sandi diubah',
+        'pengguna.kata_sandi' => 'Kata sandi diatur ulang',
     ];
 
     private const JENIS_IMPOR = ['spt' => 'SPT data lama', 'pegawai' => 'Pegawai', 'pkpt' => 'Item PKPT'];

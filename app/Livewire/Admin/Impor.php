@@ -63,6 +63,7 @@ class Impor extends Component
             return;
         }
         $this->namaFile = $this->file->getClientOriginalName();
+        $this->file->delete(); // remove the Livewire temp upload too
         $this->file = null; // the upload is never stored; only parsed cells are kept
         $this->pindah(2);
     }
@@ -84,6 +85,7 @@ class Impor extends Component
 
     public function impor(): void
     {
+        @set_time_limit(300); // a 2000-row file takes several seconds of inserts; the PHP default of 30 s is too tight
         Gate::authorize('manage-master-data');
         $rows = $this->rows;
         $galat = count(array_filter($rows, fn ($r) => $r['status'] === 'error'));
@@ -145,6 +147,7 @@ class Impor extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $rows = $this->rows;
         $count = fn (string $s) => count(array_filter($rows, fn ($r) => $r['status'] === $s));
 

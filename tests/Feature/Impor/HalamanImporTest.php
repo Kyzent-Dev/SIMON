@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Import\SptImportParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -54,6 +55,9 @@ class HalamanImporTest extends TestCase
         $c = Livewire::actingAs($this->admin)->test(Page::class);
         $this->actingAs(User::factory()->pimpinan()->create()); // actions re-check the gate for the current user
         $c->call('unduhTemplat')->assertForbidden();
+        $c = Livewire::actingAs($this->admin)->test(Page::class);
+        $this->actingAs(User::factory()->pimpinan()->create()); // render re-checks the gate too
+        $c->set('galatSaja', true)->assertForbidden();
     }
 
     public function test_unduh_templat(): void
@@ -81,6 +85,8 @@ class HalamanImporTest extends TestCase
         $this->assertSame(3, Spt::count());
         $this->assertSame(3, Aktivitas::imporTerakhir()->properties['jumlah']);
         $this->assertNull($c->get('file'));
+        // TemporaryUploadedFile::delete() leaves its small .json sidecar to Livewire's own 24 h cleanup.
+        $this->assertSame([], preg_grep('/\.json$/', Storage::disk('tmp-for-tests')->allFiles('livewire-tmp'), PREG_GREP_INVERT), 'the Livewire temp upload is deleted');
         $c->call('ulangi')->assertSet('step', 1)->assertSet('raw', []);
     }
 

@@ -70,6 +70,7 @@ class PkptImpor extends Component
             return;
         }
         $this->namaFile = $this->file->getClientOriginalName();
+        $this->file->delete(); // remove the Livewire temp upload too
         $this->file = null; // the upload is never stored; only parsed cells are kept
         $this->step = 2;
     }
