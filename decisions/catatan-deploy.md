@@ -30,3 +30,11 @@
 ## Migrasi revisi jadwal (Fase 9.2)
 - Migrasi `2026_11_20_000020_migrasi_revisi_jadwal` mengubah isi `pkpt_item_revisi` menjadi paket Perubahan (`sumber = migrasi_revisi`) dan Usulan, lalu menghapus tabel lama. **Tidak dapat dibalik** (`down()` melempar exception). Cadangkan database sebelum `php artisan migrate` di produksi; jalankan di jendela rilis dan jangan rollback. `migrate:fresh` pada database lokal tidak terpengaruh.
 - Setelah migrasi, `queue:work` tetap wajib (email pegawai dan notifikasi Perubahan lewat antrean). Isi email pegawai (halaman Pegawai atau impor) agar pegawai "Diinput oleh" menerima pemberitahuan.
+
+## Log aktivitas dan impor (Fase 10)
+- `php artisan migrate` menambah tabel `activity_log` (paket `spatie/laravel-activitylog`) dan kolom `diinput_oleh`, `ip` serta migrasi SPT impor. Tidak ada seeder baru.
+- **Jangan pernah menjadwalkan atau menjalankan `php artisan activitylog:clean`.** Paket tetap mendaftarkan perintah itu dan `config/activitylog.php` berisi `delete_records_older_than_days` = 365, tetapi perintah menghapus lewat query builder sehingga melewati penjaga `App\Models\Aktivitas` (log tidak boleh diubah/dihapus, PRD §7.12). Jangan masukkan ke `routes/console.php`/cron; sebaiknya larang dijalankan siapa pun (atau nonaktifkan di pipeline deploy). Penghapusan manual atas baris log juga dilarang.
+- Tabel `activity_log` hanya bertambah. Perkiraan kasar 0,5-1 KB per baris (kolom `properties` JSON hanya memuat kolom yang berubah); beberapa ribu baris per bulan dalam pemakaian normal, dan satu impor SPT menambah 1 baris ringkasan plus baris per SPT/personel/kendala. Pantau ukuran tabel; pengarsipan di luar aplikasi dibahas di Fase 11.
+- Sertakan `activity_log` dalam cadangan database (Fase 11): ini satu-satunya jejak audit.
+- Setelah mengimpor SPT data lama ke produksi, bila pratinjau/hasil impor menampilkan peringatan `Nomor urut {n} melebihi nomor terakhir register {tahun}`, atur `Nomor awal` di Register untuk tahun berjalan sebelum menerbitkan nomor baru, agar nomor baru tidak bentrok dengan nomor impor.
+- Impor berjalan sinkron di satu permintaan web (bukan antrean), maksimal 2000 baris per berkas `.xlsx` (5 MB). Berkas yang lebih besar dipecah. Pastikan `max_execution_time` PHP cukup (disarankan 120 detik) dan `upload_max_filesize`/`post_max_size` minimal 6M. Impor tidak mengirim notifikasi.

@@ -62,3 +62,9 @@ Pilihan tingkat plan yang dibuat controller tanpa bertanya (bisa diubah pengguna
 - Warna: baris galat/peringatan memakai `bg-row-error`/`bg-row-warning` dengan teks neutral-900 (pola pkpt-impor); tautan mint-700 di atas putih; ikon sukses-700, accent-700, danger-700 di atas putih/tint sama seperti pkpt-impor; `Petunjuk kolom` memakai `<details>` bawaan tanpa animasi, ikon info-800 di atas putih. Semua pasangan ada di DESIGN §3.4.
 - Audit `ui-ux-pro-max` (indikator langkah, fokus): menegaskan stepper dengan `aria-current`, ring fokus terlihat pada kontrol (summary `details`, tombol templat, tautan `Ke dasbor` diberi `focus-visible:outline` eksplisit), dan target sentuh 44px (`h-11`, `min-h-11`). Mengubah: menambah pemindahan fokus ke heading langkah (tidak ada di PkptImpor). Tidak ada animasi ditambahkan.
 - `DasborAdminTest::test_health_cards` diubah: kartu `Impor terakhir` kini ada (sebelumnya `assertDontSee` karena ditunda ke Task ini).
+
+## Fase 10, Task 5
+- `FileContohTest` (PRD §12): berkas contoh dibangun dari `SptImportParser::HEADERS` dengan seluruh sel sebagai teks eksplisit, memakai data `DatabaseSeeder` penuh (Irban I, NIP Tim 1 dari `TimSeeder`, objek `ObjekSeeder`, jenis `JenisPenugasanSeeder`). Isi: 5 baris sah dan 2 baris ditolak (`Irban "Irban IX" tidak ditemukan.` dan `Nomor dan tanggal LHP diisi bersama.`). Berkas xlsx tidak di-commit karena tes membangunnya.
+- Sisa penundaan `grep -rn "Fase 10" app/ resources/ tests/`: hanya docblock deskriptif (`Dasbor`, `DicatatAktivitas`, `LabelAktivitas`); tidak ada penundaan.
+- Catatan deploy "Log aktivitas dan impor (Fase 10)" ditambahkan, termasuk larangan menjalankan `activitylog:clean`.
+- Uji penuh di MariaDB (XAMPP): 1012 lulus, 9020 assertion; SQLite: 1012 lulus. Cek browser: berkas contoh pada data demo segar lewat `/admin/impor` (admin): 7 baris, 2 galat, centang "Lewati baris galat", 5 SPT diimpor.
