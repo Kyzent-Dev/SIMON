@@ -99,7 +99,7 @@ class PkptImpor extends Component
             return;
         }
         try {
-            $this->diimpor = app(ImportPkptItems::class)->handle($this->pkpt, $rows, $this->lewatiDuplikat);
+            $this->diimpor = app(ImportPkptItems::class)->handle($this->pkpt, $rows, $this->lewatiDuplikat, $this->namaFile);
         } catch (ValidationException $e) {
             $this->dispatch('toast', type: 'error', message: collect($e->errors())->flatten()->first());
 

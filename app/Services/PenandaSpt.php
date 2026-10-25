@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
+use App\Enums\SumberSpt;
 use App\Models\Spt;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -36,7 +37,8 @@ class PenandaSpt
         if ($spt->status($tanggal) === StatusSpt::PenyusunanLaporan && $spt->tanggal_selesai->startOfDay()->diffInDays($hariIni) > $batas) {
             $penanda[] = 'terlambat';
         }
-        if ($diterima && $spt->tanggal_mulai !== null && $tanggal > $spt->tanggal_mulai->toDateString()
+        // Imported legacy SPT have no final document in SIMON by nature.
+        if ($diterima && $spt->sumber !== SumberSpt::Impor && $spt->tanggal_mulai !== null && $tanggal > $spt->tanggal_mulai->toDateString()
             && ! $this->adaFinal($spt)) {
             $penanda[] = 'spt_final_belum_diupload';
         }

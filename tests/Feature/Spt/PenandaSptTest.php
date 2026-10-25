@@ -3,6 +3,7 @@
 namespace Tests\Feature\Spt;
 
 use App\Enums\KejadianSpt;
+use App\Enums\SumberSpt;
 use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\SptDokumen;
@@ -90,6 +91,17 @@ class PenandaSptTest extends TestCase
         $this->assertNotContains('spt_final_belum_diupload', $this->penanda(Spt::factory()->menungguNomor()->create(['tanggal_mulai' => '2026-03-01'])));
     }
 
+    public function test_spt_impor_tanpa_final_tidak_ditandai(): void
+    {
+        $impor = $this->spt(final: false);
+        $impor->forceFill(['sumber' => SumberSpt::Impor])->save();
+        $sistem = $this->spt(final: false);
+        $this->hari('2026-03-11');
+        $this->assertNotContains('spt_final_belum_diupload', $this->penanda($impor));
+        $this->assertNotContains('spt_final_belum_diupload', app(PenandaSpt::class)->untukBanyak(collect([$impor->fresh()]))[$impor->id]);
+        $this->assertContains('spt_final_belum_diupload', $this->penanda($sistem));
+    }
+
     public function test_tidak_sesuai_pkpt_kendala_and_moved_item(): void
     {
         $this->hari('2026-03-15');
@@ -172,9 +184,9 @@ class PenandaSptTest extends TestCase
             KejadianSpt::DICATAT_MANUAL => 'Nomor dicatat manual', KejadianSpt::DIBATALKAN => 'Nomor dibatalkan',
             KejadianSpt::NOMOR_AWAL => 'Nomor awal diatur', KejadianSpt::TANGGAL_DIUBAH => 'Tanggal realisasi diubah',
             KejadianSpt::FINAL_DIUNGGAH => 'SPT final diunggah', KejadianSpt::DITANDAI_SELESAI => 'Ditandai Selesai',
-            KejadianSpt::KENDALA_DIISI => 'Kendala diisi',
+            KejadianSpt::KENDALA_DIISI => 'Kendala diisi', KejadianSpt::DIIMPOR => 'Diimpor dari data lama',
         ];
-        $this->assertCount(13, (new \ReflectionClass(KejadianSpt::class))->getConstants(\ReflectionClassConstant::IS_PUBLIC));
+        $this->assertCount(14, (new \ReflectionClass(KejadianSpt::class))->getConstants(\ReflectionClassConstant::IS_PUBLIC));
         foreach ($expected as $kejadian => $label) {
             $this->assertSame($label, KejadianSpt::label($kejadian));
         }

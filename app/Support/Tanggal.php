@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class Tanggal
 {
@@ -46,5 +47,24 @@ class Tanggal
         }
 
         return $hari;
+    }
+
+    /** Import cell date (Excel serial, dd/mm/yyyy or yyyy-mm-dd) as Y-m-d; null when the format is not recognised. */
+    public static function dariSel(string $v): ?string
+    {
+        if (preg_match('/^\d{1,6}(\.\d+)?$/', $v)) { // Excel date serial
+            $serial = (float) $v;
+
+            return $serial >= 1 && $serial < 2958466 ? Date::excelToDateTimeObject(floor($serial))->format('Y-m-d') : null;
+        }
+        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $v, $m)) {
+            [, $d, $mo, $y] = $m;
+        } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)) {
+            [, $y, $mo, $d] = $m;
+        } else {
+            return null;
+        }
+
+        return checkdate((int) $mo, (int) $d, (int) $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : null;
     }
 }

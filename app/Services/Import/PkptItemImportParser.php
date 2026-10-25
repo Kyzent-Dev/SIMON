@@ -6,10 +6,10 @@ use App\Actions\Pkpt\SavePkptItem;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
+use App\Support\Tanggal;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class PkptItemImportParser
 {
@@ -53,25 +53,6 @@ class PkptItemImportParser
     public static function capMessage(): string
     {
         return 'Berkas terlalu besar: maksimal '.self::MAX_ROWS.' baris data per impor.';
-    }
-
-    /** @return ?string Y-m-d, or null when the format is not recognised */
-    private function tanggal(string $v): ?string
-    {
-        if (preg_match('/^\d{1,6}(\.\d+)?$/', $v)) { // Excel date serial
-            $serial = (float) $v;
-
-            return $serial >= 1 && $serial < 2958466 ? Date::excelToDateTimeObject(floor($serial))->format('Y-m-d') : null;
-        }
-        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $v, $m)) {
-            [, $d, $mo, $y] = $m;
-        } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)) {
-            [, $y, $mo, $d] = $m;
-        } else {
-            return null;
-        }
-
-        return checkdate((int) $mo, (int) $d, (int) $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : null;
     }
 
     /** @return list<array{baris:int,data:array,status:string,errors:list<array{kolom:string,pesan:string}>,warning:?string}> */
@@ -118,7 +99,7 @@ class PkptItemImportParser
             }
             $dates = [];
             foreach (['tanggal_mulai', 'tanggal_selesai'] as $f) {
-                $dates[$f] = $r[$f] === '' ? null : $this->tanggal($r[$f]);
+                $dates[$f] = $r[$f] === '' ? null : Tanggal::dariSel($r[$f]);
                 if ($r[$f] !== '' && $dates[$f] === null) {
                     $errors[] = ['kolom' => $f, 'pesan' => 'Format tanggal tidak dikenali (gunakan dd/mm/yyyy).'];
                     $skip[] = $f;

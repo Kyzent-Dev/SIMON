@@ -89,7 +89,7 @@ class PegawaiImpor extends Component
         if ($this->step !== 2 || ($galat > 0 && ! $this->lewati)) {
             return;
         }
-        $this->diimpor = app(ImportPegawai::class)->handle($rows);
+        $this->diimpor = app(ImportPegawai::class)->handle($rows, $this->namaFile);
         $this->step = 3;
         $this->dispatch('toast', type: 'success', message: "{$this->diimpor} pegawai diimpor.");
     }
