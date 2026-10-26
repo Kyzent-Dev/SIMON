@@ -1,0 +1,1 @@
+@include('errors.layout', ['kode' => 404, 'judul' => 'Halaman tidak ditemukan', 'kalimat' => 'Alamat yang Anda buka tidak ada atau sudah dipindahkan.', 'ikon' => 'magnifying-glass', 'tombol' => 'Kembali ke beranda', 'aksi' => 'beranda'])

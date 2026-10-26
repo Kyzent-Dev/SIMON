@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 /** Fase 5 Task 4: the four action modals on the SPT detail page call the Task 2 actions. */
@@ -60,7 +61,7 @@ class DetailAksiTest extends TestCase
 
     private function pdf(string $nama = 'x.pdf'): UploadedFile
     {
-        return UploadedFile::fake()->create($nama, 10, 'application/pdf');
+        return PdfUji::buat($nama, 10);
     }
 
     private function detail(Spt $spt, ?User $u = null)

@@ -39,3 +39,9 @@
 - Sertakan `activity_log` dalam cadangan database (Fase 11): ini satu-satunya jejak audit.
 - Setelah mengimpor SPT data lama ke produksi, bila pratinjau/hasil impor menampilkan peringatan `Nomor urut {n} melebihi nomor terakhir register {tahun}`, atur `Nomor awal` di Register untuk tahun berjalan sebelum menerbitkan nomor baru, agar nomor baru tidak bentrok dengan nomor impor.
 - Impor berjalan sinkron di satu permintaan web (bukan antrean), maksimal 2000 baris per berkas `.xlsx` (5 MB). Berkas yang lebih besar dipecah. `Impor::impor()` menaikkan batas waktu ke 300 detik (`set_time_limit`); bila PHP-FPM/web server punya batas sendiri (`request_terminate_timeout`, `fastcgi_read_timeout`), samakan minimal 300 detik dan `upload_max_filesize`/`post_max_size` minimal 6M. Impor tidak mengirim notifikasi.
+
+## Pengerasan (Fase 11)
+- `TRUSTED_PROXIES` (env, `config('app.trusted_proxies')`): isi `*` atau daftar IP/CIDR proxy dipisah koma bila aplikasi berada di balik Nginx/load balancer, agar `request()->ip()` dan `activity_log.ip` mencatat alamat klien. Kosong = tidak percaya header `X-Forwarded-*`.
+- Pembatas laju memakai cache default: pakai driver cache yang dibagi antarproses (database/redis/file), bukan `array`. Batas: halaman publik 120/menit per IP; ekspor 10/menit per pengguna; ganti email 3 per 10 menit per pengguna; login 5 per menit per nama pengguna+IP.
+- Batas unggahan `upload.maks_mb` maksimal 12 MB (batas unggah sementara Livewire). `php artisan migrate` menjepit nilai tersimpan yang lebih besar menjadi 12. Samakan `upload_max_filesize` dan `post_max_size` PHP minimal 12M (disarankan 13M).
+- Header keamanan (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) dikirim aplikasi; jangan digandakan dengan nilai berbeda di web server. Belum ada CSP.

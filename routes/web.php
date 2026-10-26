@@ -48,9 +48,11 @@ use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail as SptDetail;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', BerandaController::class)->name('beranda');
-Route::get('/jadwal', PublikJadwal::class)->name('publik.jadwal');
-Route::get('/realisasi', PublikRealisasi::class)->name('publik.realisasi');
+Route::middleware('throttle:publik')->group(function () {
+    Route::get('/', BerandaController::class)->name('beranda');
+    Route::get('/jadwal', PublikJadwal::class)->name('publik.jadwal');
+    Route::get('/realisasi', PublikRealisasi::class)->name('publik.realisasi');
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/masuk', [LoginController::class, 'create'])->name('login');

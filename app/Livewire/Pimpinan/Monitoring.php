@@ -3,10 +3,10 @@
 namespace App\Livewire\Pimpinan;
 
 use App\Enums\StatusPengajuan;
+use App\Livewire\Concerns\MintaEkspor;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Spt;
-use App\Services\Ekspor;
 use App\Services\MonitoringSpt;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +22,7 @@ use Livewire\WithPagination;
 #[Title('Monitoring SPT')]
 class Monitoring extends Component
 {
-    use WithPagination;
+    use MintaEkspor, WithPagination;
 
     public const GRUP_PER_HALAMAN = 20;
 
@@ -84,12 +84,8 @@ class Monitoring extends Component
         if (! in_array($format, ['xlsx', 'pdf'], true)) {
             return null;
         }
-        $unduhan = app(Ekspor::class)->minta(auth()->user(), 'monitoring', $format, $this->only(self::FILTER));
-        if ($unduhan === null) {
-            $this->dispatch('toast', type: 'info', message: 'Ekspor sedang disiapkan. Anda akan menerima notifikasi saat file siap.');
-        }
 
-        return $unduhan;
+        return $this->mintaEkspor('monitoring', $format, $this->only(self::FILTER));
     }
 
     /** Validates on every render and writes the result back, so unknown URL values fall back visibly (selects show the default). */

@@ -17,11 +17,11 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Services\PerubahanPkpt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 /** Fase 9.2 Task 7: Admin Perubahan PKPT screens (tabs on a Disahkan PKPT, paket page, dasbor cards). */
@@ -155,7 +155,7 @@ class AdminPerubahanPkptTest extends TestCase
 
         // SK
         $h->set('nomor_sk', '800/12/2026')->set('tanggal_sk', '2026-06-01')
-            ->set('berkas_sk', UploadedFile::fake()->create('sk.pdf', 20, 'application/pdf'))->call('simpanSk')->assertHasNoErrors();
+            ->set('berkas_sk', PdfUji::buat('sk.pdf', 20))->call('simpanSk')->assertHasNoErrors();
         $p->refresh();
         $this->assertTrue($p->skLengkap());
         Storage::disk('local')->assertExists($p->berkas_sk);

@@ -118,6 +118,12 @@ return [
     |
     */
 
+    /*
+    | Reverse proxies whose X-Forwarded-* headers are trusted: '*' or a comma list of IPs/CIDRs. Null trusts none.
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES') ?: null,
+
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

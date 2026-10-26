@@ -7,12 +7,12 @@ use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\CatatNomorManual;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
+use App\Livewire\Concerns\MintaEkspor;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\NomorCounter;
 use App\Models\Spt;
-use App\Services\Ekspor;
 use App\Services\Penomoran;
 use App\Services\RegisterNomor;
 use App\Services\Settings;
@@ -31,7 +31,7 @@ use Livewire\WithPagination;
 #[Title('Register Nomor SPT')]
 class Register extends Component
 {
-    use WithPagination;
+    use MintaEkspor, WithPagination;
 
     public const PER_HALAMAN = 100;
 
@@ -170,12 +170,8 @@ class Register extends Component
         if (! in_array($format, ['xlsx', 'pdf'], true)) {
             return null;
         }
-        $unduhan = app(Ekspor::class)->minta(auth()->user(), 'register', $format, $this->filter());
-        if ($unduhan === null) {
-            $this->dispatch('toast', type: 'info', message: 'Ekspor sedang disiapkan. Anda akan menerima notifikasi saat file siap.');
-        }
 
-        return $unduhan;
+        return $this->mintaEkspor('register', $format, $this->filter());
     }
 
     private function filter(): array

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\HeaderKeamanan;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Every session is re-validated against the password hash, so a password change or reset logs out other devices.
         $middleware->authenticateSessions();
         $middleware->appendToGroup('web', EnsurePasswordIsChanged::class);
+        $middleware->appendToGroup('web', HeaderKeamanan::class);
         $middleware->alias(['role' => EnsureRole::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));

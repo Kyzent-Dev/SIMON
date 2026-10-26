@@ -20,10 +20,10 @@ use App\Services\PenerimaNotifikasi;
 use Carbon\CarbonImmutable;
 use Database\Factories\PkptPerubahanItemFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 /** Fase 9.2 Task 6: Perubahan PKPT notifications (E5) and the daily reminders. */
@@ -165,7 +165,7 @@ class NotifikasiPerubahanPkptTest extends TestCase
 
         // Complete SK: stops.
         app(SimpanSkPerubahan::class)->handle($this->pembuat, $this->p, ['nomor_sk' => 'SK/1', 'tanggal_sk' => '2026-10-22'],
-            UploadedFile::fake()->create('sk.pdf', 10, 'application/pdf'));
+            PdfUji::buat('sk.pdf', 10));
         $this->travelTo(CarbonImmutable::parse('2026-10-23 06:00', 'Asia/Jakarta'));
         $this->artisan('notifikasi:harian')->assertSuccessful();
         Notification::assertSentTimes(PengingatSkPerubahan::class, 2 * $admin);

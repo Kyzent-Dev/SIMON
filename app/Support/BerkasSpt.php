@@ -14,7 +14,21 @@ class BerkasSpt
 {
     public static function pdf(UploadedFile $f, int $maksBytes): bool
     {
-        return strtolower($f->getClientOriginalExtension()) === 'pdf' && $f->getMimeType() === 'application/pdf' && $f->getSize() <= $maksBytes;
+        return strtolower($f->getClientOriginalExtension()) === 'pdf' && $f->getMimeType() === 'application/pdf' && $f->getSize() <= $maksBytes
+            && self::awalPdf($f);
+    }
+
+    /** A PDF starts with `%PDF-`; the sniffed MIME alone can be fooled by a polyglot. */
+    private static function awalPdf(UploadedFile $f): bool
+    {
+        $h = @fopen($f->getRealPath(), 'rb');
+        if (! $h) {
+            return false;
+        }
+        $awal = fread($h, 5);
+        fclose($h);
+
+        return $awal === '%PDF-';
     }
 
     /** Writes the file and adds a spt_dokumen row. If the insert fails the file is deleted here; if the caller's transaction fails later, it deletes `->path`. */

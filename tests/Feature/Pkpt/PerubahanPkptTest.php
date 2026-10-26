@@ -31,6 +31,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 /** Fase 9.2 Task 6: Perubahan PKPT rules, application on approval, K7, SK, usulan transitions. */
@@ -295,7 +296,7 @@ class PerubahanPkptTest extends TestCase
     {
         Storage::fake('local');
         $draf = $this->buat();
-        app(SimpanSkPerubahan::class)->handle($this->admin, $draf, ['nomor_sk' => 'SK/1'], UploadedFile::fake()->create('sk.pdf', 10, 'application/pdf'));
+        app(SimpanSkPerubahan::class)->handle($this->admin, $draf, ['nomor_sk' => 'SK/1'], PdfUji::buat('sk.pdf', 10));
         $berkas = $draf->fresh()->berkas_sk;
         Storage::disk('local')->assertExists($berkas);
         app(BuangPerubahan::class)->handle($this->admin, $draf);
@@ -330,12 +331,12 @@ class PerubahanPkptTest extends TestCase
         $this->assertSame(['nomor_sk', 'tanggal_sk', 'berkas_sk'], array_keys($e));
         $p = $sk->handle($this->admin, $p, ['nomor_sk' => 'SK/9', 'tanggal_sk' => '2026-06-01'], null);
         $this->assertNull($p->sk_lengkap_pada);
-        $p = $sk->handle($this->admin, $p, ['nomor_sk' => 'SK/9', 'tanggal_sk' => '2026-06-01'], $pdf = UploadedFile::fake()->create('sk.pdf', 10, 'application/pdf'));
+        $p = $sk->handle($this->admin, $p, ['nomor_sk' => 'SK/9', 'tanggal_sk' => '2026-06-01'], $pdf = PdfUji::buat('sk.pdf', 10));
         $this->assertNotNull($p->sk_lengkap_pada);
         $this->assertSame(hash_file('sha256', $pdf->getRealPath()), $p->hash_sk);
         $this->assertMatchesRegularExpression("#^perubahan-pkpt/{$p->id}/[0-9a-f-]{36}\\.pdf$#", $p->berkas_sk);
         $lama = $p->berkas_sk;
-        $p = $sk->handle($this->admin, $p, ['nomor_sk' => 'SK/9', 'tanggal_sk' => '2026-06-01'], UploadedFile::fake()->create('sk2.pdf', 10, 'application/pdf'));
+        $p = $sk->handle($this->admin, $p, ['nomor_sk' => 'SK/9', 'tanggal_sk' => '2026-06-01'], PdfUji::buat('sk2.pdf', 10));
         Storage::disk('local')->assertMissing($lama);
         Storage::disk('local')->assertExists($p->berkas_sk);
         $p = $sk->handle($this->admin, $p, ['nomor_sk' => '', 'tanggal_sk' => '2026-06-01'], null);

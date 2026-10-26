@@ -19,11 +19,11 @@ use App\Models\Spt;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 /** PRD Fase 7 "Selesai jika": pimpinan can comment but can never change SPT data. */
@@ -135,7 +135,7 @@ class PimpinanPolicyTest extends TestCase
         $kendala = ['kategori' => 'Lainnya', 'uraian' => 'Jadwal bergeser karena objek belum siap.', 'diinput_oleh' => 1];
 
         $this->tolak(fn () => app(UbahTanggalRealisasi::class)->handle($p, $diterima, ['tanggal_mulai' => '2026-03-05', 'tanggal_selesai' => '2026-03-25', 'alasan' => 'Menyesuaikan jadwal pemeriksaan.', 'diinput_oleh' => 1]));
-        $this->tolak(fn () => app(UnggahDokumenSpt::class)->handle($p, $diterima, ['diinput_oleh' => 1], UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')));
+        $this->tolak(fn () => app(UnggahDokumenSpt::class)->handle($p, $diterima, ['diinput_oleh' => 1], PdfUji::buat('x.pdf', 10)));
         $this->tolak(fn () => app(TandaiSelesai::class)->handle($p, $diterima, ['diinput_oleh' => 1, 'konfirmasi' => true]));
         $this->tolak(fn () => app(SimpanKendala::class)->handle($p, $diterima, $kendala));
         $this->tolak(fn () => app(SimpanKendala::class)->handle($p, $selesai, $kendala));

@@ -10,7 +10,9 @@ use App\Services\Ekspor\PembangunMonitoring;
 use App\Services\Ekspor\PembangunRegister;
 use App\Services\Ekspor\PembangunRekap;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,6 +35,11 @@ class Ekspor
     public function minta(User $user, string $jenis, string $format, array $filter): ?Response
     {
         abort_unless(in_array($format, ['xlsx', 'pdf'], true), 422);
+        $kunci = 'ekspor:'.$user->id;
+        if (RateLimiter::tooManyAttempts($kunci, 10)) {
+            throw ValidationException::withMessages(['ekspor' => 'Terlalu banyak permintaan ekspor. Coba lagi dalam '.RateLimiter::availableIn($kunci).' detik.']);
+        }
+        RateLimiter::hit($kunci, 60);
         $p = $this->pembangun($jenis);
         $p->otorisasi($user);
         $filter = $p->filter($user, $filter);

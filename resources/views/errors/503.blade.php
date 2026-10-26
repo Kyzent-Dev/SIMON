@@ -1,0 +1,1 @@
+@include('errors.layout', ['kode' => 503, 'judul' => 'Sedang dalam pemeliharaan', 'kalimat' => 'SIMON-SPT sedang diperbarui. Silakan kembali beberapa saat lagi.', 'ikon' => 'wrench-screwdriver', 'tombol' => null, 'aksi' => 'root'])

@@ -1,0 +1,1 @@
+@include('errors.layout', ['kode' => 403, 'judul' => 'Akses ditolak', 'kalimat' => 'Anda tidak memiliki izin untuk membuka halaman ini.', 'ikon' => 'lock-closed', 'tombol' => 'Kembali ke beranda', 'aksi' => 'beranda'])

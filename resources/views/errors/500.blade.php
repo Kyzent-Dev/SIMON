@@ -1,0 +1,1 @@
+@include('errors.layout', ['kode' => 500, 'judul' => 'Terjadi kesalahan', 'kalimat' => 'Sistem mengalami gangguan. Coba lagi beberapa saat lagi.', 'ikon' => 'exclamation-triangle', 'tombol' => 'Kembali ke beranda', 'aksi' => 'root'])

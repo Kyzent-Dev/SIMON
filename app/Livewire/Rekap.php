@@ -3,9 +3,9 @@
 namespace App\Livewire;
 
 use App\Enums\Role;
+use App\Livewire\Concerns\MintaEkspor;
 use App\Models\Pkpt;
 use App\Models\Spt;
-use App\Services\Ekspor;
 use App\Services\Ekspor\PembangunRekap;
 use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
@@ -19,6 +19,8 @@ use Livewire\Component;
  */
 class Rekap extends Component
 {
+    use MintaEkspor;
+
     #[Url]
     public string $tahun = '';
 
@@ -81,7 +83,7 @@ class Rekap extends Component
         }
         $this->pilihEkspor = false;
 
-        return app(Ekspor::class)->minta(auth()->user(), 'rekap', $this->formatEkspor, $this->only(self::FILTER) + ['bagian' => $bagian]);
+        return $this->mintaEkspor('rekap', $this->formatEkspor, $this->only(self::FILTER) + ['bagian' => $bagian]);
     }
 
     public function render()

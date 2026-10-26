@@ -148,7 +148,8 @@ class Settings
             'penugasan.hitungan_hari' => ['required', 'in:kalender,kerja'],
             'rekap.dasar_triwulan' => ['required', 'in:tanggal_selesai,tanggal_mulai,tanggal_lhp'],
             'penanda.batas_terlambat_hari' => ['required', 'integer', 'min:1', 'max:365'],
-            'upload.maks_mb' => ['required', 'integer', 'min:1', 'max:100'],
+            // 12 = Livewire's temporary upload limit; a higher value could never be honoured.
+            'upload.maks_mb' => ['required', 'integer', 'min:1', 'max:12'],
             'kendala.kategori' => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
                 if (! in_array('Lainnya', (array) $value, true)) {
                     $fail('Kategori "Lainnya" wajib ada.');

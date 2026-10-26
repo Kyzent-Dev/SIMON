@@ -1,0 +1,1 @@
+@include('errors.layout', ['kode' => 419, 'judul' => 'Sesi kedaluwarsa', 'kalimat' => 'Halaman terlalu lama dibiarkan terbuka. Muat ulang lalu coba lagi.', 'ikon' => 'arrow-path', 'tombol' => 'Muat ulang', 'aksi' => 'muat-ulang'])

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 class PelaksanaanSptTest extends TestCase
@@ -69,7 +70,7 @@ class PelaksanaanSptTest extends TestCase
 
     private function pdf(string $nama = 'x.pdf', int $kb = 10): UploadedFile
     {
-        return UploadedFile::fake()->create($nama, $kb, 'application/pdf');
+        return PdfUji::buat($nama, $kb);
     }
 
     private function gagal(callable $fn, string $key, ?string $pesan = null): void

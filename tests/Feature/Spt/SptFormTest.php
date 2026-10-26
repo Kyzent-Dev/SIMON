@@ -27,6 +27,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\Support\PdfUji;
 use Tests\TestCase;
 
 class SptFormTest extends TestCase
@@ -282,7 +283,7 @@ class SptFormTest extends TestCase
 
     public function test_lampiran_upload_and_remove(): void
     {
-        $page = $this->lengkap()->set('lampiran', UploadedFile::fake()->create('draf.pdf', 100, 'application/pdf'))->call('simpan')->assertHasNoErrors();
+        $page = $this->lengkap()->set('lampiran', PdfUji::buat('draf.pdf', 100))->call('simpan')->assertHasNoErrors();
         $spt = Spt::sole();
         $dok = $spt->dokumen()->sole();
         $page->assertSee('draf.pdf')->assertSee(route('spt.dokumen', [$spt, $dok]));

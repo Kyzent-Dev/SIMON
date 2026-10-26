@@ -49,8 +49,8 @@ class PkptImpor extends Component
         if (! $this->pkpt->fresh()->isDraf()) {
             return;
         }
-        $this->validate(['file' => ['required', 'file', 'mimes:xlsx', 'max:5120']], [
-            'file.mimes' => 'Berkas harus berformat .xlsx.', 'file.max' => 'Ukuran berkas maksimal 5 MB.', 'file.uploaded' => 'Ukuran berkas maksimal 5 MB.',
+        $this->validate(['file' => ['required', 'file', 'mimes:xlsx', 'mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/octet-stream', 'max:5120']], [
+            'file.mimes' => 'Berkas harus berformat .xlsx.', 'file.mimetypes' => 'Berkas harus berformat .xlsx.', 'file.max' => 'Ukuran berkas maksimal 5 MB.', 'file.uploaded' => 'Ukuran berkas maksimal 5 MB.',
         ]);
 
         try {
