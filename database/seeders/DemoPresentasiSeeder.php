@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\DB;
  * Dev only (Fase 11 E11), run last: presentation data for Irban I–V on top of the Irban I demo of the other seeders.
  * PKPT 2025 (made and disahkan through the actions), 8 SPT per irban in 2025, every 2026 status per irban, two Perubahan PKPT 2026.
  * Writes go through the real actions at a travelled clock, so numbering, riwayat, activity log, cache refresh and bell entries are
- * produced by the app itself. 2026 dates are relative to today, so the statuses stay true on presentation day.
+ * produced by the app itself. 2026 dates are relative to today (clamped into 2026 by DatabaseSeeder), so the statuses stay true on presentation day.
  */
 class DemoPresentasiSeeder extends Seeder
 {
@@ -250,7 +250,8 @@ class DemoPresentasiSeeder extends Seeder
 
     /**
      * Each 2026 status this irban does not have yet (Irban I already has most from SptSeeder). Dates are relative to today.
-     * shortcut: item windows run from today−62 to today+25 days, so seeding before March or after early December 2026 puts some outside the PKPT year.
+     * Dates run from today−62 to today+39 days; DatabaseSeeder clamps "today" to DEMO_AWAL…DEMO_AKHIR so they stay inside 2026.
+     * shortcut: seeded on a real date after DEMO_AKHIR, statuses computed against that date drift (Siap/Pelaksanaan become late); move the demo year when 2026 is over.
      */
     private function tahun2026(array $t): void
     {

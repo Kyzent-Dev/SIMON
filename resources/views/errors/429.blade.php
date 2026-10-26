@@ -1,1 +1,1 @@
-@include('errors.layout', ['kode' => 429, 'judul' => 'Terlalu banyak permintaan', 'kalimat' => 'Tunggu sebentar sebelum mencoba lagi.', 'ikon' => 'clock', 'tombol' => 'Kembali ke beranda', 'aksi' => 'beranda'])
+@include('errors.layout', ['kode' => 429, 'judul' => 'Terlalu banyak permintaan', 'kalimat' => 'Tunggu sebentar sebelum mencoba lagi.', 'ikon' => 'clock', 'tombol' => 'Muat ulang', 'aksi' => 'muat-ulang'])

@@ -59,9 +59,10 @@ Hanya kunci yang dibaca aplikasi dan berbeda dari bawaan Laravel atau `.env.exam
 | `DB_QUEUE_RETRY_AFTER` | `660` (atau hapus barisnya) | Harus lebih besar dari batas waktu job ekspor (600 detik). `.env` lama bernilai 90 merusak ekspor besar. |
 | `MAIL_MAILER` | `smtp` | Lihat bagian "Email (SMTP)". |
 | `MAIL_HOST` `MAIL_PORT` `MAIL_USERNAME` `MAIL_PASSWORD` `MAIL_SCHEME` `MAIL_FROM_ADDRESS` `MAIL_FROM_NAME` | sesuai penyedia | `MAIL_SCHEME=smtps` untuk port 465; kosongkan/`null` untuk STARTTLS di 587. |
-| `TRUSTED_PROXIES` | `*` atau IP/CIDR proxy, dipisah koma | Wajib bila di belakang Nginx/load balancer; kosong berarti header `X-Forwarded-*` tidak dipercaya. |
+| `TRUSTED_PROXIES` | `127.0.0.1` (proxy di mesin yang sama) atau IP/CIDR proxy, dipisah koma | Wajib bila di belakang Nginx/load balancer; kosong berarti header `X-Forwarded-*` tidak dipercaya. `*` hanya untuk proxy beralamat berubah-ubah, dan hanya bila PHP-FPM/port aplikasi tidak dapat dijangkau selain lewat proxy (lihat "Reverse proxy dan HTTPS"). |
 | `BACKUP_MAIL_TO` | alamat email | Penerima laporan cadangan; kosong = tanpa notifikasi. |
-| `LOG_LEVEL` | `warning` | Opsional. Dengan `MAIL_MAILER=log` pakai `debug`, kalau tidak isi email tidak tertulis di log. |
+| `BACKUP_ARCHIVE_PASSWORD` | kata sandi panjang acak | Sangat disarankan: zip cadangan berisi hash kata sandi, NIP, dan PDF SPT, dan disalin ke luar server. Zip dienkripsi AES-256. Simpan kata sandi ini terpisah bersama `APP_KEY`: tanpa itu cadangan tidak dapat dipulihkan. Kosong = zip tidak terenkripsi. |
+| `LOG_LEVEL` | `warning` | Opsional. `debug` hanya untuk gladi/lokal (dengan `MAIL_MAILER=log` isi email baru tertulis di log pada level ini). |
 
 Setelah mengubah `.env`: `php artisan optimize` lalu `php artisan queue:restart`.
 
@@ -77,7 +78,8 @@ Server boleh memakai zona waktu apa pun; setiap jadwal dipasang dengan zona `Asi
 
 | Waktu (WIB) | Pekerjaan | Fungsi |
 |---|---|---|
-| Setiap hari 00.00 | `publik:segarkan` | Mengganti hari pada angka publik ("Hari ini", status). |
+| Setiap hari 00.00 | `publik:segarkan` (closure terjadwal, bukan perintah artisan) | Mengganti hari pada angka publik ("Hari ini", status). |
+| Setiap hari 00.10 | `cache:pangkas` (closure terjadwal) | Dengan `CACHE_STORE=database`: menghapus baris `cache`/`cache_locks` yang kedaluwarsa (versi lama angka publik, penghitung pembatas laju per IP). Store database hanya menghapus baris kedaluwarsa saat kunci yang sama dibaca lagi. Tanpa efek untuk `redis`. |
 | Setiap hari 01.00 | `backup:clean` | Hapus cadangan lama sesuai retensi. |
 | Setiap hari 01.30 | `backup:run` | Cadangan basis data dan berkas. |
 | Setiap hari 05.00 | `ekspor:bersihkan` | Hapus file ekspor berumur > 7 hari. |
@@ -95,7 +97,7 @@ Supervisor (`/etc/supervisor/conf.d/simon-worker.conf`):
 
 ```
 [program:simon-worker]
-command=php /var/www/simon/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600
+command=php /var/www/simon/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600 --memory=512
 directory=/var/www/simon
 user=www-data
 autostart=true
@@ -108,13 +110,15 @@ stdout_logfile=/var/www/simon/storage/logs/worker.log
 stopwaitsecs=3660
 ```
 
-Lalu `sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start simon-worker:*`. `--timeout=600` mengikuti batas job ekspor; `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar. Setiap worker ekspor dapat memakai ±512 MB (job menaikkan `memory_limit` ke 512M lewat `ini_set` dan batas waktu ke 570 detik): pastikan `ini_set` tidak ada di `disable_functions` dan RAM cukup.
+Lalu `sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start simon-worker:*`. `--timeout=600` mengikuti batas job ekspor; `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar. Setiap worker ekspor dapat memakai ±512 MB (job menaikkan `memory_limit` ke 512M lewat `ini_set` dan batas waktu ke 570 detik): pastikan `ini_set` tidak ada di `disable_functions` dan RAM cukup. `--memory=512` menyelaraskan batas restart worker dengan batas itu (bawaan 128 MB membuat worker berhenti setelah satu ekspor besar). PDF dompdf memakan ±0,26 MB per baris, karena itu PDF > 200 baris selalu lewat antrean.
 
 Shared hosting tanpa supervisor: tambahkan cron setiap menit
 
 ```
-* * * * * cd /var/www/simon && php artisan queue:work --stop-when-empty --max-time=55 >> /dev/null 2>&1
+* * * * * cd /var/www/simon && flock -n storage/framework/queue.lock php artisan queue:work --stop-when-empty --max-time=55 --timeout=600 --memory=512 >> /dev/null 2>&1
 ```
+
+`flock -n` mencegah worker bertumpuk: satu job ekspor dapat berjalan hingga 600 detik, melewati `--max-time=55`, dan tanpa kunci cron berikutnya menyalakan worker kedua setiap menit. Bila `flock` tidak tersedia, ekspor besar dapat menumpuk proses PHP; minta penyedia hosting mengaktifkan supervisor.
 
 ## Email (SMTP)
 
@@ -138,14 +142,16 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
 
 **Laporan:** isi `BACKUP_MAIL_TO` dengan alamat valid untuk mendapat email sukses/gagal/tidak sehat (butuh `MAIL_*` yang berfungsi). Kosong = kegagalan hanya terlihat di keluaran perintah dan `storage/logs`. Alamat tidak valid membuat perintah gagal.
 
+**Tabel yang tidak ikut dump:** `cache`, `cache_locks`, `sessions`, dan `jobs` (`exclude_tables` di `config/database.php`): isinya sementara dan dapat dibangun ulang. `failed_jobs` dan `activity_log` tetap ikut. Akibatnya saat pemulihan pengguna harus masuk ulang dan job antrean yang belum jalan hilang (ekspor dapat diminta lagi).
+
 **Biner dump:** `DB_CONNECTION=mysql` memanggil `mysqldump`, `mariadb` memanggil `mariadb-dump`. Bila biner tidak di PATH, isi `DB_DUMP_BINARY_PATH` dengan foldernya. Di XAMPP (hanya `mysqldump`) pakai `DB_CONNECTION=mysql`.
 
 **Pulihkan** (di server tujuan yang sudah terpasang sesuai "Instalasi pertama", atau di server yang rusak):
 
-1. Ekstrak zip ke folder sementara (zip dari server Linux; zip buatan Windows memakai tanda `\` pada nama entri dan perlu diekstrak dengan alat yang menormalkannya): `mkdir /tmp/pulih && unzip storage/app/backup/SIMON-SPT/simon-<tanggal>.zip -d /tmp/pulih`.
-2. Basis data: `mysql -u simon -p simon < /tmp/pulih/db-dumps/<berkas>.sql` (basis `simon` kosong atau yang akan ditimpa).
+1. Ekstrak zip ke folder sementara (zip dari server Linux; zip buatan Windows memakai tanda `\` pada nama entri dan perlu diekstrak dengan alat yang menormalkannya): `mkdir /tmp/pulih && unzip storage/app/backup/SIMON-SPT/simon-<tanggal>.zip -d /tmp/pulih`. Zip terenkripsi (`BACKUP_ARCHIVE_PASSWORD`) memakai AES-256 yang tidak dibuka `unzip`: pakai `7z x -o/tmp/pulih storage/app/backup/SIMON-SPT/simon-<tanggal>.zip` (paket `p7zip-full`) dan masukkan kata sandi saat diminta.
+2. Basis data: bila basis `simon` masih kosong, jalankan dulu `php artisan migrate --force` dengan kode versi yang sama dengan cadangan agar tabel yang tidak ikut dump (`cache`, `cache_locks`, `sessions`, `jobs`) ada; lalu `mysql -u simon -p simon < /tmp/pulih/db-dumps/<berkas>.sql` (dump mengganti tabel lain beserta isinya, termasuk `migrations`).
 3. Berkas: entri zip relatif terhadap folder aplikasi, jadi salin dari akar ekstraksi ke akar aplikasi: `cp -a /tmp/pulih/storage/app/. /var/www/simon/storage/app/` (ini hanya menambahkan `private/` dan `public/`; jangan timpa `storage/app/backup`).
-4. Pulihkan `.env` dari simpanan Anda, lalu `php artisan storage:link`, `php artisan optimize:clear`, `php artisan optimize`.
+4. Pulihkan `.env` dari simpanan Anda, lalu `chown -R www-data:www-data storage bootstrap/cache` (berkas hasil salin milik pengguna yang menyalin), `php artisan storage:link`, `php artisan optimize:clear`, `php artisan optimize`.
 5. Periksa: masuk, buka satu SPT dan unduh dokumennya, buka `/jadwal`.
 6. Hapus `/tmp/pulih` (berisi data pribadi).
 
@@ -154,12 +160,38 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
 ## Reverse proxy dan HTTPS
 
 - Terminasi TLS di Nginx/load balancer. Set `APP_URL=https://...` dan `SESSION_SECURE_COOKIE=true`.
-- Set `TRUSTED_PROXIES` ke `*` atau IP/CIDR proxy (dipisah koma). Tanpa itu `request()->ip()` dan `activity_log.ip` mencatat alamat proxy, dan aplikasi menyangka permintaan http.
+- Set `TRUSTED_PROXIES` ke `127.0.0.1` bila Nginx berada di mesin yang sama, atau ke IP/CIDR proxy (dipisah koma). Tanpa itu `request()->ip()` dan `activity_log.ip` mencatat alamat proxy, dan aplikasi menyangka permintaan http.
+- `*` hanya untuk proxy yang alamatnya berubah-ubah (mis. load balancer awan), dan hanya bila PHP-FPM/port aplikasi tidak dapat dijangkau langsung. Kalau dapat, siapa pun bisa mengirim `X-Forwarded-For` palsu: pembatas laju publik dilewati dan `activity_log.ip` dipalsukan.
 - Proxy harus meneruskan `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, dan `Host`:
   ```
   proxy_set_header Host $host;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  ```
+- Contoh server block Nginx (PHP-FPM di mesin yang sama; sesuaikan nama soket dan domain):
+  ```
+  server {
+      listen 443 ssl;
+      server_name alamat-publik;
+      root /var/www/simon/public;
+      index index.php;
+      client_max_body_size 13m;
+
+      location / {
+          try_files $uri $uri/ /index.php?$query_string;
+      }
+
+      location ~ \.php$ {
+          include fastcgi_params;
+          fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+          fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+          fastcgi_read_timeout 300;
+      }
+
+      location ~ /\.(?!well-known) {
+          deny all;
+      }
+  }
   ```
 - Aplikasi sendiri mengirim `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, dan `Permissions-Policy`; jangan digandakan dengan nilai berbeda di web server. Belum ada CSP. Tambahkan HSTS di web server setelah https stabil.
 - Pembatas laju (halaman publik 120/menit per IP, ekspor 10/menit per pengguna, ganti email 3 per 10 menit, login 5 per menit per nama pengguna+IP) memakai `CACHE_STORE`; butuh `TRUSTED_PROXIES` benar agar "per IP" tidak berarti "per proxy".
@@ -239,7 +271,7 @@ Skrip presentasi 10 langkah (±15 menit):
 - [ ] `/`, `/jadwal`, `/realisasi` terbuka tanpa login dan gambar slide tampil (`storage:link` benar).
 - [ ] Login Admin berhasil; menu Profil terbuka dan menyimpan foto (GD/WebP/exif).
 - [ ] `php artisan about` menunjukkan `Environment production`, `Debug mode OFF`, `Cache database`/`redis`, `Queue database`, `Maintenance mode OFF`.
-- [ ] `php artisan schedule:list` menunjukkan tujuh pekerjaan (tabel "Cron dan scheduler"); `php artisan schedule:run` tidak galat.
+- [ ] `php artisan schedule:list` menunjukkan delapan pekerjaan (tabel "Cron dan scheduler"); `php artisan schedule:run` tidak galat.
 - [ ] Worker berjalan: `sudo supervisorctl status simon-worker:*` RUNNING. Ekspor Register > 1.000 baris (atau PDF > 200 baris) selesai dan notifikasi `File ekspor siap` muncul.
 - [ ] Email uji sampai ke kotak masuk (bagian "Email (SMTP)").
 - [ ] `php artisan backup:run` sukses, `php artisan backup:list` menunjukkan `Healthy`, dan zip memuat `db-dumps/` serta `storage/app/private/`. Salinan ke luar server berjalan.

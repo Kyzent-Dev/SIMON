@@ -19,6 +19,8 @@ use App\Models\User;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\Settings;
 use App\Support\CachePublik;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +61,30 @@ class CachePublikTest extends TestCase
         }
 
         return preg_replace('/\s+/', ' ', strip_tags($this->get($url)->assertOk()->getContent()));
+    }
+
+    public function test_pangkas_menghapus_baris_kedaluwarsa_store_database(): void
+    {
+        $acara = collect(app(Schedule::class)->events())->first(fn (Event $e) => $e->description === 'cache:pangkas');
+        $this->assertNotNull($acara);
+        $this->assertSame('10 0 * * *', $acara->expression);
+        $this->assertSame('Asia/Jakarta', (string) $acara->timezone);
+
+        config(['cache.default' => 'database']);
+        Cache::put('publik:1:lama', 'x', 60);
+        DB::table('cache_locks')->insert(['key' => 'kunci-lama', 'owner' => 'uji', 'expiration' => now()->getTimestamp() + 60]);
+        $this->travel(2)->hours();
+        Cache::put('publik:2:baru', 'y', 3600);
+        DB::table('cache_locks')->insert(['key' => 'kunci-baru', 'owner' => 'uji', 'expiration' => now()->getTimestamp() + 60]);
+
+        config(['cache.default' => 'array']); // other stores: no-op
+        $acara->run(app());
+        $this->assertSame(2, DB::table('cache')->count());
+
+        config(['cache.default' => 'database']);
+        $acara->run(app());
+        $this->assertSame([config('cache.prefix').'publik:2:baru'], DB::table('cache')->pluck('key')->all());
+        $this->assertSame(['kunci-baru'], DB::table('cache_locks')->pluck('key')->all());
     }
 
     public function test_agregat_disimpan(): void

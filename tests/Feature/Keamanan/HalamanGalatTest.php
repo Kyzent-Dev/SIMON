@@ -33,7 +33,6 @@ class HalamanGalatTest extends TestCase
         return [
             [403, 'Akses ditolak', 'Kembali ke beranda'],
             [404, 'Halaman tidak ditemukan', 'Kembali ke beranda'],
-            [429, 'Terlalu banyak permintaan', 'Kembali ke beranda'],
             [500, 'Terjadi kesalahan', 'Kembali ke beranda'],
             [503, 'Sedang dalam pemeliharaan', null],
         ];
@@ -60,6 +59,16 @@ class HalamanGalatTest extends TestCase
     {
         $this->assertStringContainsString('Sesi kedaluwarsa', view('errors.419')->render());
         $this->assertStringContainsString('Muat ulang', view('errors.419')->render());
+    }
+
+    /** The public pages and beranda share throttle:publik, so a link home would hit the same limit: reload after waiting instead. */
+    public function test_429_muat_ulang_tanpa_tautan_beranda(): void
+    {
+        Route::middleware('web')->get('/_uji-galat', fn () => abort(429));
+
+        $this->get('/_uji-galat')->assertStatus(429)->assertSee('<title>Terlalu banyak permintaan · SIMON-SPT</title>', false)
+            ->assertSee('Tunggu sebentar sebelum mencoba lagi.')->assertSee('onclick="location.reload()"', false)->assertSee('Muat ulang')
+            ->assertDontSee('Kembali ke beranda');
     }
 
     public function test_500_tanpa_database(): void

@@ -71,6 +71,9 @@ class CadanganTest extends TestCase
         $this->assertSame('local', config('filesystems.disks.backup.driver'));
         $this->assertArrayHasKey('dump_binary_path', config('database.connections.mysql.dump'));
         $this->assertArrayHasKey('dump_binary_path', config('database.connections.mariadb.dump'));
+        foreach (['mysql', 'mariadb'] as $koneksi) { // volatile tables out of the dump; failed_jobs and activity_log stay
+            $this->assertSame(['cache', 'cache_locks', 'sessions', 'jobs'], config("database.connections.{$koneksi}.dump.exclude_tables"), $koneksi);
+        }
     }
 
     public function test_tanpa_email_tidak_gagal(): void

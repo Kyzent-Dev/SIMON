@@ -4,8 +4,12 @@ namespace App\Support;
 
 use Closure;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
-/** Version-keyed cache of public aggregates (Fase 11 E6): bumping the version orphans every entry; old keys expire by TTL. */
+/**
+ * Version-keyed cache of public aggregates (Fase 11 E6): bumping the version orphans every entry. Redis drops old keys by TTL;
+ * the database store deletes an expired row only when that key is read again, so pangkasKedaluwarsa() runs nightly.
+ */
 class CachePublik
 {
     private const TTL = 3600;
@@ -25,6 +29,19 @@ class CachePublik
     public static function segarkan(): void
     {
         Cache::forever('publik:versi', self::versi() + 1);
+    }
+
+    /** Deletes expired rows of the database cache store (orphaned versions, throttle:publik counters per IP); no-op for other stores. */
+    public static function pangkasKedaluwarsa(): void
+    {
+        if (config('cache.default') !== 'database') {
+            return;
+        }
+        $c = config('cache.stores.database');
+        $db = DB::connection($c['connection'] ?? null);
+        foreach ([$c['table'] ?? 'cache', $c['lock_table'] ?? 'cache_locks'] as $tabel) {
+            $db->table($tabel)->where('expiration', '<=', now()->getTimestamp())->delete();
+        }
     }
 
     /** Same filter, any key order, one cache key. */

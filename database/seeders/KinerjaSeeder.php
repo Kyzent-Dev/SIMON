@@ -37,6 +37,13 @@ class KinerjaSeeder extends Seeder
 
     public function run(): void
     {
+        // Creates accounts with password `password` and bulk-inserts SPT past the cache refresh: never on a real server.
+        if (app()->isProduction()) {
+            $this->command?->error('KinerjaSeeder hanya untuk pengukuran lokal; tidak dijalankan di produksi.');
+
+            return;
+        }
+
         $this->rng = new Randomizer(new Mt19937(2026));
         $sekarang = CarbonImmutable::now('Asia/Jakarta');
         $hariIni = $sekarang->toDateString();

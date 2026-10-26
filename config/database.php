@@ -62,7 +62,8 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH')], // spatie/laravel-backup; unset = use PATH
+            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md).
+            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs']],
         ],
 
         'mariadb' => [
@@ -83,7 +84,8 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH')], // spatie/laravel-backup; unset = use PATH
+            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md).
+            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs']],
         ],
 
         'pgsql' => [
