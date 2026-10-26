@@ -74,11 +74,15 @@ class KalenderIrbanTest extends TestCase
         $orang = Objek::factory()->create(['nama' => 'Kecamatan Milik Lain', 'jenis' => 'kecamatan']);
         IrbanWilayah::create(['irban_id' => $this->irban->id, 'tahun' => 2026, 'objek_id' => $sendiri->id]);
         IrbanWilayah::create(['irban_id' => $this->irban->id, 'tahun' => 2026, 'objek_id' => $bumd->id]);
+        $rsud = Objek::factory()->create(['nama' => 'RSUD Contoh Sehat', 'jenis' => 'rsud']);
+        IrbanWilayah::create(['irban_id' => $this->irban->id, 'tahun' => 2026, 'objek_id' => $rsud->id]);
         IrbanWilayah::create(['irban_id' => $this->lain->id, 'tahun' => 2026, 'objek_id' => $orang->id]);
 
         $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()
             ->assertSee('Wilayah Pengawasan')->assertSee('Kecamatan Milik Sendiri')->assertSee('Perumdam Lematang Enim')
-            ->assertSee('RSUD, Puskesmas, Desa, BUMDes, dan Sekolah mengikuti wilayah kecamatan.')
+            ->assertSeeInOrder(['Kecamatan', 'Dinas/Badan', 'BUMD', 'Perumdam Lematang Enim', 'RSUD', '(1)', 'RSUD Contoh Sehat'])
+            ->assertSee('Puskesmas, Desa, BUMDes, dan Sekolah mengikuti wilayah kecamatan.')
+            ->assertDontSee('RSUD, Puskesmas')
             ->assertDontSee('Kecamatan Milik Lain')->assertDontSee('Jenis Rahasia Irban Lain')->assertDontSee('Keterangan irban lain');
     }
 

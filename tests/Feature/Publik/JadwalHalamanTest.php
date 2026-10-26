@@ -125,12 +125,14 @@ class JadwalHalamanTest extends TestCase
     public function test_wilayah_panel_lists(): void
     {
         $bumd = Objek::factory()->create(['nama' => 'BUMD M', 'jenis' => 'bumd']);
-        foreach ([$this->kecX, $this->kecY, $this->dinasD, $bumd] as $o) {
+        $rsud = Objek::factory()->create(['nama' => 'RSUD R', 'jenis' => 'rsud']);
+        foreach ([$this->kecX, $this->kecY, $this->dinasD, $bumd, $rsud] as $o) {
             IrbanWilayah::create(['irban_id' => $this->a->id, 'tahun' => 2026, 'objek_id' => $o->id]);
         }
 
+        // Fase 11: RSUD is its own list in WilayahPengawasan but the public page keeps three columns (RSUD under Dinas/Badan).
         $this->get('/jadwal')->assertSeeInOrder(['Wilayah Pengawasan', 'Irban A', 'Irban B', 'Irban C',
-            'Kecamatan', '(2)', 'Kec X', 'Kec Y', 'Dinas/Badan', '(1)', 'Dinas D', 'BUMD', '(1)', 'BUMD M'])
+            'Kecamatan', '(2)', 'Kec X', 'Kec Y', 'Dinas/Badan', '(2)', 'Dinas D', 'RSUD R', 'BUMD', '(1)', 'BUMD M'])
             ->assertSee('id="panel-wilayah-tab-0" aria-selected="true"', false);
 
         Livewire::test(Jadwal::class)->set('wilayahTab', '1')->assertSeeHtml('id="panel-wilayah-tab-1" aria-selected="true"')

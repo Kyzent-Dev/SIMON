@@ -12,7 +12,7 @@
     $kolom = array_values(array_unique([...array_keys($lama), ...array_keys($baru)]));
     $impor = $a->log_name === 'impor' && $props->has('jumlah');
     $adaDetail = $impor || $kolom;
-    $nilai = fn ($v) => $v === null ? '—' : (is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (is_bool($v) ? ($v ? 'true' : 'false') : (string) $v));
+    $nilai = fn ($v, $k = '') => $v === null ? '—' : (is_array($v) ? (in_array($k, ['objek', 'anggota'], true) ? ($v === [] ? '—' : implode(', ', $v)) : json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) : (is_bool($v) ? ($v ? 'true' : 'false') : (string) $v));
     $idDetail = 'log-detail-'.$a->id;
     $label = LabelAktivitas::objek($a->subject_type, $a->log_name);
     $adalahSpt = $a->subject_type === (new Spt)->getMorphClass() && $a->subject_id;
@@ -61,8 +61,8 @@
                                 @foreach ($kolom as $k)
                                     <tr class="align-top">
                                         <th scope="row" class="pr-3 pb-1 text-left font-semibold [overflow-wrap:anywhere]">{{ $k }}</th>
-                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($lama[$k] ?? null) }}</td>
-                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($baru[$k] ?? null) }}</td>
+                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($lama[$k] ?? null, $k) }}</td>
+                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($baru[$k] ?? null, $k) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

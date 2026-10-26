@@ -55,7 +55,15 @@ class SaveIrbanTahunan
         }
 
         $row = IrbanTahunan::updateOrCreate(['irban_id' => $irban->id, 'tahun' => $tahun], ['ppj_pegawai_id' => $ppjId]);
+        $lama = $row->anggota()->pluck('pegawai.nama_bergelar')->all();
         $row->anggota()->sync($anggotaIds);
+        $baru = $row->anggota()->pluck('pegawai.nama_bergelar')->all();
+        sort($lama, SORT_NATURAL | SORT_FLAG_CASE);
+        sort($baru, SORT_NATURAL | SORT_FLAG_CASE);
+        // irban_anggota is a pivot (no model event): explicit diff row, only when the composition changed.
+        if ($lama !== $baru) {
+            activity()->performedOn($row)->event('updated')->withProperties(['old' => ['anggota' => $lama], 'attributes' => ['anggota' => $baru]])->log('updated');
+        }
 
         return $row;
     }

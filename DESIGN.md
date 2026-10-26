@@ -131,6 +131,7 @@ Relative luminance (L) is calculated per WCAG 2.1. Contrast ratios are computed 
 | mint-700 | neutral-25 | 5.49 | links on page bg |
 | mint-700 | mint-50 | 5.45 | active nav text |
 | mint-700 | mint-100 | 5.07 | text on soft mint |
+| mint-700 | neutral-50 | 5.25 | links in hovered/striped table rows and table headers |
 | mint-800 | mint-100 | 6.95 | headings on soft mint |
 | mint-800 | mint-200 | 6.12 | text on mint-200 |
 | mint-800 | mint-300 | 5.11 | text on signature mint |

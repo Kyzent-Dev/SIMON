@@ -47,6 +47,13 @@ class HalamanLogAktivitasTest extends TestCase
         return ['causer_type' => $u->getMorphClass(), 'causer_id' => $u->id];
     }
 
+    public function test_diff_pivot_tampil_sebagai_daftar_nama(): void
+    {
+        $this->baris(['event' => 'updated', 'properties' => ['old' => ['objek' => ['Objek A']], 'attributes' => ['objek' => ['Objek A', 'Objek B'], 'anggota' => []]]]);
+
+        Livewire::actingAs($this->user(Role::Admin))->test(LogAktivitas::class)->assertSee('Objek A, Objek B')->assertDontSee('["Objek A"');
+    }
+
     public function test_akses(): void
     {
         $admin = User::factory()->admin()->create();

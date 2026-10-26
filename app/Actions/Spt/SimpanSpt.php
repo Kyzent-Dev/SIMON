@@ -84,7 +84,9 @@ class SimpanSpt
                 }
                 $spt->save();
 
+                $objekLama = $baru ? [] : $spt->objek()->pluck('objek.nama')->all();
                 $spt->objek()->sync($objekIds);
+                $this->catatObjek($user, $spt, $objekLama);
                 DB::afterCommit(fn () => CachePublik::segarkan()); // spt_objek is a pivot: no model event
                 $spt->personel()->get()->each->delete();
                 $spt->personel()->createMany($personel);
@@ -195,6 +197,17 @@ class SimpanSpt
     {
         if ($f && ! BerkasSpt::pdf($f, self::MAKS_LAMPIRAN)) {
             throw ValidationException::withMessages(['lampiran' => 'Lampiran harus PDF dan maksimal 5 MB.']);
+        }
+    }
+
+    /** spt_objek is a pivot (no model event): write the diff row ourselves, only when the set changed (E7). Runs after DiinputOleh::catat in validasi(). */
+    private function catatObjek(User $user, Spt $spt, array $lama): void
+    {
+        $baru = $spt->objek()->pluck('objek.nama')->all();
+        sort($lama, SORT_NATURAL | SORT_FLAG_CASE);
+        sort($baru, SORT_NATURAL | SORT_FLAG_CASE);
+        if ($lama !== $baru) {
+            activity()->performedOn($spt)->causedBy($user)->event('updated')->withProperties(['old' => ['objek' => $lama], 'attributes' => ['objek' => $baru]])->log('updated');
         }
     }
 

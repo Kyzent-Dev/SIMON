@@ -157,7 +157,7 @@ class KalenderPkptTest extends TestCase
         }
         IrbanWilayah::create(['irban_id' => $lain->id, 'tahun' => 2026, 'objek_id' => Objek::factory()->create(['nama' => 'Kec Lain', 'jenis' => 'kecamatan'])->id]);
 
-        $this->assertSame([['irban_id' => $this->irban->id, 'irban' => 'Irban I', 'kecamatan' => ['Kec Z'], 'dinas_badan' => ['RSUD R'], 'bumd' => ['BUMD M']]],
+        $this->assertSame([['irban_id' => $this->irban->id, 'irban' => 'Irban I', 'kecamatan' => ['Kec Z'], 'dinas_badan' => [], 'bumd' => ['BUMD M'], 'rsud' => ['RSUD R']]],
             app(WilayahPengawasan::class)->untuk(2026, $this->irban->id));
         $this->assertCount(Irban::count(), app(WilayahPengawasan::class)->untuk(2026));
     }

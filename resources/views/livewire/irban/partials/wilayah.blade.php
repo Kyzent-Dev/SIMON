@@ -1,4 +1,4 @@
-{{-- Panel "Wilayah Pengawasan" above the calendar ($w = WilayahPengawasan::untuk(tahun, irban)[0]): three lists, collapsible
+{{-- Panel "Wilayah Pengawasan" above the calendar ($w = WilayahPengawasan::untuk(tahun, irban)[0]): four lists (Kecamatan, Dinas/Badan, BUMD, RSUD), collapsible
      (button[aria-expanded]); open from 768, closed below. Opens/closes instantly (DESIGN §7.5). --}}
 <section aria-labelledby="judul-wilayah" class="mb-6 rounded-lg border border-neutral-200 bg-white shadow-xs"
     x-data="{ buka: matchMedia('(min-width: 768px)').matches }">
@@ -10,8 +10,8 @@
         </button>
     </h2>
     <div id="panel-wilayah" x-show="buka" x-cloak class="border-t border-neutral-200 px-4 py-4 lg:px-5">
-        <div class="grid gap-6 md:grid-cols-3">
-            @foreach (['Kecamatan' => $w['kecamatan'] ?? [], 'Dinas/Badan' => $w['dinas_badan'] ?? [], 'Perusda/BUMD' => $w['bumd'] ?? []] as $judul => $nama)
+        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            @foreach (['Kecamatan' => $w['kecamatan'] ?? [], 'Dinas/Badan' => $w['dinas_badan'] ?? [], 'BUMD' => $w['bumd'] ?? [], 'RSUD' => $w['rsud'] ?? []] as $judul => $nama)
                 <div>
                     <h3 class="text-base font-semibold text-neutral-900">{{ $judul }} <span class="text-sm font-normal text-neutral-500 tabular-nums">({{ count($nama) }})</span></h3>
                     @if ($nama === [])
@@ -26,6 +26,6 @@
                 </div>
             @endforeach
         </div>
-        <p class="mt-4 text-sm text-neutral-600">RSUD, Puskesmas, Desa, BUMDes, dan Sekolah mengikuti wilayah kecamatan.</p>
+        <p class="mt-4 text-sm text-neutral-600">Puskesmas, Desa, BUMDes, dan Sekolah mengikuti wilayah kecamatan.</p>
     </div>
 </section>
