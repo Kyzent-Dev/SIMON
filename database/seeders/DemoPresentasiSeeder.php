@@ -55,7 +55,7 @@ class DemoPresentasiSeeder extends Seeder
         'Irban V' => [['Zulkifli Hasan, S.H., M.H.', 'Mega Puspita, S.E.', 'Rudi Hartono, S.T.', 'Intan Permatasari, S.Ak.'], ['Sungai Rotan', 'Muara Belida']],
     ];
 
-    /** Months of the eight 2025 items per irban; every SPT but the last is marked Selesai. */
+    /** Months of the eight 2025 items per irban; every 2025 SPT is marked Selesai with LHP (the late case is 2026 only). */
     private const BULAN_2025 = [2, 3, 4, 5, 7, 8, 9, 10];
 
     private CarbonImmutable $hari;
@@ -225,7 +225,7 @@ class DemoPresentasiSeeder extends Seeder
                 $objek = $t['kecamatan'][$k % count($t['kecamatan'])];
                 $uraian = $i->jenisPenugasan->nama.' di Kecamatan '.Objek::whereKey($objek)->value('nama').'.';
                 $this->jalankan($t, $this->isi($t, $this->reguler, $i, $mulai, $selesai, $objek, $uraian), $mulai, $selesai,
-                    $k < count($item) - 1 ? $selesai->addDays(6) : null);
+                    $selesai->addDays(6));
             }
         }
     }

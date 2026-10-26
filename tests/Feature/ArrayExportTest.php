@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exports\ArrayExport;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -14,10 +15,8 @@ class ArrayExportTest extends TestCase
     {
         $nilai = ['=HYPERLINK("http://x","klik")', '+1+1', '-2+3', '@SUM(A1)', "\t=1"];
         Excel::store(new ArrayExport(['Kolom'], array_map(fn ($v) => [$v, 42], $nilai)), 'uji-array-export.xlsx', 'local');
-        $path = storage_path('app/private/uji-array-export.xlsx');
-        $path = is_file($path) ? $path : storage_path('app/uji-array-export.xlsx');
-        $sheet = IOFactory::load($path)->getActiveSheet();
-        @unlink($path);
+        // The local disk is faked in TestCase: read the file where that disk put it.
+        $sheet = IOFactory::load(Storage::disk('local')->path('uji-array-export.xlsx'))->getActiveSheet();
 
         foreach ($nilai as $i => $v) {
             $sel = $sheet->getCell('A'.($i + 2));

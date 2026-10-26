@@ -24,7 +24,6 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /** E11: `migrate:fresh --seed` (non-production) gives every role and every irban a full presentation; production gets reference rows only. */
@@ -36,7 +35,6 @@ class DataDemoTest extends TestCase
 
     private function seedDemo(): void
     {
-        Storage::fake('local');
         $this->travelTo(CarbonImmutable::create(2026, 10, 15, 10, 0, 0, 'Asia/Jakarta'));
         $this->seed(DatabaseSeeder::class);
     }
@@ -80,8 +78,8 @@ class DataDemoTest extends TestCase
 
             $lalu = Spt::where('irban_id', $irbanId)->where('status_pengajuan', StatusPengajuan::Diterima)->whereYear('tanggal_mulai', 2025)->get();
             $this->assertGreaterThanOrEqual(8, $lalu->count(), $nama);
-            $this->assertGreaterThanOrEqual($lalu->count() - 1, $lalu->whereNotNull('ditandai_selesai_pada')->count(), $nama);
-            $this->assertSame(0, $lalu->whereNull('nomor_lhp')->whereNotNull('ditandai_selesai_pada')->count(), $nama);
+            $this->assertSame(0, $lalu->whereNull('ditandai_selesai_pada')->count(), $nama);
+            $this->assertSame(0, $lalu->whereNull('nomor_lhp')->count(), $nama);
 
             $ini = Spt::where('irban_id', $irbanId)->tahunPenugasan(2026)->get();
             $label = [];
