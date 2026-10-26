@@ -14,3 +14,6 @@ Schedule::call(fn () => CachePublik::segarkan())->name('publik:segarkan')->daily
 Schedule::command('notifikasi:harian')->dailyAt('06:00')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('ekspor:bersihkan')->dailyAt('05:00')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('notifikasi:ringkasan-mingguan')->weeklyOn(1, '07:00')->timezone('Asia/Jakarta')->withoutOverlapping();
+Schedule::command('backup:clean')->dailyAt('01:00')->timezone('Asia/Jakarta')->withoutOverlapping();
+Schedule::command('backup:run')->dailyAt('01:30')->timezone('Asia/Jakarta')->withoutOverlapping();
+Schedule::command('backup:monitor')->dailyAt('08:00')->timezone('Asia/Jakarta')->withoutOverlapping();
