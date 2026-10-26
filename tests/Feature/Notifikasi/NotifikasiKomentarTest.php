@@ -216,4 +216,15 @@ class NotifikasiKomentarTest extends TestCase
         $this->assertStringContainsString('Reset sandi', $text);
         $this->assertStringNotContainsString('\\', $text); // no visible backslashes
     }
+
+    public function test_literal_backslash_survives_in_text_part_and_html_stays_inert(): void
+    {
+        $k = app(TulisKomentar::class)->handle($this->pimpinan, $this->spt, ['isi' => 'a\b [x](https://e.test)']);
+        $mail = (new KomentarBaru($k))->toMail($this->irban);
+
+        $text = (string) app(Markdown::class)->renderText($mail->markdown, $mail->data());
+        $this->assertStringContainsString('Catatan: a\b [x](https://e.test)', $text);
+
+        $this->assertStringNotContainsString('href="https://e.test"', (string) $mail->render());
+    }
 }

@@ -87,6 +87,12 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
         return preg_replace('/[\\\\`*_{}\[\]()#+!|~:-]/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $t));
     }
 
+    /** Inverse of aman(): for the plain-text part, where Markdown is not rendered. Keep the character class identical. */
+    public static function tanpaEscape(string $t): string
+    {
+        return preg_replace('/\\\\([\\\\`*_{}\[\]()#+!|~:-])/', '$1', $t);
+    }
+
     protected function labelTombol(): string
     {
         return in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SIMON-SPT';
