@@ -193,6 +193,7 @@ class PkptDetail extends Component
 
     public function render(KesesuaianPkpt $kesesuaian, PerubahanPkpt $perubahan)
     {
+        Gate::authorize('manage-master-data');
         $draf = $this->pkpt->isDraf();
         $tab = ! $draf && $this->tab === 'perubahan' ? 'perubahan' : 'item';
         $items = $this->pkpt->items()->when($draf || ! $this->dihapus, fn ($q) => $q->aktif())

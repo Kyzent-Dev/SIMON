@@ -75,6 +75,7 @@ class IrbanTahunan extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $selected = collect($this->anggota)->flatten()->merge(array_filter($this->ppj))->all();
         // Active pegawai, plus any saved member deactivated later (so the chip keeps its label).
         $options = Pegawai::where('aktif', true)->orWhereIn('id', $selected)->orderBy('nama_bergelar')->pluck('nama_bergelar', 'id')->all();

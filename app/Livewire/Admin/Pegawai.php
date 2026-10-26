@@ -156,6 +156,7 @@ class Pegawai extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         // Escape LIKE wildcards so "_" and "%" are searched literally.
         $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], trim($this->search));
         $perPage = in_array($this->perPage, [25, 50, 100], true) ? $this->perPage : 25;

@@ -145,6 +145,7 @@ class PkptImpor extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $rows = $this->rows;
         $count = fn (string $s) => count(array_filter($rows, fn ($r) => $r['status'] === $s));
 

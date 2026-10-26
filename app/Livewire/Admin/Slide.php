@@ -151,6 +151,7 @@ class Slide extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $slides = LandingSlide::orderBy('urutan')->orderBy('id')->get();
         $editing = $this->editingId ? $slides->firstWhere('id', $this->editingId) : null;
         // Preview image: the new upload when it is a valid image, else the stored 960 variant.

@@ -57,6 +57,7 @@ class WilayahIrban extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $saved = IrbanWilayah::with('objek')->where('tahun', $this->tahun)->get();
         $owner = $saved->pluck('irban_id', 'objek_id');
         $irbans = Irban::orderBy('id')->get();

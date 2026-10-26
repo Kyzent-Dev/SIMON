@@ -95,6 +95,7 @@ class JenisPenugasan extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         // Live preview and validation come from the same resolver the save uses.
         $customErrors = $this->swatch === 'custom' && trim($this->custom) !== '' ? ColorRules::validateCustom($this->custom) : [];
         $preview = null;

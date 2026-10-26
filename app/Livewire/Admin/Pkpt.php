@@ -99,6 +99,8 @@ class Pkpt extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
+
         return view('livewire.admin.pkpt', [
             'rows' => Model::withCount(['items' => fn ($q) => $q->aktif()])->orderByDesc('tahun')->get(),
             'deleting' => $this->deletingId ? Model::withCount('items')->find($this->deletingId) : null,

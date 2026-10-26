@@ -50,6 +50,8 @@ class Klasifikasi extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
+
         return view('livewire.admin.klasifikasi', [
             'rows' => Model::orderBy('id')->get(),
             'editing' => $this->editingId ? Model::find($this->editingId) : null,

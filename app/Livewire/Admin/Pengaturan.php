@@ -74,6 +74,8 @@ class Pengaturan extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
+
         return view('livewire.admin.pengaturan');
     }
 }

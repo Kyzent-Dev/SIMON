@@ -131,6 +131,7 @@ class Objek extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $term = trim($this->search);
         $like = fn ($q) => $q->where('nama', 'like', '%'.addcslashes($term, '%_\\').'%');
 

@@ -169,6 +169,7 @@ class Tim extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
         $teams = Model::with('anggota.pegawai')->where(['irban_id' => $this->irbanId, 'tahun' => $this->tahun])->orderBy('id')->get();
         // Active pegawai, plus members already on the form (so a deactivated saved member keeps its label).
         $options = Pegawai::where('aktif', true)->orWhereIn('id', array_column($this->members, 'pegawai_id'))->orderBy('nama_bergelar')->pluck('nama_bergelar', 'id')->all();

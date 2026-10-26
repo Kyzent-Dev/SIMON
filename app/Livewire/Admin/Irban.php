@@ -106,6 +106,8 @@ class Irban extends Component
 
     public function render()
     {
+        Gate::authorize('manage-master-data');
+
         return view('livewire.admin.irban', [
             'rows' => Model::orderBy('id')->get(),
             'deleting' => $this->deletingId ? Model::find($this->deletingId) : null,
