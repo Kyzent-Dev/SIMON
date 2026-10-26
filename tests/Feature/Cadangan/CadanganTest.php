@@ -93,9 +93,11 @@ class CadanganTest extends TestCase
         $this->assertTrue($arsip->open($this->dirUji.'/'.$zip[0]) === true);
         $nama = [];
         for ($i = 0; $i < $arsip->numFiles; $i++) {
-            $nama[] = $arsip->getNameIndex($i);
+            $nama[] = str_replace('\\', '/', $arsip->getNameIndex($i)); // Windows writes backslashes
         }
         $arsip->close();
         $this->assertNotEmpty(array_filter($nama, fn ($n) => str_ends_with($n, basename($this->berkasPrivat))));
+        // Relative entries (storage/app/private/...), not the server's absolute path.
+        $this->assertNotEmpty(array_filter($nama, fn ($n) => str_starts_with($n, 'storage/app/private/') && str_ends_with($n, basename($this->berkasPrivat))));
     }
 }

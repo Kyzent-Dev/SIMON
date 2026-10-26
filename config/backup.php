@@ -59,7 +59,7 @@ return [
                  * Set to `null` to include complete absolute path
                  * Example: base_path()
                  */
-                'relative_path' => null,
+                'relative_path' => base_path(), // zip entries relative (storage/app/...) instead of the server's absolute path
             ],
 
             /*

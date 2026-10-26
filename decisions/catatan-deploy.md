@@ -1,5 +1,7 @@
 # Catatan deploy (lintas fase)
 
+Panduan operator yang lengkap dan terurut ada di `DEPLOY.md` (akar repo); file ini menyimpan riwayat per fase.
+
 - `Cache::lock` per tahun (`irban-tahunan-{tahun}`, `irban-wilayah-{tahun}`) hanya melindungi bila cache store dipakai bersama semua proses: produksi wajib `CACHE_STORE=database` atau `redis` (bukan `array`/`file` per server). Indeks unik tetap menjadi jaring pengaman untuk Pegawai, Irban, Tim dan impor; pelanggarannya dikembalikan sebagai galat validasi, bukan 500.
 
 
@@ -53,3 +55,4 @@
 - `DB_DUMP_BINARY_PATH`: folder berisi `mysqldump` (mis. `C:\xampp\mysql\bin`) bila tidak ada di PATH. Koneksi `DB_CONNECTION=mariadb` memanggil `mariadb-dump`; bila hanya ada `mysqldump` (XAMPP), pakai koneksi `mysql`.
 - `BACKUP_MAIL_TO`: alamat penerima laporan sukses/gagal/tidak sehat; kosong = tanpa notifikasi (kegagalan hanya terlihat di keluaran perintah dan log). Isi dengan alamat valid, karena nilai tidak valid membuat perintah gagal. Memerlukan konfigurasi `MAIL_*` yang berfungsi.
 - Pulihkan: ekstrak zip, muat `db-dumps/*.sql` dengan `mysql <db> < berkas.sql`, salin berkas `storage/app/private` dan `storage/app/public` dari zip kembali ke `storage/app/` (di dalam zip jalurnya memuat jalur absolut server asal). Uji pemulihan secara berkala.
+- Perubahan Fase 11 Task 8: jalur di dalam zip cadangan kini relatif terhadap folder aplikasi (`storage/app/private/...`), bukan jalur absolut server asal seperti ditulis di butir "Pulihkan" di atas. Salin isi `storage/app` dari akar ekstraksi ke `storage/app/` aplikasi; langkah rinci di `DEPLOY.md`, "Cadangan dan pemulihan".
