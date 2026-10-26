@@ -5,6 +5,7 @@ namespace App\Services\Publik;
 use App\Enums\StatusPengajuan;
 use App\Services\KesesuaianPkpt;
 use App\Services\WilayahPengawasan;
+use App\Support\CachePublik;
 use App\Support\MingguPkpt;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,11 @@ class JadwalPublik
      *   ordered by jenis name, effective start, id
      */
     public function item(int $tahun, ?int $irban): array
+    {
+        return CachePublik::ingat('jadwalItem', compact('tahun', 'irban'), fn () => $this->hitungItem($tahun, $irban));
+    }
+
+    private function hitungItem(int $tahun, ?int $irban): array
     {
         $item = $this->realisasi->itemDisahkan($tahun, $irban);
         if ($item->isEmpty()) {
@@ -138,6 +144,11 @@ class JadwalPublik
 
     /** @return list<array{irban: string, daftar: array{Kecamatan: list<string>, 'Dinas/Badan': list<string>, BUMD: list<string>}}> */
     public function wilayah(int $tahun): array
+    {
+        return CachePublik::ingat('jadwalWilayah', compact('tahun'), fn () => $this->hitungWilayah($tahun));
+    }
+
+    private function hitungWilayah(int $tahun): array
     {
         return array_map(fn ($w) => ['irban' => $w['irban'], 'daftar' => [
             'Kecamatan' => $w['kecamatan'], 'Dinas/Badan' => $w['dinas_badan'], 'BUMD' => $w['bumd'],

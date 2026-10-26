@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\DicatatAktivitas;
+use App\Models\Concerns\MenyegarkanCachePublik;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['irban_id', 'tahun', 'objek_id'])]
 class IrbanWilayah extends Model
 {
-    use DicatatAktivitas;
+    use DicatatAktivitas, MenyegarkanCachePublik;
 
     protected $table = 'irban_wilayah';
 

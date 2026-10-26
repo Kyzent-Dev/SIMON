@@ -8,6 +8,7 @@ use App\Enums\SumberSpt;
 use App\Models\Aktivitas;
 use App\Models\Spt;
 use App\Models\User;
+use App\Support\CachePublik;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -63,6 +64,7 @@ class ImporSpt
         // Final-review ruling: only the Spt `created` row is logged per SPT; child rows would multiply the log ~6x on a 2000-row file.
         activity()->withoutLogs(function () use ($spt, $admin, $d, $berkas) {
             $spt->objek()->attach($d['objek_ids']);
+            DB::afterCommit(fn () => CachePublik::segarkan()); // pivot: no model event
             foreach ($d['personel'] as $i => $p) {
                 $spt->personel()->create(['pegawai_id' => $p['pegawai_id'], 'peran' => $p['peran'], 'urutan' => $i + 1, 'sumber' => 'tambahan', 'tim_id' => null]);
             }

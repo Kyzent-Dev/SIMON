@@ -8,6 +8,7 @@ use App\Models\Objek;
 use App\Models\Pkpt;
 use App\Models\PkptItem;
 use App\Services\Publik\JadwalPublik;
+use App\Support\CachePublik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -153,6 +154,7 @@ class JadwalHalamanTest extends TestCase
 
         // No Disahkan PKPT at all: the specified copy, even with an irban selected.
         Pkpt::query()->update(['status' => 'draf']);
+        CachePublik::segarkan(); // query-builder write: no model event
         $this->get('/jadwal?irban='.$this->a->id)->assertSee('Belum ada PKPT yang disahkan untuk tahun 2026')
             ->assertDontSee('Belum ada jadwal Irban');
     }

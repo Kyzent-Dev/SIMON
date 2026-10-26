@@ -19,6 +19,7 @@ use App\Services\KesesuaianPkpt;
 use App\Services\PenerimaNotifikasi;
 use App\Services\Settings;
 use App\Support\BerkasSpt;
+use App\Support\CachePublik;
 use App\Support\DiinputOleh;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
@@ -84,6 +85,7 @@ class SimpanSpt
                 $spt->save();
 
                 $spt->objek()->sync($objekIds);
+                DB::afterCommit(fn () => CachePublik::segarkan()); // spt_objek is a pivot: no model event
                 $spt->personel()->get()->each->delete();
                 $spt->personel()->createMany($personel);
 

@@ -10,6 +10,7 @@ use App\Services\Ekspor\PembangunRekap;
 use App\Services\RekapTriwulan;
 use App\Services\Settings;
 use App\Services\Triwulan;
+use App\Support\CachePublik;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
@@ -65,6 +66,11 @@ class RealisasiPublik
     /** @return array{selesai: int, item: int, rencana: int, persen: ?float} */
     public function ringkasan(array $f): array
     {
+        return CachePublik::ingat('ringkasan', $f, fn () => $this->hitungRingkasan($f));
+    }
+
+    private function hitungRingkasan(array $f): array
+    {
         $item = $this->itemDisahkan($f['tahun'], $f['irban'] ?? null, $f['jenis'] ?? null);
         $selesai = $this->basis($f)->count();
         $rencana = array_sum($this->rencanaPerIrban($item, $f['tahun'], $f['tw'] ?? null));
@@ -74,6 +80,11 @@ class RealisasiPublik
 
     /** @return list<int>|list<array{irban: string, jumlah: list<int>}> 12 counts Jan–Des, or one series per irban (by name) */
     public function perBulan(array $f, bool $perIrban): array
+    {
+        return CachePublik::ingat('perBulan', [$f, $perIrban], fn () => $this->hitungPerBulan($f, $perIrban));
+    }
+
+    private function hitungPerBulan(array $f, bool $perIrban): array
     {
         $bulan = 'substr('.$this->triwulan->kolomDasar().', 6, 2)';
         $rows = $this->basis($f)->selectRaw("$bulan as bulan, spt.irban_id, count(*) as jumlah")->groupByRaw("$bulan, spt.irban_id")->get();
@@ -105,6 +116,11 @@ class RealisasiPublik
      */
     public function proporsi(array $f, string $menurut): array
     {
+        return CachePublik::ingat('proporsi', [$f, $menurut], fn () => $this->hitungProporsi($f, $menurut));
+    }
+
+    private function hitungProporsi(array $f, string $menurut): array
+    {
         $jenis = $menurut === 'jenis';
         $kolom = $jenis ? 'spt.jenis_penugasan_id' : 'spt.irban_id';
         $jumlah = $this->basis($f)->selectRaw("$kolom as id, count(*) as jumlah")->groupBy($kolom)->pluck('jumlah', 'id');
@@ -134,6 +150,11 @@ class RealisasiPublik
      * @return array{periode: string, label: list<string>, rencana: list<int>, realisasi: list<int>, persen: list<?int>}
      */
     public function rencanaVsRealisasi(array $f, ?int $tw): array
+    {
+        return CachePublik::ingat('rencanaVsRealisasi', [$f, $tw], fn () => $this->hitungRencanaVsRealisasi($f, $tw));
+    }
+
+    private function hitungRencanaVsRealisasi(array $f, ?int $tw): array
     {
         $f = ['tahun' => $f['tahun'], 'tw' => $tw, 'irban' => $f['irban'] ?? null, 'jenis' => $f['jenis'] ?? null];
         $rencana = $this->rencanaPerIrban($this->itemDisahkan($f['tahun'], $f['irban'], $f['jenis']), $f['tahun'], $tw);
@@ -186,6 +207,11 @@ class RealisasiPublik
 
     /** @return array{tahun: list<int>, tahunDefault: int, irban: list<array>, wilayah: list<array>, jenis: list<array>} */
     public function opsi(): array
+    {
+        return CachePublik::ingat('opsi', [], fn () => $this->hitungOpsi());
+    }
+
+    private function hitungOpsi(): array
     {
         $sekarang = now()->year;
         $tahun = DB::table('pkpt')->where('status', StatusPkpt::Disahkan->value)->orderByDesc('tahun')->pluck('tahun')->map(fn ($t) => (int) $t)->all();

@@ -1,0 +1,193 @@
+<?php
+
+namespace Tests\Feature\Publik;
+
+use App\Actions\MasterData\SaveObjek;
+use App\Actions\Pkpt\Perubahan\AjukanPerubahan;
+use App\Actions\Pkpt\Perubahan\BuatPerubahan;
+use App\Actions\Pkpt\Perubahan\PutuskanPerubahan;
+use App\Actions\Pkpt\Perubahan\SimpanOperasi;
+use App\Actions\Spt\TandaiSelesai;
+use App\Actions\Spt\TerimaPengajuan;
+use App\Enums\Role;
+use App\Livewire\Publik\Jadwal;
+use App\Models\IrbanTahunan;
+use App\Models\Objek;
+use App\Models\Pegawai;
+use App\Models\Spt;
+use App\Models\User;
+use App\Services\Publik\RealisasiPublik;
+use App\Services\Settings;
+use App\Support\CachePublik;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+use ReflectionProperty;
+use RuntimeException;
+use Tests\Support\PdfUji;
+use Tests\TestCase;
+
+/** Fase 11 Task 4 (E6): public aggregates are cached per version; every writer behind the public pages bumps the version. */
+class CachePublikTest extends TestCase
+{
+    use PublikFixture {
+        setUp as protected siapkanFixture;
+    }
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        $this->siapkanFixture();
+        config(['cache.default' => 'array']);
+        Cache::flush();
+        Notification::fake();
+    }
+
+    /** Warm /realisasi and /jadwal, so a later change is only visible when the cache was invalidated. */
+    private function panaskan(): void
+    {
+        $this->get('/realisasi?tahun=2026')->assertOk();
+        $this->teks('/jadwal');
+    }
+
+    private function teks(string $url): string
+    {
+        if ($url === '/jadwal') { // the page lazy-loads the Livewire component
+            return preg_replace('/\s+/', ' ', strip_tags(Livewire::test(Jadwal::class)->html()));
+        }
+
+        return preg_replace('/\s+/', ' ', strip_tags($this->get($url)->assertOk()->getContent()));
+    }
+
+    public function test_agregat_disimpan(): void
+    {
+        $svc = app(RealisasiPublik::class);
+        $pertama = $svc->ringkasan(['tahun' => 2026, 'irban' => null]);
+
+        DB::enableQueryLog();
+        $this->assertSame($pertama, $svc->ringkasan(['irban' => null, 'tahun' => 2026]));
+        $this->assertSame([], DB::getQueryLog());
+    }
+
+    public function test_bagian_umum_menerima_spt_menyegarkan_jadwal(): void
+    {
+        $kecZ = Objek::factory()->create(['nama' => 'Kec Zeta', 'jenis' => 'kecamatan']);
+        $spt = Spt::factory()->menungguNomor()->create([
+            'irban_id' => $this->b->id, 'pkpt_item_id' => $this->b1->id, 'jenis_penugasan_id' => $this->j2->id,
+            'klasifikasi_id' => $this->reguler, 'tanggal_mulai' => '2026-05-04', 'tanggal_selesai' => '2026-05-08',
+        ]);
+        DB::table('spt_objek')->insert(['spt_id' => $spt->id, 'objek_id' => $kecZ->id]);
+        $this->panaskan();
+        $this->assertStringNotContainsString('Kec Zeta', $this->teks('/jadwal'));
+
+        app(TerimaPengajuan::class)->handle(User::factory()->create(['role' => Role::BagianUmum]), $spt);
+
+        $this->assertStringContainsString('Kec Zeta', $this->teks('/jadwal'));
+    }
+
+    public function test_irban_menandai_selesai_menyegarkan_realisasi(): void
+    {
+        $penginput = Pegawai::factory()->create();
+        IrbanTahunan::factory()->create(['irban_id' => $this->a->id, 'tahun' => 2026, 'ppj_pegawai_id' => $penginput->id]);
+        $user = User::factory()->irban()->create();
+        $user->forceFill(['irban_id' => $this->a->id])->save();
+        $e6 = Spt::where('status_pengajuan', 'diterima')->whereNull('ditandai_selesai_pada')->where('pkpt_item_id', $this->a1->id)
+            ->whereDate('tanggal_mulai', '2026-03-01')->firstOrFail();
+        $this->panaskan();
+        $this->assertStringContainsString('2 SPT selesai dari 3', $this->teks('/realisasi?tahun=2026'));
+
+        app(TandaiSelesai::class)->handle($user, $e6, ['diinput_oleh' => $penginput->id, 'nomor_lhp' => 'LHP/1', 'tanggal_lhp' => '2026-03-10'], PdfUji::buat('lhp.pdf', 10));
+
+        $this->assertStringContainsString('3 SPT selesai dari 3', $this->teks('/realisasi?tahun=2026'));
+    }
+
+    public function test_pimpinan_menyetujui_perubahan_pkpt_menyegarkan_jadwal(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $pimpinan = User::factory()->pimpinan()->create();
+        $this->panaskan();
+        $this->assertStringNotContainsString('12 Januari', $this->teks('/jadwal'));
+
+        $p = app(BuatPerubahan::class)->handle($admin, $this->a1->pkpt, ['jenis' => 'perubahan', 'alasan' => 'Menyesuaikan jadwal.']);
+        app(SimpanOperasi::class)->handle($admin, $p, null, ['aksi' => 'ubah', 'pkpt_item_id' => $this->a1->id, 'tanggal_mulai' => '2026-01-12', 'tanggal_selesai' => '2026-03-20']);
+        app(PutuskanPerubahan::class)->handle($pimpinan, app(AjukanPerubahan::class)->handle($admin, $p), true, null);
+
+        $this->assertStringContainsString('12 Januari', $this->teks('/jadwal'));
+    }
+
+    public function test_admin_mengubah_nama_objek_menyegarkan_jadwal(): void
+    {
+        $this->panaskan();
+        $this->assertStringContainsString('Kec X', $this->teks('/jadwal'));
+
+        app(SaveObjek::class)->handle($this->kecX, 'Kec Baru', 'kecamatan', null);
+
+        $teks = $this->teks('/jadwal');
+        $this->assertStringContainsString('Kec Baru', $teks);
+        $this->assertStringNotContainsString('Kec X', $teks);
+    }
+
+    public function test_admin_mengubah_pengaturan_publik_menyegarkan_realisasi(): void
+    {
+        $this->panaskan();
+        $this->assertStringNotContainsString('Desa X1', $this->teks('/realisasi?tahun=2026'));
+
+        app(Settings::class)->set('publik.tampilkan_nama_objek', true);
+
+        $this->assertStringContainsString('Desa X1', $this->teks('/realisasi?tahun=2026'));
+    }
+
+    public function test_dasar_triwulan_menyegarkan(): void
+    {
+        $sebelum = CachePublik::versi();
+        app(Settings::class)->set('rekap.dasar_triwulan', 'tanggal_mulai');
+        $this->assertGreaterThan($sebelum, CachePublik::versi());
+    }
+
+    public function test_rollback_tidak_menyegarkan(): void
+    {
+        $sebelum = CachePublik::versi();
+        try {
+            DB::transaction(function () {
+                $this->v1->forceFill(['uraian_untuk' => 'diubah'])->save();
+                throw new RuntimeException('gagal');
+            });
+        } catch (RuntimeException) {
+        }
+
+        $this->assertSame($sebelum, CachePublik::versi());
+    }
+
+    public function test_pergantian_hari(): void
+    {
+        $this->travelTo(now('Asia/Jakarta')->startOfDay()->subMinute()); // 23:59 Jakarta, the day before
+        $sebelum = CachePublik::versi();
+        $this->travelTo(now('Asia/Jakarta')->addMinute()); // exactly 00:00, when dailyAt('00:00') is due
+
+        $this->artisan('schedule:run');
+
+        $this->assertGreaterThan($sebelum, CachePublik::versi());
+    }
+
+    public function test_muatan_cache_tidak_memuat_model(): void
+    {
+        $this->panaskan();
+        $this->get('/')->assertOk();
+        $kunci = $this->kunciPublik();
+        $this->assertNotEmpty($kunci);
+        foreach ($kunci as $k) {
+            $this->assertStringNotContainsString('App\\Models\\', serialize(Cache::get($k)), $k);
+        }
+    }
+
+    /** @return list<string> */
+    private function kunciPublik(): array
+    {
+        $store = Cache::getStore();
+        $semua = array_keys((new ReflectionProperty($store, 'storage'))->getValue($store));
+
+        return array_values(array_filter($semua, fn ($k) => str_starts_with($k, 'publik:') && $k !== 'publik:versi'));
+    }
+}

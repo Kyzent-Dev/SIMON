@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\JenisPerubahan;
 use App\Enums\StatusPerubahan;
 use App\Models\Concerns\DicatatAktivitas;
+use App\Models\Concerns\MenyegarkanCachePublik;
 use Database\Factories\PkptPerubahanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 class PkptPerubahan extends Model
 {
     /** @use HasFactory<PkptPerubahanFactory> */
-    use DicatatAktivitas, HasFactory;
+    use DicatatAktivitas, HasFactory, MenyegarkanCachePublik;
 
     protected $table = 'pkpt_perubahan';
 

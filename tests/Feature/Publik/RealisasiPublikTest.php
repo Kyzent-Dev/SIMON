@@ -10,6 +10,7 @@ use App\Services\Publik\JadwalPublik;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\RekapTriwulan;
 use App\Services\Settings;
+use App\Support\CachePublik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -49,6 +50,7 @@ class RealisasiPublikTest extends TestCase
 
         // Admin turns KHUSUS public: e1 (KHUSUS Selesai, a1, 10–12 Feb) joins.
         Klasifikasi::where('kode', 'KHUSUS')->update(['tampil_publik' => true]);
+        CachePublik::segarkan(); // query-builder write: no model event
         $s = $this->svc();
         $this->assertSame(3, $s->ringkasan(self::SETAHUN)['selesai']);
         $this->assertSame($this->nol([1 => 2, 5 => 1]), $s->perBulan(self::SETAHUN, false));
@@ -246,8 +248,10 @@ class RealisasiPublikTest extends TestCase
         $this->assertSame([['id' => $this->j2->id, 'nama' => 'Jenis Dua', 'warna' => '#B54708', 'warna_teks' => '#FFFFFF'], ['id' => $this->j1->id, 'nama' => 'Jenis Satu', 'warna' => '#3F6FA6', 'warna_teks' => '#FFFFFF']], $o['jenis']);
 
         Pkpt::where('tahun', 2026)->update(['status' => 'draf']);
+        CachePublik::segarkan();
         $this->assertSame([[2024], 2024], [$this->svc()->opsi()['tahun'], $this->svc()->opsi()['tahunDefault']]); // latest when current is absent
         Pkpt::where('tahun', 2024)->update(['status' => 'draf']);
+        CachePublik::segarkan();
         $this->assertFalse($this->svc()->opsi()['adaDisahkan']); // the year list below is only a fallback
         $this->assertSame([[2026], 2026], [$this->svc()->opsi()['tahun'], $this->svc()->opsi()['tahunDefault']]); // none → current year
     }

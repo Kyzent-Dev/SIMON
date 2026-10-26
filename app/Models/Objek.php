@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\JenisObjek;
 use App\Models\Concerns\DicatatAktivitas;
+use App\Models\Concerns\MenyegarkanCachePublik;
 use Database\Factories\ObjekFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 class Objek extends Model
 {
     /** @use HasFactory<ObjekFactory> */
-    use DicatatAktivitas, HasFactory;
+    use DicatatAktivitas, HasFactory, MenyegarkanCachePublik;
 
     protected $table = 'objek';
 

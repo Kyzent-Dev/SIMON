@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CachePublik;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +68,9 @@ class Settings
             ['value', 'updated_at'],
         );
         Cache::forget(self::CACHE_KEY);
+        if (str_starts_with($key, 'publik.') || $key === 'rekap.dasar_triwulan') {
+            DB::afterCommit(fn () => CachePublik::segarkan());
+        }
         if ($lama !== $value) {
             activity('pengaturan')->event('updated')
                 ->withProperties(['old' => [$key => $lama], 'attributes' => [$key => $value]])->log('updated');

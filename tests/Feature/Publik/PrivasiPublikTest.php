@@ -12,6 +12,7 @@ use App\Models\SptDokumen;
 use App\Models\User;
 use App\Services\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -150,6 +151,34 @@ class PrivasiPublikTest extends TestCase
             if (! str_contains($label, 'realisasi')) {
                 $this->assertStringNotContainsString(self::NOMOR, $isi, $label);
                 $this->assertStringNotContainsString(self::DESA, $isi, $label);
+            }
+        }
+    }
+
+    public function test_no_private_field_appears_with_a_warm_cache_and_after_toggling_the_settings(): void
+    {
+        config(['cache.default' => 'array']);
+        $this->respons(); // warms every cached aggregate
+        $pengaturan = app(Settings::class);
+        foreach ([true, false] as $nilai) {
+            $pengaturan->set('publik.tampilkan_nomor_spt', $nilai);
+            foreach ($this->respons() as $label => $isi) {
+                foreach ([...self::RAHASIA, self::DESA] as $marker) {
+                    $this->assertStringNotContainsString($marker, $isi, "$marker bocor di $label (cache hangat)");
+                }
+                if (! $nilai || ! str_contains($label, 'realisasi')) {
+                    $this->assertStringNotContainsString(self::NOMOR, $isi, "nomor bocor di $label");
+                }
+            }
+        }
+
+        $kunci = array_filter(array_keys((fn () => $this->storage)->call(Cache::getStore())), fn ($k) => str_starts_with($k, 'publik:') && $k !== 'publik:versi');
+        $this->assertNotEmpty($kunci);
+        foreach ($kunci as $k) {
+            $muatan = serialize(Cache::get($k));
+            $this->assertStringNotContainsString('App'.chr(92).'Models'.chr(92), $muatan, $k);
+            foreach ([...self::RAHASIA, self::NOMOR, self::DESA] as $marker) {
+                $this->assertStringNotContainsString($marker, $muatan, "$marker tersimpan di cache $k");
             }
         }
     }
