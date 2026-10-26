@@ -56,12 +56,14 @@ class RoleAccessTest extends TestCase
         $this->assertNotSame($a->username, $b->username);
     }
 
-    public function test_seeder_creates_four_accounts(): void
+    public function test_seeder_creates_demo_accounts(): void
     {
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(4, User::count());
-        $expected = ['admin' => Role::Admin, 'pimpinan' => Role::Pimpinan, 'irban1' => Role::Irban, 'bagianumum' => Role::BagianUmum];
+        // Fase 11 Task 7 (E11): irban2–irban5 joined the four original accounts.
+        $this->assertSame(8, User::count());
+        $expected = ['admin' => Role::Admin, 'pimpinan' => Role::Pimpinan, 'irban1' => Role::Irban, 'bagianumum' => Role::BagianUmum,
+            'irban2' => Role::Irban, 'irban3' => Role::Irban, 'irban4' => Role::Irban, 'irban5' => Role::Irban];
         foreach ($expected as $username => $role) {
             $u = User::where('username', $username)->firstOrFail();
             $this->assertSame($role, $u->role);

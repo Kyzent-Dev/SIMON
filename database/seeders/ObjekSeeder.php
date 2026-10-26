@@ -5,15 +5,11 @@ namespace Database\Seeders;
 use App\Models\Objek;
 use Illuminate\Database\Seeder;
 
-// Dev only, like UserSeeder. SAMPLE names: the real Irban I wilayah table must replace them (see DECISIONS.md).
+// Reference data: runs in production too (E11). SAMPLE names: the real Irban I wilayah table must replace them (see DECISIONS.md).
 class ObjekSeeder extends Seeder
 {
     public function run(): void
     {
-        if (app()->isProduction()) {
-            return;
-        }
-
         $make = fn (string $nama, string $jenis, ?int $parent = null) => Objek::firstOrCreate(['nama' => $nama, 'jenis' => $jenis, 'parent_id' => $parent]);
 
         $kecamatan = collect(['Muara Enim', 'Ujan Mas', 'Gunung Megang', 'Benakat', 'Lawang Kidul'])->map(fn ($n) => $make($n, 'kecamatan'));

@@ -2,31 +2,22 @@
 
 namespace Database\Seeders;
 
-use App\Models\Irban;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(IrbanSeeder::class);
-        $this->call(UserSeeder::class);
-        $this->call(TimSeeder::class);
-        $this->call(ObjekSeeder::class);
-        $this->call(IrbanWilayahSeeder::class);
-        $this->call(JenisPenugasanSeeder::class);
-        $this->call(PkptSeeder::class);
-        $this->call(PkptIrbanIDemo2026Seeder::class);
-
-        if (! app()->isProduction()) {
-            // irban_id is not mass-assignable.
-            User::where('username', 'irban1')->first()?->forceFill(['irban_id' => Irban::where('nama', 'Irban I')->value('id')])->save();
-            $this->call(SptSeeder::class);
-            $this->call(RealisasiDemoSeeder::class);
-            $this->call(KomentarSeeder::class);
-            $this->call(NotifikasiSeeder::class);
-            $this->call(LandingSeeder::class);
+        // Reference rows only in production (E11); klasifikasi comes from its migration.
+        $this->call([IrbanSeeder::class, ObjekSeeder::class, JenisPenugasanSeeder::class]);
+        if (app()->isProduction()) {
+            return;
         }
+
+        $this->call([
+            UserSeeder::class, TimSeeder::class, IrbanWilayahSeeder::class, PkptSeeder::class, PkptIrbanIDemo2026Seeder::class,
+            SptSeeder::class, RealisasiDemoSeeder::class, KomentarSeeder::class, NotifikasiSeeder::class, LandingSeeder::class,
+            DemoPresentasiSeeder::class,
+        ]);
     }
 }

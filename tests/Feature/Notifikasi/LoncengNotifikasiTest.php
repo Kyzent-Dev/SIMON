@@ -199,9 +199,10 @@ class LoncengNotifikasiTest extends TestCase
             $jumlah[$username] = $user->notifications->pluck('data.jenis')->unique()->sort()->values()->all();
         }
         $this->assertGreaterThan(0, User::where('username', 'irban1')->first()->readNotifications()->count());
-        $this->assertSame(['nomor_dibatalkan', 'pengajuan_diterima', 'pengajuan_perlu_revisi', 'spt_terlambat'], $jumlah['irban1']);
-        $this->assertSame(['pengajuan_baru'], $jumlah['bagianumum']);
-        $this->assertSame(['ringkasan_mingguan'], $jumlah['pimpinan']);
+        // At least these (NotifikasiSeeder); DemoPresentasiSeeder (Fase 11 Task 7) adds the bell entries its real actions send.
+        $this->assertSame([], array_diff(['nomor_dibatalkan', 'pengajuan_diterima', 'pengajuan_perlu_revisi', 'spt_terlambat'], $jumlah['irban1']));
+        $this->assertSame([], array_diff(['pengajuan_baru'], $jumlah['bagianumum']));
+        $this->assertSame([], array_diff(['ringkasan_mingguan'], $jumlah['pimpinan']));
         Mail::assertNothingOutgoing();
     }
 }

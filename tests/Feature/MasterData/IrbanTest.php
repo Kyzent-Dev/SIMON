@@ -133,11 +133,12 @@ class IrbanTest extends TestCase
         $this->assertSame(Irban::where('nama', 'Irban I')->value('id'), User::where('username', 'irban1')->value('irban_id'));
     }
 
-    public function test_seeder_skips_in_production(): void
+    public function test_seeder_runs_in_production(): void
     {
+        // Fase 11 Task 7 (E11): the five Irban are reference data, also on a production install.
         $this->app->detectEnvironment(fn () => 'production');
         (new IrbanSeeder)->run();
-        $this->assertSame(0, Irban::count());
+        $this->assertSame(5, Irban::count());
     }
 
     public function test_users_irban_id_has_foreign_key(): void
