@@ -294,4 +294,18 @@ class LogAktivitasTest extends TestCase
         $this->assertTrue($ids->contains(fn ($a) => $a->subject_type === $komentar->getMorphClass() && $a->subject_id === $komentar->id));
         $this->assertFalse($ids->contains(fn ($a) => $a->subject_type === $lain->getMorphClass() && $a->subject_id === $lain->id));
     }
+
+    public function test_simpan_ulang_tim_tanpa_perubahan_tidak_mencatat_anggota(): void
+    {
+        $m = array_map(fn ($p) => ['pegawai_id' => Pegawai::factory()->create()->id, 'peran_default' => $p], ['supervisor_dalnis', 'ketua', 'anggota']);
+        $tim = app(SaveTim::class)->handle(Irban::factory()->create(), (int) now('Asia/Jakarta')->year, null, 'Tim 1', $m);
+        $anggota = fn () => Aktivitas::where('subject_type', (new TimAnggota)->getMorphClass())->count();
+        $this->assertSame(3, $anggota(), 'kontrol: pembuatan mencatat tiga anggota');
+
+        app(SaveTim::class)->handle($tim->irban, $tim->tahun, $tim, 'Tim 1', $m);
+        $this->assertSame(3, $anggota());
+
+        app(SaveTim::class)->handle($tim->irban, $tim->tahun, $tim, 'Tim 1', array_slice($m, 0, 2));
+        $this->assertSame(4, $anggota(), 'hanya anggota yang dihapus tercatat');
+    }
 }

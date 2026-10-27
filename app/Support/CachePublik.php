@@ -44,12 +44,16 @@ class CachePublik
         }
     }
 
-    /** Same filter, any key order, one cache key. */
+    /** Same filter, any key order and tahun as '2026' or 2026, one cache key. */
     private static function urut(array &$a): void
     {
         ksort($a);
-        foreach ($a as &$v) {
-            is_array($v) && self::urut($v);
+        foreach ($a as $k => &$v) {
+            if (is_array($v)) {
+                self::urut($v);
+            } elseif ($k === 'tahun' && is_numeric($v)) {
+                $v = (int) $v;
+            }
         }
     }
 }

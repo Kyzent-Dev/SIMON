@@ -216,4 +216,30 @@ class CachePublikTest extends TestCase
 
         return array_values(array_filter($semua, fn ($k) => str_starts_with($k, 'publik:') && $k !== 'publik:versi'));
     }
+
+    public function test_tahun_string_dan_int_satu_kunci(): void
+    {
+        $svc = app(RealisasiPublik::class);
+        $svc->ringkasan(['tahun' => 2026, 'irban' => null]);
+        $jumlah = count($this->kunciPublik());
+
+        DB::enableQueryLog();
+        $svc->ringkasan(['tahun' => '2026', 'irban' => null]);
+        $this->assertSame([], DB::getQueryLog());
+        $this->assertCount($jumlah, $this->kunciPublik());
+
+        $svc->ringkasan(['tahun' => 2025, 'irban' => null]); // kontrol: tahun lain tetap kunci lain
+        $this->assertCount($jumlah + 1, $this->kunciPublik());
+    }
+
+    public function test_penyegaran_menunggu_commit(): void
+    {
+        $sebelum = CachePublik::versi();
+        DB::transaction(function () use ($sebelum) {
+            $this->v1->forceFill(['uraian_untuk' => 'diubah'])->save();
+            $this->assertSame($sebelum, CachePublik::versi(), 'belum commit: versi tetap');
+        });
+
+        $this->assertGreaterThan($sebelum, CachePublik::versi());
+    }
 }

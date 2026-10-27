@@ -150,7 +150,7 @@ class JadwalPublik
 
     private function hitungWilayah(int $tahun): array
     {
-        // The public page fixes three columns (jadwal.md): RSUD sits under Dinas/Badan, re-sorted by name as before the fourth list existed.
+        // The public page fixes three columns (jadwal.md): RSUD joins Dinas/Badan, so the merged list is re-sorted naturally by name here in PHP (each source list is name-ordered, a plain concat is not).
         return array_map(fn ($w) => ['irban' => $w['irban'], 'daftar' => [
             'Kecamatan' => $w['kecamatan'], 'Dinas/Badan' => collect([...$w['dinas_badan'], ...$w['rsud']])->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all(), 'BUMD' => $w['bumd'],
         ]], app(WilayahPengawasan::class)->untuk($tahun));

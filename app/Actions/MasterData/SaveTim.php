@@ -5,6 +5,7 @@ namespace App\Actions\MasterData;
 use App\Models\Irban;
 use App\Models\Pegawai;
 use App\Models\Tim;
+use App\Support\SinkronBaris;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,10 +44,7 @@ class SaveTim
                 $tim = $tim ?? new Tim(['irban_id' => $irban->id, 'tahun' => $tahun]);
                 $tim->nama = $nama;
                 $tim->save();
-                $tim->anggota()->get()->each->delete();
-                foreach ($members as $i => $m) {
-                    $tim->anggota()->create([...$m, 'urutan' => $i + 1]);
-                }
+                SinkronBaris::handle($tim->anggota(), array_map(fn ($m, $i) => [...$m, 'urutan' => $i + 1], $members, array_keys($members)));
 
                 return $tim;
             });

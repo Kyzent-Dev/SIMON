@@ -9,6 +9,7 @@ use App\Services\MonitoringSpt;
 use Carbon\CarbonImmutable;
 use Database\Seeders\KinerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -46,6 +47,7 @@ class KinerjaDasborTest extends TestCase
             $user = User::where('username', $username)->sole();
             $this->flushSession(); // the session keeps the previous user's password hash (AuthenticateSession)
             $this->actingAs($user)->get($url)->assertOk();
+            Cache::flush(); // a cached page would measure fewer queries than it really runs
             DB::flushQueryLog();
             DB::enableQueryLog();
             $this->actingAs($user)->get($url)->assertOk();
@@ -74,7 +76,7 @@ class KinerjaDasborTest extends TestCase
 
     public function test_hasil_sama(): void
     {
-        $this->isiData(100);
+        $this->isiData(100); // the pinned values below depend on the seeder's RNG draw order: re-capture them when KinerjaSeeder changes
         $pimpinan = User::where('username', 'pimpinan')->sole();
         $irban = User::where('username', 'irban1')->sole();
 

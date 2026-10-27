@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\MasterData;
 
+use App\Models\Aktivitas;
 use App\Services\Settings;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -48,5 +51,33 @@ class SettingsServiceTest extends TestCase
     public function test_settings_is_a_singleton(): void
     {
         $this->assertSame(app(Settings::class), app(Settings::class));
+    }
+
+    public function test_nilai_dan_log_satu_transaksi(): void
+    {
+        $s = app(Settings::class);
+        $s->set('upload.maks_mb', 11); // kontrol: nilai dan satu baris log
+        $this->assertSame(1, Aktivitas::where('log_name', 'pengaturan')->count());
+
+        Aktivitas::creating(fn () => throw new DomainException('log gagal'));
+        try {
+            $s->set('upload.maks_mb', 12);
+            $this->fail('Seharusnya gagal.');
+        } catch (DomainException $e) {
+            $this->assertSame('log gagal', $e->getMessage());
+        }
+        $this->assertSame(11, app(Settings::class)->get('upload.maks_mb'));
+        $this->assertDatabaseHas('settings', ['key' => 'upload.maks_mb', 'value' => '11']);
+
+        Aktivitas::flushEventListeners();
+        try {
+            DB::transaction(function () use ($s) {
+                $s->set('upload.maks_mb', 9);
+                throw new DomainException('pemanggil gagal');
+            });
+        } catch (DomainException) {
+        }
+        $this->assertSame(11, app(Settings::class)->get('upload.maks_mb'));
+        $this->assertSame(1, Aktivitas::where('log_name', 'pengaturan')->count());
     }
 }

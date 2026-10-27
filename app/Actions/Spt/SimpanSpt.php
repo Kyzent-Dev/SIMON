@@ -21,9 +21,11 @@ use App\Services\Settings;
 use App\Support\BerkasSpt;
 use App\Support\CachePublik;
 use App\Support\DiinputOleh;
+use App\Support\SinkronBaris;
 use App\Support\Tanggal;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -84,12 +86,10 @@ class SimpanSpt
                 }
                 $spt->save();
 
-                $objekLama = $baru ? [] : $spt->objek()->pluck('objek.nama')->all();
-                $spt->objek()->sync($objekIds);
-                $this->catatObjek($user, $spt, $objekLama);
+                $objekLama = $baru ? collect() : $spt->objek()->pluck('objek.nama', 'objek.id');
+                $this->catatObjek($user, $spt, $objekLama, $spt->objek()->sync($objekIds));
                 DB::afterCommit(fn () => CachePublik::segarkan()); // spt_objek is a pivot: no model event
-                $spt->personel()->get()->each->delete();
-                $spt->personel()->createMany($personel);
+                SinkronBaris::handle($spt->personel(), $personel);
 
                 $dihapus = collect();
                 if ($lampiran || $hapusLampiran) {
@@ -200,15 +200,22 @@ class SimpanSpt
         }
     }
 
-    /** spt_objek is a pivot (no model event): write the diff row ourselves, only when the set changed (E7). Runs after DiinputOleh::catat in validasi(). */
-    private function catatObjek(User $user, Spt $spt, array $lama): void
+    /**
+     * spt_objek is a pivot (no model event): write the diff row ourselves, only when the set changed (E7). Runs after DiinputOleh::catat in validasi().
+     * The sync result says what changed, so the new names come from $lama and the attached ids without re-reading the pivot.
+     *
+     * @param  Collection<int, string>  $lama  nama by objek id before the sync
+     */
+    private function catatObjek(User $user, Spt $spt, Collection $lama, array $sync): void
     {
-        $baru = $spt->objek()->pluck('objek.nama')->all();
+        if (! $sync['attached'] && ! $sync['detached']) {
+            return;
+        }
+        $baru = $lama->except($sync['detached'])->union($sync['attached'] ? Objek::whereIn('id', $sync['attached'])->pluck('nama', 'id') : [])->values()->all();
+        $lama = $lama->values()->all();
         sort($lama, SORT_NATURAL | SORT_FLAG_CASE);
         sort($baru, SORT_NATURAL | SORT_FLAG_CASE);
-        if ($lama !== $baru) {
-            activity()->performedOn($spt)->causedBy($user)->event('updated')->withProperties(['old' => ['objek' => $lama], 'attributes' => ['objek' => $baru]])->log('updated');
-        }
+        activity()->performedOn($spt)->causedBy($user)->event('updated')->withProperties(['old' => ['objek' => $lama], 'attributes' => ['objek' => $baru]])->log('updated');
     }
 
     /** @return array{0: array<string, mixed>, 1: list<int>, 2: list<array>} columns for the spt row, objek ids, normalized personel */
