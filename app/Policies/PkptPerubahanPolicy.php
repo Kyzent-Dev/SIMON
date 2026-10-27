@@ -11,6 +11,8 @@ use App\Services\PerubahanPkpt;
 /** Admin prepares and manages SK, Pimpinan decides, Irban only reads packages that touch its irban. Status rules live in the actions. */
 class PkptPerubahanPolicy
 {
+    public function __construct(private PerubahanPkpt $perubahan) {}
+
     public function viewAny(User $user): bool
     {
         return in_array($user->role, [Role::Admin, Role::Pimpinan], true);
@@ -23,7 +25,7 @@ class PkptPerubahanPolicy
         }
 
         return $user->role === Role::Irban && $user->irban_id !== null
-            && in_array((int) $user->irban_id, app(PerubahanPkpt::class)->irbanTerdampak($p), true);
+            && in_array((int) $user->irban_id, $this->perubahan->irbanTerdampak($p), true);
     }
 
     public function create(User $user): bool

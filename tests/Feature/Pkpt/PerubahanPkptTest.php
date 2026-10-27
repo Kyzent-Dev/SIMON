@@ -242,7 +242,8 @@ class PerubahanPkptTest extends TestCase
 
         $tahun = 'Tanggal harus berada di tahun 2026.';
         $this->assertSame([$tahun], $this->galat(fn () => $this->op($p, $this->tambahData(['tanggal_selesai' => '2027-01-05'])))['tanggal_selesai']);
-        $this->assertSame(['perubahan' => [PerubahanPkpt::TIDAK_BERUBAH]], $this->galat(fn () => $this->op($p, ['aksi' => 'ubah', 'pkpt_item_id' => $this->a->id])));
+        // Fase 11.2 Task 6 butir 7: its own key, so the screen keeps it in the modal without comparing message text.
+        $this->assertSame(['operasi' => [PerubahanPkpt::TIDAK_BERUBAH]], $this->galat(fn () => $this->op($p, ['aksi' => 'ubah', 'pkpt_item_id' => $this->a->id])));
 
         // Rows written before the rules changed (or by hand) are caught by cek with the operation label.
         PkptPerubahanItem::factory()->create(['perubahan_id' => $p->id, 'aksi' => 'tambah', 'pkpt_item_id' => null, 'urutan' => 1,
@@ -369,12 +370,13 @@ class PerubahanPkptTest extends TestCase
 
         $dampak = app(PerubahanPkpt::class)->dampak($p);
         $this->assertSame([['nama' => 'Irban I', 'jumlah' => 4], ['nama' => 'Irban II', 'jumlah' => 1]], $dampak['irban']);
-        $this->assertSame([['id' => $spt->id, 'nomor_lengkap' => $spt->nomor_lengkap, 'irban' => 'Irban I', 'sebelum' => 'Tidak Sesuai PKPT', 'sesudah' => 'Sesuai']], $dampak['spt']);
+        $this->assertSame([['id' => $spt->id, 'nomor_lengkap' => $spt->nomor_lengkap, 'irban' => 'Irban I', 'sebelum' => false, 'sesudah' => true]], $dampak['spt']); // sesuai PKPT (butir 14: no label text)
 
         $p = $this->putuskan($this->ajukan($p), true);
         $this->assertNotContains('tidak_sesuai_pkpt', app(PenandaSpt::class)->untuk($spt->fresh()));
         // After approval the impact is read from data_lama, so the history keeps showing the flip.
-        $this->assertSame('Sesuai', app(PerubahanPkpt::class)->dampak($p)['spt'][0]['sesudah']);
+        $flip = app(PerubahanPkpt::class)->dampak($p)['spt'][0];
+        $this->assertSame([false, true], [$flip['sebelum'], $flip['sesudah']]);
     }
 
     public function test_usulan_follow_the_package(): void

@@ -47,6 +47,8 @@ class SimpanSpt
 {
     public const MAKS_LAMPIRAN = 5 * 1024 * 1024;
 
+    public const ITEM_TIDAK_VALID = 'Item PKPT tidak valid untuk Irban ini.';
+
     /** @var list<string> */
     public array $peringatan = [];
 
@@ -68,14 +70,20 @@ class SimpanSpt
         $this->peringatan = $this->peringatan($data, $user->irban_id);
 
         $path = null;
+        // PKPT lock only when the save links an item the SPT row does not hold yet (see kunciItem); the caller's copy is the first guess.
+        $itemBaru = $kolom['pkpt_item_id'] ?? null;
+        $kunci = $itemBaru !== null && $itemBaru !== $spt?->pkpt_item_id;
         try {
-            [$spt, $dihapus] = DB::transaction(function () use ($user, $spt, $kolom, $objekIds, $personel, $ajukan, $lampiran, $hapusLampiran, &$path) {
-                if ($kolom['pkpt_item_id'] ?? null) {
+            $simpan = function () use ($user, $spt, $kolom, $objekIds, $personel, $ajukan, $lampiran, $hapusLampiran, $itemBaru, &$kunci, &$path) {
+                if ($kunci) {
                     $this->kunciItem($user->irban_id, $kolom);
                 }
                 if ($spt) {
                     $spt = Spt::whereKey($spt->id)->lockForUpdate()->firstOrFail();
                     $this->pastikanBisaDiubah($spt);
+                    if (! $kunci && $itemBaru !== null && $spt->pkpt_item_id !== $itemBaru) {
+                        return null; // another tab changed the item meanwhile: nothing written yet, retry with the PKPT lock first
+                    }
                 }
                 $baru = ! $spt;
                 $spt ??= (new Spt)->forceFill(['irban_id' => $user->irban_id, 'dibuat_oleh' => $user->id, 'status_pengajuan' => StatusPengajuan::Draf, 'sumber' => SumberSpt::Sistem]);
@@ -114,7 +122,13 @@ class SimpanSpt
                 }
 
                 return [$spt, $dihapus];
-            });
+            };
+            $hasil = DB::transaction($simpan);
+            if ($hasil === null) {
+                $kunci = true;
+                $hasil = DB::transaction($simpan);
+            }
+            [$spt, $dihapus] = $hasil;
         } catch (\Throwable $e) {
             if ($path) {
                 Storage::disk('local')->delete($path);
@@ -164,6 +178,8 @@ class SimpanSpt
     /**
      * K7 against a concurrent Perubahan PKPT approval: lock the PKPT row (approval locks it too, always first) and re-read the item,
      * so an approval that removed the item or changed its irban/jenis cannot commit in the same window as this SPT.
+     * Skipped when the SPT row (read under its lock) already holds this item: that committed reference makes the approval's cek() refuse
+     * K7 by itself, and the first save that linked the item took this lock. jenis_penugasan_id always follows the item (validasi).
      */
     private function kunciItem(int $irbanId, array $kolom): void
     {
@@ -172,7 +188,7 @@ class SimpanSpt
         $ada = PkptItem::aktif()->whereKey($kolom['pkpt_item_id'])->where('irban_id', $irbanId)
             ->where('jenis_penugasan_id', $kolom['jenis_penugasan_id'] ?? null)->exists();
         if (! $ada) {
-            throw ValidationException::withMessages(['pkpt_item_id' => 'Item PKPT tidak valid untuk Irban ini.']);
+            throw ValidationException::withMessages(['pkpt_item_id' => self::ITEM_TIDAK_VALID]);
         }
     }
 
@@ -241,7 +257,7 @@ class SimpanSpt
         if ($itemId = $this->int($d['pkpt_item_id'] ?? null)) {
             $item = PkptItem::aktif()->with('pkpt')->where('irban_id', $irbanId)->find($itemId);
             if (! $item) {
-                $e['pkpt_item_id'] = 'Item PKPT tidak valid untuk Irban ini.';
+                $e['pkpt_item_id'] = self::ITEM_TIDAK_VALID;
             }
         }
         if ($klasifikasi && $ajukan && ! $item && ! isset($e['pkpt_item_id']) && $klasifikasi->wajib_item_pkpt) {

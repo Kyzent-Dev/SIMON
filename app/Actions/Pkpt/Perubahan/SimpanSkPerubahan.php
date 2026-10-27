@@ -66,7 +66,7 @@ class SimpanSkPerubahan
                 if ($diubah->isEmpty()) {
                     return [$p, null];
                 }
-                $p->forceFill(['sk_lengkap_pada' => $p->skLengkap() ? ($p->sk_lengkap_pada ?? now()) : null])->save();
+                $p->save(); // sk_lengkap_pada follows skLengkap() (PkptPerubahan::booted)
                 $this->catat($p, 'sk_diubah', $user, 'Diubah: '.$diubah->implode(', ').'.');
 
                 return [$p, $path ? $lama : null];

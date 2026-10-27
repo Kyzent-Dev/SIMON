@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Pkpt\Perubahan\BuangPerubahan;
 use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -46,6 +47,7 @@ use App\Livewire\Publik\Jadwal as PublikJadwal;
 use App\Livewire\Publik\Realisasi as PublikRealisasi;
 use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail as SptDetail;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:publik')->group(function () {
@@ -93,7 +95,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/pkpt', Pkpt::class)->name('admin.pkpt');
         Route::get('/pkpt/{pkpt}', PkptDetail::class)->name('admin.pkpt.show');
         Route::get('/pkpt/{pkpt}/impor', PkptImpor::class)->name('admin.pkpt.impor');
-        Route::get('/pkpt/{pkpt}/perubahan/{perubahan}', AdminPerubahanPkpt::class)->name('admin.pkpt.perubahan');
+        Route::get('/pkpt/{pkpt}/perubahan/{perubahan}', AdminPerubahanPkpt::class)->name('admin.pkpt.perubahan')
+            ->missing(fn (Request $r) => to_route('admin.pkpt.show', ['pkpt' => $r->route('pkpt'), 'tab' => 'perubahan'])->with('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]));
         Route::get('/slide', Slide::class)->name('admin.slide');
         Route::get('/kontak', Kontak::class)->name('admin.kontak');
         Route::get('/impor', Impor::class)->name('admin.impor');
@@ -104,7 +107,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/pimpinan/rekap', Rekap::class)->name('pimpinan.rekap')->middleware('role:pimpinan');
     Route::get('/pimpinan/log', LogAktivitas::class)->name('pimpinan.log')->middleware('role:pimpinan');
     Route::get('/pimpinan/perubahan-pkpt', PimpinanPerubahanPkpt::class)->name('pimpinan.perubahan-pkpt')->middleware('role:pimpinan');
-    Route::get('/pimpinan/perubahan-pkpt/{perubahan}', PimpinanPerubahanPkptDetail::class)->name('pimpinan.perubahan-pkpt.show')->middleware('role:pimpinan');
+    Route::get('/pimpinan/perubahan-pkpt/{perubahan}', PimpinanPerubahanPkptDetail::class)->name('pimpinan.perubahan-pkpt.show')->middleware('role:pimpinan')
+        ->missing(fn () => to_route('pimpinan.perubahan-pkpt')->with('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]));
     // Legacy bell links of the removed schedule revision page.
     Route::redirect('/pimpinan/revisi-jadwal', '/pimpinan/perubahan-pkpt')->name('pimpinan.revisi-jadwal')->middleware('role:pimpinan');
     Route::get('/irban', IrbanDasbor::class)->name('irban.dashboard')->middleware('role:irban');

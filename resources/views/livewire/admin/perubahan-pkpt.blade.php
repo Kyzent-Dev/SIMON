@@ -191,7 +191,7 @@
                                     <p id="alasan-ajukan-nonaktif" class="text-sm text-neutral-600 sm:text-right">Selesaikan dulu hal pada "Belum dapat diajukan" di atas.</p>
                                 @endif
                             </div>
-                            @if ($p->nomor_urut === null)
+                            @if ($bisaBuang)
                                 <x-ui.button type="button" variant="danger-outline" icon="trash" wire:click="$set('buangOpen', true)" class="max-sm:w-full">Buang perubahan</x-ui.button>
                             @endif
                         </div>

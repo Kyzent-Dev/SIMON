@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pkpt;
 
+use App\Actions\Pkpt\Perubahan\BuangPerubahan;
 use App\Actions\Pkpt\Perubahan\BuatPerubahan;
 use App\Enums\Role;
 use App\Enums\StatusPerubahan;
@@ -245,6 +246,9 @@ class AdminPerubahanPkptTest extends TestCase
     {
         $this->halaman($this->paket([], 'diajukan'))->assertSee('Perubahan PKPT 2026 · Belum bernomor')->assertDontSee('Draf Perubahan');
         $this->halaman($this->paket([], 'disetujui'))->assertSee('Perubahan PKPT 2026 · Perubahan ke-1');
+        // Fase 11.2 Task 6 butir 10: a rejected package is still unnumbered, under the rejection alert.
+        $this->halaman($this->paket([], 'ditolak'))->assertSee('Perubahan PKPT 2026 · Belum bernomor')->assertSee('Ditolak Pimpinan')
+            ->assertDontSee('Perubahan ke-');
     }
 
     public function test_preview_ignores_a_foreign_item_id(): void
@@ -262,7 +266,7 @@ class AdminPerubahanPkptTest extends TestCase
     {
         $kasus = [
             $this->paket([], 'disetujui'),
-            $this->paket(['nomor_urut' => 2, 'sk_lengkap_pada' => now()], 'disetujui'),
+            PkptPerubahan::factory()->disetujui(2)->skLengkap()->create(['pkpt_id' => $this->pkpt->id]),
             $this->paket(['nomor_urut' => 3, 'sumber' => 'migrasi_revisi'], 'disetujui'),
             $this->paket([], 'diajukan'),
         ];
@@ -303,11 +307,62 @@ class AdminPerubahanPkptTest extends TestCase
         $this->paket(['diajukan_pada' => now()->subDay()], 'diajukan');
         $this->paket([], 'disetujui');                                                         // counts
         $this->paket(['nomor_urut' => 2, 'pengingat_sk_dimatikan_pada' => now()], 'disetujui'); // reminder off
-        $this->paket(['nomor_urut' => 3, 'sk_lengkap_pada' => now()], 'disetujui');             // SK complete
+        PkptPerubahan::factory()->disetujui(3)->skLengkap()->create(['pkpt_id' => $this->pkpt->id]); // SK complete
         $this->paket(['nomor_urut' => 4, 'sumber' => 'migrasi_revisi'], 'disetujui');          // migrated
 
         $h = Livewire::actingAs($this->admin)->test(Dasbor::class);
         $this->assertSame([2, 1], [$h->viewData('menunggu'), $h->viewData('skBelum')]);
         $h->assertSee(route('admin.pkpt.show', ['pkpt' => $lain, 'tab' => 'perubahan']), false);
+    }
+
+    /** Fase 11.2 Task 6 butir 11: "SK belum dilengkapi" follows skLengkap() (the stored stamp is written by the model from it). */
+    public function test_perlu_sk_mengikuti_sk_lengkap(): void
+    {
+        $p = PkptPerubahan::factory()->disetujui()->skLengkap()->create(['pkpt_id' => $this->pkpt->id]);
+        $this->assertTrue($p->skLengkap());
+        $this->assertFalse($p->fresh()->perluSk());
+        $this->assertSame([], PkptPerubahan::query()->perluSk()->pluck('id')->all());
+
+        $p->forceFill(['berkas_sk' => null])->save();
+        $this->assertTrue($p->fresh()->perluSk());
+        $this->assertSame([$p->id], PkptPerubahan::query()->perluSk()->pluck('id')->all());
+    }
+
+    /** Fase 11.2 Task 6 butir 9 (and the h1 branch of a rejected action, butir 10): a refused submit saves nothing. */
+    public function test_ajukan_yang_ditolak_tidak_menyimpan_jenis_dan_alasan(): void
+    {
+        $p = $this->paket(); // no operasi: cek() = KOSONG
+        $this->halaman($p)->set('jenis', 'koreksi_input')->set('alasan', 'Alasan baru.')->call('ajukan')
+            ->assertDispatched('toast', type: 'error', message: PerubahanPkpt::KOSONG)->assertDispatched('fokus-ke', id: 'judul-perubahan');
+        $p->refresh();
+        $this->assertSame(['perubahan', 'Menyesuaikan jadwal pemeriksaan.', StatusPerubahan::Draf], [$p->jenis->value, $p->alasan, $p->status]);
+
+        $p->operasi()->create(['aksi' => 'hapus', 'pkpt_item_id' => $this->b->id, 'data_baru' => [], 'urutan' => 1]);
+        $this->halaman($p)->set('alasan', '')->call('ajukan')->assertHasErrors('alasan');
+        $this->assertSame(StatusPerubahan::Draf, $p->fresh()->status);
+        $this->halaman($p)->set('jenis', 'koreksi_input')->set('alasan', 'Alasan baru.')->call('ajukan')->assertHasNoErrors();
+        $p->refresh();
+        $this->assertSame(['koreksi_input', 'Alasan baru.', StatusPerubahan::Diajukan], [$p->jenis->value, $p->alasan, $p->status]);
+    }
+
+    /** Fase 11.2 Task 6 butir 6: the package was discarded in another tab; an action leads back to the PKPT with a toast, not a 404. */
+    public function test_paket_dibuang_di_tab_lain_memberi_toast_bukan_404(): void
+    {
+        $p = $this->paket();
+        $h = $this->halaman($p);
+        app(BuangPerubahan::class)->handle($this->admin, $p);
+        $h->call('simpanForm')->assertRedirect(route('admin.pkpt.show', ['pkpt' => $this->pkpt, 'tab' => 'perubahan']));
+        $this->assertSame(['type' => 'error', 'message' => BuangPerubahan::DIBUANG], session('toast'));
+    }
+
+    /** Fase 11.2 Task 6 butir 18: a bell link to a discarded package redirects with a toast instead of a 404. */
+    public function test_tautan_ke_paket_yang_dibuang_dialihkan_dengan_toast(): void
+    {
+        $p = $this->paket();
+        $url = route('admin.pkpt.perubahan', [$this->pkpt, $p]);
+        $this->actingAs($this->admin)->get($url)->assertOk(); // control
+        app(BuangPerubahan::class)->handle($this->admin, $p);
+        $this->get($url)->assertRedirect(route('admin.pkpt.show', ['pkpt' => $this->pkpt, 'tab' => 'perubahan']))
+            ->assertSessionHas('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
     }
 }

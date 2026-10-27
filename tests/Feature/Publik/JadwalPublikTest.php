@@ -10,6 +10,7 @@ use App\Services\Publik\JadwalPublik;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class JadwalPublikTest extends TestCase
@@ -34,7 +35,7 @@ class JadwalPublikTest extends TestCase
     {
         $tanpaSpt = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-31', 'target_spt' => 4]);
-        $tanpaSpt->update(['tanggal_mulai_disahkan' => $tanpaSpt->tanggal_mulai, 'tanggal_selesai_disahkan' => $tanpaSpt->tanggal_selesai, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
+        JadwalItem::geser($tanpaSpt, '2026-08-03', '2026-08-28');
         PkptUsulan::factory()->create(['pkpt_item_id' => $this->a1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']); // open proposal: no effect
         PkptUsulan::factory()->ditutup()->create(['pkpt_item_id' => $this->b1->id, 'tanggal_mulai' => '2026-09-01', 'tanggal_selesai' => '2026-09-30']);
 

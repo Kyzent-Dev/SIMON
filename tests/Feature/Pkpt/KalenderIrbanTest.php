@@ -16,6 +16,7 @@ use Database\Seeders\JenisPenugasanSeeder;
 use Database\Seeders\PkptIrbanIDemo2026Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 /** Spec Tugas B.5 #4–#5: Kalender view of the Irban "Jadwal PKPT" page. */
@@ -104,8 +105,7 @@ class KalenderIrbanTest extends TestCase
         $baru = $this->item('2026-06-29');
         $baru->update(['ditambahkan_perubahan_id' => $p->id]);
         $geser = PkptItem::where('irban_id', $this->irban->id)->whereKeyNot($baru->id)->orderBy('tanggal_mulai')->firstOrFail();
-        $geser->update(['tanggal_mulai_disahkan' => $geser->tanggal_mulai, 'tanggal_selesai_disahkan' => $geser->tanggal_selesai,
-            'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        JadwalItem::geser($geser, '2026-11-02', '2026-11-06');
 
         $html = $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()->getContent();
         // Card(s) + popover detail + drawer detail.
@@ -117,7 +117,7 @@ class KalenderIrbanTest extends TestCase
     public function test_moved_item_shows_marker_and_semula_and_dihapus_is_hidden(): void
     {
         $item = $this->item('2026-06-29');
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        JadwalItem::geser($item, '2026-11-02', '2026-11-06');
         PkptItem::factory()->dihapus()->create(['pkpt_id' => $item->pkpt_id, 'irban_id' => $this->irban->id, 'keterangan' => 'Item yang dihapus']);
 
         $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()

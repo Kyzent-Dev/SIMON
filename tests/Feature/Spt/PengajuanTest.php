@@ -26,6 +26,7 @@ use Database\Seeders\UserSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -470,5 +471,40 @@ class PengajuanTest extends TestCase
         }
         $nomor = Spt::whereNotNull('nomor_urut')->orderBy('nomor_urut')->pluck('nomor_urut')->all();
         $this->assertSame(range(1, count($nomor)), $nomor);
+    }
+
+    /** Locking reads of one PKPT row (`Pkpt::whereKey()->lockForUpdate()`) while $fn runs. */
+    private function kunciPkpt(callable $fn): int
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $fn();
+        $n = collect(DB::getQueryLog())->filter(fn ($q) => preg_match('/^select \* from [`"]pkpt[`"] where [`"]pkpt[`"]\.[`"]id[`"] = \?/', $q['query']))->count();
+        DB::disableQueryLog();
+
+        return $n;
+    }
+
+    /**
+     * Fase 11.2 Task 6 butir 5: the PKPT row lock (K7 against a concurrent Perubahan approval) is taken only when the save links an item
+     * the SPT row does not hold yet; a stale copy that still claims the item retries with the lock.
+     */
+    public function test_kunci_pkpt_hanya_bila_item_berubah(): void
+    {
+        $spt = null;
+        $this->assertSame(1, $this->kunciPkpt(function () use (&$spt) {
+            $spt = $this->simpan(mode: 'draf');
+        }));
+        $this->assertSame(0, $this->kunciPkpt(fn () => $this->simpan(['uraian_untuk' => 'Diubah.'], 'draf', $spt)));
+        $this->assertSame('Diubah.', $spt->fresh()->uraian_untuk);
+
+        $lain = PkptItem::factory()->create(['pkpt_id' => $this->item->pkpt_id, 'irban_id' => $this->irban->id, 'jenis_penugasan_id' => $this->jenis->id]);
+        $this->assertSame(1, $this->kunciPkpt(fn () => $this->simpan(['pkpt_item_id' => $lain->id], 'draf', $spt->fresh())));
+        $this->assertSame(0, $this->kunciPkpt(fn () => $this->simpan(['pkpt_item_id' => null, 'klasifikasi_id' => $this->klas('KHUSUS')], 'draf', $spt->fresh())));
+
+        // Another tab unlinked the item after this copy was read: the save retries and takes the lock first.
+        $basi = $spt->fresh()->forceFill(['pkpt_item_id' => $this->item->id]); // what this tab still holds; the row has no item
+        $this->assertSame(1, $this->kunciPkpt(fn () => $this->simpan(['pkpt_item_id' => $this->item->id], 'draf', $basi)));
+        $this->assertSame($this->item->id, $spt->fresh()->pkpt_item_id);
     }
 }

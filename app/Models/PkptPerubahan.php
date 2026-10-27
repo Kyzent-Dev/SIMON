@@ -37,6 +37,12 @@ class PkptPerubahan extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // The stored twin of skLengkap() (needed by the perluSk scope), written here only: it can never disagree with the fields.
+        static::saving(fn (self $p) => $p->sk_lengkap_pada = $p->skLengkap() ? ($p->sk_lengkap_pada ?? now()) : null);
+    }
+
     public function pkpt()
     {
         return $this->belongsTo(Pkpt::class);
@@ -70,13 +76,25 @@ class PkptPerubahan extends Model
     /** Approved by Pimpinan from an Admin paket and the SK is not complete yet: "SK belum dilengkapi" (list marker, dasbor card, daily reminder). */
     public function perluSk(): bool
     {
-        return $this->status === StatusPerubahan::Disetujui && $this->sumber === 'admin' && $this->sk_lengkap_pada === null;
+        return $this->status === StatusPerubahan::Disetujui && $this->sumber === 'admin' && ! $this->skLengkap();
     }
 
-    /** Query twin of perluSk(); call it on a builder (`PkptPerubahan::query()->perluSk()`). */
+    /** Query twin of perluSk(): sk_lengkap_pada is kept equal to skLengkap() on every save (booted). Call it on a builder (`PkptPerubahan::query()->perluSk()`). */
     public function scopePerluSk(Builder $query): void
     {
         $query->where('status', StatusPerubahan::Disetujui)->where('sumber', 'admin')->whereNull('sk_lengkap_pada');
+    }
+
+    /** Operations, jenis and alasan can still be edited (and the package submitted): draf or ditolak. */
+    public function bisaDiubah(): bool
+    {
+        return in_array($this->status, [StatusPerubahan::Draf, StatusPerubahan::Ditolak], true);
+    }
+
+    /** Editable and never approved (no number yet): the package can be discarded. */
+    public function bisaDibuang(): bool
+    {
+        return $this->bisaDiubah() && $this->nomor_urut === null;
     }
 
     /** SK counts as complete when number, date and PDF are all filled. */

@@ -61,11 +61,7 @@ class PutuskanPerubahan
             }
             $this->terapkan($p);
             $nomor = (int) PkptPerubahan::where('pkpt_id', $p->pkpt_id)->max('nomor_urut') + 1;
-            $p->forceFill(['status' => StatusPerubahan::Disetujui, 'nomor_urut' => $nomor] + $putusan);
-            if ($p->skLengkap()) {
-                $p->sk_lengkap_pada ??= now();
-            }
-            $p->save();
+            $p->forceFill(['status' => StatusPerubahan::Disetujui, 'nomor_urut' => $nomor] + $putusan)->save();
             $tampung = PkptUsulan::where('perubahan_id', $p->id)->where('status', StatusUsulan::Ditampung->value);
             $diterapkan = $tampung->pluck('id')->all();
             $tampung->update(['status' => StatusUsulan::Diterapkan->value]);

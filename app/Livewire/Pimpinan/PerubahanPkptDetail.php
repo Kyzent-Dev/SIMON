@@ -62,6 +62,7 @@ class PerubahanPkptDetail extends Component
             $galat = $e->errors();
             if (isset($galat['komentar'])) {
                 $this->addError('komentar', $galat['komentar'][0]);
+                $this->dispatch('fokus-ke', id: 'komentar'); // the Tolak modal's textarea
 
                 return;
             }

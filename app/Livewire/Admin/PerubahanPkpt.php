@@ -13,7 +13,6 @@ use App\Actions\Pkpt\Usulan\TampungUsulan;
 use App\Actions\Pkpt\Usulan\TutupUsulan;
 use App\Enums\AksiPerubahan;
 use App\Enums\AksiUsulan;
-use App\Enums\StatusPerubahan;
 use App\Enums\StatusUsulan;
 use App\Livewire\Concerns\MenampilkanOperasi;
 use App\Models\Irban;
@@ -26,12 +25,14 @@ use App\Models\PkptUsulan;
 use App\Services\PerubahanPkpt as AturanPerubahan;
 use App\Services\Settings;
 use App\Support\Tanggal;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use Throwable;
 
 /**
  * Admin page of one Perubahan PKPT (Fase 9.2 Task 7): jenis/alasan, operasi (tambah/ubah/hapus item), validation strip from
@@ -149,7 +150,7 @@ class PerubahanPkpt extends Component
 
     public function simpanOperasi(SimpanOperasi $simpan): void
     {
-        $ok = $this->jalankan(self::OPERASI, function (PkptPerubahan $p) use ($simpan) {
+        $ok = $this->jalankan([...self::OPERASI, 'operasi'], function (PkptPerubahan $p) use ($simpan) {
             $op = $this->opId ? $p->operasi()->findOrFail($this->opId) : null;
             $data = ['aksi' => $this->aksi, 'pkpt_item_id' => $this->pkpt_item_id];
             if ($this->aksi !== AksiPerubahan::Hapus->value) {
@@ -157,7 +158,7 @@ class PerubahanPkpt extends Component
             }
 
             return $simpan->handle(auth()->user(), $p, $op, $data);
-        }, operasi: true);
+        });
         if ($ok) {
             $this->opOpen = false;
             $this->dispatch('toast', type: 'success', message: 'Operasi disimpan.');
@@ -199,13 +200,20 @@ class PerubahanPkpt extends Component
         $this->dispatch('fokus-ke', id: 'judul-usulan');
     }
 
+    /** Only an open usulan gets the modal; one taken or closed in another tab is a toast (stale tab). */
     public function bukaTutup(int $usulanId): void
     {
-        $this->paket();
-        $this->resetValidation();
-        $this->tutupId = $this->usulan($usulanId)->id;
-        $this->catatan_penutupan = '';
-        $this->tutupOpen = true;
+        $ok = $this->jalankan([], function () use ($usulanId) {
+            $u = $this->usulan($usulanId);
+            if ($u->status !== StatusUsulan::Terbuka) {
+                throw ValidationException::withMessages(['usulan' => TampungUsulan::TIDAK_TERBUKA]);
+            }
+            $this->tutupId = $u->id;
+        });
+        if ($ok) {
+            $this->catatan_penutupan = '';
+            $this->tutupOpen = true;
+        }
     }
 
     public function tutupUsulan(TutupUsulan $tutup): void
@@ -228,13 +236,10 @@ class PerubahanPkpt extends Component
         }
     }
 
-    /** Saves jenis/alasan first (the form may hold unsaved edits), then submits. */
-    public function ajukan(BuatPerubahan $buat, AjukanPerubahan $ajukan): void
+    /** Submits with the form's jenis/alasan (it may hold unsaved edits); both are saved only if the submit goes through. */
+    public function ajukan(AjukanPerubahan $ajukan): void
     {
-        $ok = $this->jalankan(['jenis', 'alasan'], function (PkptPerubahan $p) use ($buat, $ajukan) {
-            $p = $buat->perbarui(auth()->user(), $p, $this->only('jenis', 'alasan'));
-            $ajukan->handle(auth()->user(), $p);
-        });
+        $ok = $this->jalankan(['jenis', 'alasan'], fn (PkptPerubahan $p) => $ajukan->handle(auth()->user(), $p, $this->only('jenis', 'alasan')));
         if ($ok) {
             $this->dispatch('toast', type: 'success', message: 'Perubahan diajukan ke Pimpinan.');
             $this->dispatch('fokus-ke', id: 'judul-perubahan');
@@ -261,10 +266,11 @@ class PerubahanPkpt extends Component
     }
 
     /**
-     * Runs an action on the fresh package. Errors of `$fields` stay inline; any other key (`perubahan`, `pkpt`: stale tab, status) closes the
-     * modals as a toast and moves focus to the h1, since the trigger may be gone. "Tidak ada yang berubah" stays inside the operasi modal.
+     * Runs an action on the fresh package. Errors of `$fields` stay inline (simpanOperasi adds `operasi`: "Tidak ada yang berubah" stays in its
+     * modal); any other key (`perubahan`, `pkpt`, `usulan`: stale tab, status) closes the modals as a toast and moves focus to the h1, since the
+     * trigger may be gone.
      */
-    private function jalankan(array $fields, callable $fn, bool $operasi = false): bool
+    private function jalankan(array $fields, callable $fn): bool
     {
         $p = $this->paket();
         $this->resetValidation();
@@ -274,8 +280,6 @@ class PerubahanPkpt extends Component
             foreach ($e->errors() as $key => $messages) {
                 if (in_array($key, $fields, true)) {
                     $this->addError($key, $messages[0]);
-                } elseif ($operasi && $messages[0] === AturanPerubahan::TIDAK_BERUBAH) {
-                    $this->addError('operasi', $messages[0]);
                 } else {
                     $this->reset('opOpen', 'hapusOpen', 'buangOpen', 'pengingatOpen', 'tutupOpen');
                     $this->dispatch('toast', type: 'error', message: $messages[0]);
@@ -287,6 +291,16 @@ class PerubahanPkpt extends Component
         }
 
         return true;
+    }
+
+    /** The package was discarded in another tab: any request (action or render) leads back to the PKPT with a toast, not a 404. */
+    public function exception(Throwable $e, callable $stopPropagation): void
+    {
+        if ($e instanceof ModelNotFoundException && $e->getModel() === PkptPerubahan::class) {
+            session()->flash('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
+            $this->redirectRoute('admin.pkpt.show', ['pkpt' => $this->pkptId, 'tab' => 'perubahan'], navigate: true);
+            $stopPropagation();
+        }
     }
 
     /** The package of this page, re-read and re-authorized on every request (the update endpoint skips route middleware). */
@@ -330,7 +344,7 @@ class PerubahanPkpt extends Component
     {
         $p = $this->paket();
         $p->load(['pkpt', 'pemutus:id,name', 'operasi.item', 'riwayat' => fn ($q) => $q->with('pengguna:id,name')->orderBy('created_at')->orderBy('id')]);
-        $bisaUbah = in_array($p->status, [StatusPerubahan::Draf, StatusPerubahan::Ditolak], true);
+        $bisaUbah = $p->bisaDiubah();
         $irban = Irban::orderBy('id')->pluck('nama', 'id')->all();
         $jenis = JenisPenugasan::orderBy('nama')->get(['id', 'nama', 'warna'])->keyBy('id');
 
@@ -351,6 +365,7 @@ class PerubahanPkpt extends Component
             'p' => $p,
             'pkpt' => $p->pkpt,
             'bisaUbah' => $bisaUbah,
+            'bisaBuang' => $p->bisaDibuang(),
             'cek' => $p->status->terbuka() ? $aturan->cek($p) : [],
             'operasi' => $p->operasi->map(fn (PkptPerubahanItem $op) => $this->tampilOperasi($op, $irban, $jenis)),
             'itemOptions' => $itemOptions,

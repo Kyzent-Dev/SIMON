@@ -71,8 +71,8 @@ class Penomoran
         if ($klasifikasi && $this->settings->get('penomoran.klasifikasi_di_nomor')) {
             $template = str_replace('{klasifikasi}', str_replace(' ', '-', mb_strtoupper($klasifikasi->nama)), $template);
         } else {
-            $template = str_contains($template, '/{klasifikasi}') ? str_replace('/{klasifikasi}', '', $template)
-                : str_replace(['{klasifikasi}/', '{klasifikasi}'], '', $template);
+            // Off: the placeholder goes with one separator, the one before it or else the one after (`700/1-{klasifikasi}/2026` → `700/1/2026`).
+            $template = preg_replace('~[/.\-_ ]\{klasifikasi\}|\{klasifikasi\}[/.\-_ ]?~', '', $template);
         }
 
         return strtr($template, [

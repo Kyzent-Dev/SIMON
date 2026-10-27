@@ -117,6 +117,23 @@ class PenomoranTest extends TestCase
         $this->assertSame('3/2026', $this->ambil($irban, klasifikasi: $luar)['nomor_lengkap']);
     }
 
+    /** Fase 11.2 Task 6 butir 21: switched off, {klasifikasi} goes with one neighbouring separator of any kind, not only `/`. */
+    public function test_klasifikasi_off_takes_any_separator_with_it(): void
+    {
+        $settings = app(Settings::class);
+        $irban = $this->irban('IRB1');
+        $luar = Klasifikasi::where('kode', 'LUAR_DAERAH')->firstOrFail();
+        $kasus = ['{kode_arsip}/{nomor_urut}-{klasifikasi}/{tahun}' => '700/1/2026', '{nomor_urut}.{klasifikasi}.{tahun}' => '2.2026',
+            '{klasifikasi}-{nomor_urut}/{tahun}' => '3/2026', '{nomor_urut}/{tahun}{klasifikasi}' => '4/2026', '{kode_arsip}/{klasifikasi}/{nomor_urut}/{tahun}' => '700/5/2026'];
+        foreach ($kasus as $format => $nomor) {
+            $settings->set('penomoran.format', $format);
+            $this->assertSame($nomor, $this->ambil($irban, klasifikasi: $luar)['nomor_lengkap'], $format);
+        }
+        $settings->set('penomoran.klasifikasi_di_nomor', true); // control: switched on, the separators stay
+        $settings->set('penomoran.format', '{kode_arsip}/{nomor_urut}-{klasifikasi}/{tahun}');
+        $this->assertSame('700/6-LUAR-DAERAH/2026', $this->ambil($irban, klasifikasi: $luar)['nomor_lengkap']);
+    }
+
     public function test_per_irban_scope_gives_independent_sequences(): void
     {
         app(Settings::class)->set('penomoran.scope', 'per_irban');

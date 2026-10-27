@@ -16,6 +16,7 @@ use App\Services\PenandaSpt;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 /**
@@ -62,7 +63,7 @@ class MonitoringSptTest extends TestCase
         $this->i[1] = $item($this->a, $this->j1, '2026-03-01', '2026-03-31');
         $this->i[2] = $item($this->b, $this->j2, '2026-02-01', '2026-02-28');
         $this->i[3] = $item($this->a, $this->j2, '2026-04-01', '2026-04-30');
-        $this->i[2]->update(['tanggal_mulai_disahkan' => $this->i[2]->tanggal_mulai, 'tanggal_selesai_disahkan' => $this->i[2]->tanggal_selesai, 'tanggal_mulai' => '2026-05-01', 'tanggal_selesai' => '2026-05-31']);
+        JadwalItem::geser($this->i[2], '2026-05-01', '2026-05-31');
 
         $spt = function (string $state, Irban $ir, ?int $tw, JenisPenugasan $j, string $m, string $s, int $tahun = 2026) {
             $spt = Spt::factory()->{$state}()->create(['irban_id' => $ir->id, 'pkpt_item_id' => $tw ? $this->i[$tw]->id : null,
@@ -210,7 +211,7 @@ class MonitoringSptTest extends TestCase
         $awal = $hitung();
 
         $item = PkptItem::factory()->create(['irban_id' => $this->a->id, 'jenis_penugasan_id' => $this->j1->id]);
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20']);
+        JadwalItem::geser($item, '2026-04-01', '2026-04-20');
         Spt::factory()->diterima()->count(50)->create(['irban_id' => $this->a->id, 'pkpt_item_id' => $item->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-06-01', 'tanggal_selesai' => '2026-06-10', 'dibuat_oleh' => User::factory()->create()->id]);
 

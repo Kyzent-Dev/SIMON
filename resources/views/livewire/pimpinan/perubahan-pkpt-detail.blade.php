@@ -4,7 +4,6 @@
 @php
     $tag = $p->status->tag();
     $tgl = fn ($d) => $d?->timezone('Asia/Jakarta')->translatedFormat('d F Y');
-    $kesesuaian = fn ($s) => $s === 'Sesuai' ? null : 'tidak_sesuai_pkpt';
 @endphp
 <div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
     <x-ui.page-header :title="$judul" title-id="judul-perubahan">
@@ -105,8 +104,8 @@
                                 @foreach (['Sebelum' => $s['sebelum'], 'Sesudah' => $s['sesudah']] as $nama => $nilai)
                                     @if (! $loop->first){{ svg('heroicon-m-arrow-right', 'size-4 text-mint-700', ['aria-hidden' => 'true']) }}@endif
                                     <span class="text-neutral-600">{{ $nama }}:</span>
-                                    @if ($kesesuaian($nilai))
-                                        <x-app.flag :jenis="$kesesuaian($nilai)" />
+                                    @if (! $nilai)
+                                        <x-app.flag jenis="tidak_sesuai_pkpt" />
                                     @else
                                         <span class="inline-flex items-center gap-1">{{ svg('heroicon-m-check', 'size-4 text-neutral-700', ['aria-hidden' => 'true']) }}Sesuai</span>
                                     @endif

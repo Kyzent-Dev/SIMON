@@ -370,4 +370,18 @@ class UsulanPerubahanTest extends TestCase
         $this->ajukan($this->b, ['aksi_usulan' => 'hapus']);
         $this->actingAs($this->admin)->get(route('admin.pkpt.show', $this->pkpt))->assertOk()->assertSee('2 usulan dari Irban terbuka');
     }
+
+    /** Fase 11.2 Task 6 butir 17: a usulan closed in another tab opens no "Tutup usulan" modal; a toast and the h1 instead. */
+    public function test_buka_tutup_usulan_yang_sudah_tidak_terbuka_memberi_toast(): void
+    {
+        $u = $this->ajukan($this->b, ['aksi_usulan' => 'hapus', 'alasan' => 'Usulan yang ditutup di tab lain']);
+        $p = $this->paket();
+        $h = Livewire::actingAs($this->admin)->test(HalamanPerubahan::class, ['pkpt' => $this->pkpt, 'perubahan' => $p]);
+        app(TutupUsulan::class)->handle($this->admin, $u, 'Ditutup di tab lain.');
+        $h->call('bukaTutup', $u->id)->assertSet('tutupOpen', false)->assertSet('tutupId', null)
+            ->assertDispatched('toast', type: 'error', message: TampungUsulan::TIDAK_TERBUKA)->assertDispatched('fokus-ke', id: 'judul-perubahan');
+
+        $terbuka = $this->ajukan($this->a, ['aksi_usulan' => 'hapus']); // control
+        $h->call('bukaTutup', $terbuka->id)->assertSet('tutupOpen', true)->assertSet('tutupId', $terbuka->id);
+    }
 }

@@ -19,6 +19,7 @@ use App\Services\KesesuaianPkpt;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class PkptRulesTest extends TestCase
@@ -139,7 +140,7 @@ class PkptRulesTest extends TestCase
 
         $this->assertSame(['2026-03-02', '2026-03-20'], $fmt());
 
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-06-01', 'tanggal_selesai' => '2026-06-20']);
+        JadwalItem::geser($item, '2026-06-01', '2026-06-20');
         $this->assertSame(['2026-06-01', '2026-06-20'], $fmt());
         $this->assertSame('2026-03-02', $item->fresh()->tanggal_mulai_disahkan->toDateString());
     }
@@ -154,7 +155,7 @@ class PkptRulesTest extends TestCase
         $this->assertFalse($svc->sesuai($item, '2026-03-01', '2026-03-20'));
         $this->assertFalse($svc->sesuai($item, '2026-03-02', '2026-03-21'));
 
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-20']);
+        JadwalItem::geser($item, '2026-04-01', '2026-04-20');
         $this->assertFalse($svc->sesuai($item, '2026-03-02', '2026-03-20'));
         $this->assertTrue($svc->sesuai($item, '2026-04-01', '2026-04-20'));
     }

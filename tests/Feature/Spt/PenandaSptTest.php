@@ -14,6 +14,7 @@ use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class PenandaSptTest extends TestCase
@@ -117,7 +118,7 @@ class PenandaSptTest extends TestCase
         $this->assertSame(['tidak_sesuai_pkpt'], $this->penanda($spt));
 
         // PRD §14 #3: an approved Perubahan PKPT that moves the item over the dates removes the flag.
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-31']);
+        JadwalItem::geser($item, '2026-03-02', '2026-03-31');
         $this->assertSame([], $this->penanda($spt));
         $this->assertFalse($penanda->perluKendala($spt->fresh()));
     }
@@ -144,7 +145,7 @@ class PenandaSptTest extends TestCase
         $this->hari('2026-04-30');
         $buat = function (int $n): void {
             $item = PkptItem::factory()->create(['tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-05']);
-            $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-31']);
+            JadwalItem::geser($item, '2026-03-01', '2026-03-31');
             $user = User::factory()->create();
             for ($i = 0; $i < $n; $i++) {
                 $this->spt(['pkpt_item_id' => $i % 2 ? $item->id : null, 'dibuat_oleh' => $user->id], final: $i % 3 === 0);

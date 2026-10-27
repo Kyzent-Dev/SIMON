@@ -14,6 +14,7 @@ use Database\Seeders\JenisPenugasanSeeder;
 use Database\Seeders\PkptIrbanIDemo2026Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class KalenderPkptTest extends TestCase
@@ -122,7 +123,7 @@ class KalenderPkptTest extends TestCase
     public function test_moved_item_shows_semula_and_open_usulan_changes_nothing(): void
     {
         $item = PkptItem::where('irban_id', $this->irban->id)->whereDate('tanggal_mulai', '2026-06-29')->first(); // Jul M1
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-11-02', 'tanggal_selesai' => '2026-11-06']);
+        JadwalItem::geser($item, '2026-11-02', '2026-11-06');
         $lain = PkptItem::where('irban_id', $this->irban->id)->whereDate('tanggal_mulai', '2026-10-05')->first(); // Okt M1
         PkptUsulan::factory()->create(['pkpt_item_id' => $lain->id, 'tanggal_mulai' => '2026-12-01', 'tanggal_selesai' => '2026-12-02']);
 

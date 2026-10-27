@@ -14,19 +14,23 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
-/** Admin submits a valid draf/ditolak package to Pimpinan. The komentar of an earlier rejection stays (history). */
+/**
+ * Admin submits a valid draf/ditolak package to Pimpinan. The komentar of an earlier rejection stays (history).
+ * $data (jenis, alasan) is the page's unsaved form: saved in the same transaction, so a refused submit leaves the package untouched.
+ */
 class AjukanPerubahan
 {
     use MengelolaPerubahan;
 
     public function __construct(private PerubahanPkpt $perubahan, private PenerimaNotifikasi $penerima) {}
 
-    public function handle(User $user, PkptPerubahan $p): PkptPerubahan
+    public function handle(User $user, PkptPerubahan $p, ?array $data = null): PkptPerubahan
     {
         Gate::forUser($user)->authorize('ajukan', $p);
+        $isi = $data === null ? [] : $this->isiPaket($data);
 
-        $p = DB::transaction(function () use ($user, $p) {
-            $p = $this->kunciTerbuka($p);
+        $p = DB::transaction(function () use ($user, $p, $isi) {
+            $p = $this->kunciTerbuka($p)->fill($isi);
             if ($alasan = $this->perubahan->cek($p)) {
                 throw ValidationException::withMessages(['perubahan' => $alasan]);
             }

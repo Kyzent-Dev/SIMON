@@ -3,7 +3,6 @@
 namespace App\Actions\Pkpt\Perubahan\Concerns;
 
 use App\Enums\JenisPerubahan;
-use App\Enums\StatusPerubahan;
 use App\Models\PkptPerubahan;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -14,11 +13,14 @@ trait MengelolaPerubahan
     /** Stale-tab message (key `perubahan`, shown as a toast). */
     public const BASI = 'Perubahan ini sudah diajukan atau diputuskan.';
 
+    /** The package no longer exists (discarded in another tab, or a bell link to it); the pages redirect with this toast. */
+    public const DIBUANG = 'Perubahan ini sudah dibuang.';
+
     /** Locks the package (call inside a transaction) and requires draf or ditolak. */
     private function kunciTerbuka(PkptPerubahan $p): PkptPerubahan
     {
         $p = PkptPerubahan::whereKey($p->id)->lockForUpdate()->first();
-        if (! in_array($p?->status, [StatusPerubahan::Draf, StatusPerubahan::Ditolak], true)) {
+        if (! $p?->bisaDiubah()) {
             throw ValidationException::withMessages(['perubahan' => self::BASI]);
         }
 

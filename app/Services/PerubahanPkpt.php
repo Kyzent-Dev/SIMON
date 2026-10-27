@@ -98,7 +98,7 @@ class PerubahanPkpt
                 return ['irban_id' => self::K7_UBAH];
             }
             if ($baru === $lama) {
-                return ['perubahan' => self::TIDAK_BERUBAH];
+                return ['operasi' => self::TIDAK_BERUBAH]; // own key: the page keeps it in the operasi modal
             }
         }
 
@@ -130,7 +130,7 @@ class PerubahanPkpt
     /**
      * Impact shown before deciding: items changed per irban (a move counts for both), and accepted SPT of `ubah` items whose kesesuaian flips.
      *
-     * @return array{irban: list<array{nama: string, jumlah: int}>, spt: list<array{id: int, nomor_lengkap: ?string, irban: string, sebelum: string, sesudah: string}>}
+     * @return array{irban: list<array{nama: string, jumlah: int}>, spt: list<array{id: int, nomor_lengkap: ?string, irban: string, sebelum: bool, sesudah: bool}>} sebelum/sesudah = sesuai PKPT
      */
     public function dampak(PkptPerubahan $p): array
     {
@@ -146,7 +146,6 @@ class PerubahanPkpt
 
         $ubah = $ops->filter(fn ($op) => $op->aksi === AksiPerubahan::Ubah && $op->item && filled($op->data_baru['tanggal_mulai'] ?? null)
             && filled($op->data_baru['tanggal_selesai'] ?? null))->keyBy('pkpt_item_id');
-        $label = fn (bool $s) => $s ? 'Sesuai' : 'Tidak Sesuai PKPT';
         $spt = [];
         $daftar = $ubah->isEmpty() ? collect() : Spt::with('irban:id,nama')->where('status_pengajuan', StatusPengajuan::Diterima)
             ->whereIn('pkpt_item_id', $ubah->keys())->whereNotNull('tanggal_mulai')->whereNotNull('tanggal_selesai')->orderBy('id')->get();
@@ -157,7 +156,7 @@ class PerubahanPkpt
             $sebelum = $this->kesesuaian->sesuaiRentang($lama, $s->tanggal_mulai, $s->tanggal_selesai);
             $sesudah = $this->kesesuaian->sesuaiRentang([$op->data_baru['tanggal_mulai'], $op->data_baru['tanggal_selesai']], $s->tanggal_mulai, $s->tanggal_selesai);
             if ($sebelum !== $sesudah) {
-                $spt[] = ['id' => $s->id, 'nomor_lengkap' => $s->nomor_lengkap, 'irban' => (string) $s->irban?->nama, 'sebelum' => $label($sebelum), 'sesudah' => $label($sesudah)];
+                $spt[] = ['id' => $s->id, 'nomor_lengkap' => $s->nomor_lengkap, 'irban' => (string) $s->irban?->nama, 'sebelum' => $sebelum, 'sesudah' => $sesudah];
             }
         }
 

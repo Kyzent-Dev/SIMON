@@ -65,6 +65,18 @@ class PengaturanTest extends TestCase
             ->call('save', 'penomoran')->assertHasNoErrors();
     }
 
+    /** Fase 11.2 Task 6 butir 21: only known placeholders, and a per-irban sequence needs {kode_irban} (else nomor_lengkap repeats). */
+    public function test_format_hanya_placeholder_sah_dan_per_irban_wajib_kode_irban(): void
+    {
+        $h = Livewire::actingAs($this->admin())->test(Pengaturan::class);
+        $h->set('v.penomoran.format', '{nomor_urut}/{kode}/{tahun}')->call('save', 'penomoran')->assertHasErrors('v.penomoran.format');
+        $this->assertSame('Placeholder tidak dikenal: {kode}.', $h->errors()->first('v.penomoran.format'));
+        $h->set('v.penomoran.format', '{nomor_urut}/{tahun}')->set('v.penomoran.scope', 'per_irban')->call('save', 'penomoran')->assertHasErrors('v.penomoran.format');
+        $this->assertSame('Cakupan per irban membutuhkan {kode_irban} di format, agar nomor antar-irban tidak sama.', $h->errors()->first('v.penomoran.format'));
+        $h->set('v.penomoran.format', '{kode_arsip}/{nomor_urut}/{kode_irban}/{klasifikasi}/SPT/{tahun}')->call('save', 'penomoran')->assertHasNoErrors();
+        $this->assertSame('per_irban', app(Settings::class)->get('penomoran.scope'));
+    }
+
     public function test_enum_and_number_validation(): void
     {
         Livewire::actingAs($this->admin())->test(Pengaturan::class)

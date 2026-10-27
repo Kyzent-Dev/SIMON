@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Notification;
 /** The only place that decides who receives a notification (Fase 6). */
 class PenerimaNotifikasi
 {
+    public function __construct(private PerubahanPkpt $perubahan) {}
+
     /** @return Collection<int, User> */
     public function bagianUmum(): Collection
     {
@@ -38,7 +40,7 @@ class PenerimaNotifikasi
     /** Approved package: its creator, the other Pimpinan, and the Irban accounts of every affected irban. @return Collection<int, User> */
     public function perubahanDisetujui(PkptPerubahan $p, User $pemutus): Collection
     {
-        $irban = User::where('role', Role::Irban)->whereIn('irban_id', app(PerubahanPkpt::class)->irbanTerdampak($p))->get();
+        $irban = User::where('role', Role::Irban)->whereIn('irban_id', $this->perubahan->irbanTerdampak($p))->get();
 
         return $this->pembuatPerubahan($p)->merge($this->pimpinan())->merge($irban)
             ->reject(fn (User $u) => $u->id === $pemutus->id)->unique('id')->values();

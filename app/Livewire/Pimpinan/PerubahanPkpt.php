@@ -5,6 +5,7 @@ namespace App\Livewire\Pimpinan;
 use App\Enums\Role;
 use App\Enums\StatusPerubahan;
 use App\Models\PkptPerubahan;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -19,6 +20,8 @@ class PerubahanPkpt extends Component
 {
     use WithPagination;
 
+    /** Fixed page size (no per-page control on this list), so the client may not change it. */
+    #[Locked]
     public int $perPage = 20;
 
     public function mount(): void

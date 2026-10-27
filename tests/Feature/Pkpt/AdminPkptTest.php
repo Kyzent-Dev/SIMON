@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class AdminPkptTest extends TestCase
@@ -209,7 +210,7 @@ class AdminPkptTest extends TestCase
     {
         $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
         $item = PkptItem::factory()->create(['pkpt_id' => $pkpt->id, 'tanggal_mulai' => '2026-02-03', 'tanggal_selesai' => '2026-02-21']);
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-03-03', 'tanggal_selesai' => '2026-03-21']);
+        JadwalItem::geser($item, '2026-03-03', '2026-03-21');
         PkptItem::factory()->dihapus()->create(['pkpt_id' => $pkpt->id, 'keterangan' => 'Item yang dihapus']);
 
         $this->detail($pkpt)

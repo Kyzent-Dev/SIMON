@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Support\CachePublik;
 use Closure;
+use Illuminate\Contracts\Validation\DataAwareRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /** System settings (PRD §15): key + json value in `settings`, falling back to DEFAULTS. Registered as a singleton. */
@@ -147,7 +150,7 @@ class Settings
     public static function rules(string $key): array
     {
         return match ($key) {
-            'penomoran.format' => ['required', 'string', 'max:150', self::contains('{nomor_urut}', '{tahun}')],
+            'penomoran.format' => ['required', 'string', 'max:150', self::contains('{nomor_urut}', '{tahun}'), self::placeholderSah(), self::kodeIrbanPerIrban()],
             'penomoran.kode_arsip' => ['required', 'string', 'max:20'],
             'penomoran.kode_sekretariat' => ['required', 'string', 'max:50'],
             'penomoran.scope' => ['required', 'in:global,per_irban'],
@@ -182,6 +185,42 @@ class Settings
                     $fail('Format harus memuat '.implode(' dan ', $tokens).'.');
 
                     return;
+                }
+            }
+        };
+    }
+
+    /** Only the placeholders Penomoran::format fills; any other `{...}` would end up literally in every nomor. */
+    private static function placeholderSah(): Closure
+    {
+        return function ($attribute, $value, $fail) {
+            preg_match_all('/\{[^{}]*\}/', (string) $value, $m);
+            $asing = array_diff($m[0], ['{kode_arsip}', '{nomor_urut}', '{kode_irban}', '{tahun}', '{klasifikasi}']);
+            if ($asing) {
+                $fail('Placeholder tidak dikenal: '.implode(', ', array_unique($asing)).'.');
+            }
+        };
+    }
+
+    /** A per-irban sequence restarts at 1 for every irban, so without {kode_irban} two irbans would get the same nomor_lengkap (unique). */
+    private static function kodeIrbanPerIrban(): ValidationRule
+    {
+        return new class implements DataAwareRule, ValidationRule
+        {
+            private array $data = [];
+
+            public function setData(array $data): static
+            {
+                $this->data = $data;
+
+                return $this;
+            }
+
+            public function validate(string $attribute, mixed $value, Closure $fail): void
+            {
+                $scope = data_get($this->data, Str::replaceLast('format', 'scope', $attribute));
+                if ($scope === 'per_irban' && ! str_contains((string) $value, '{kode_irban}')) {
+                    $fail('Cakupan per irban membutuhkan {kode_irban} di format, agar nomor antar-irban tidak sama.');
                 }
             }
         };

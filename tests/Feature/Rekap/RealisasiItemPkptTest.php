@@ -12,6 +12,7 @@ use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class RealisasiItemPkptTest extends TestCase
@@ -102,7 +103,7 @@ class RealisasiItemPkptTest extends TestCase
     public function test_moved_item_changes_range_and_kesesuaian(): void
     {
         $it = $this->item($this->a, '2026-02-02', '2026-02-27');
-        $it->update(['tanggal_mulai_disahkan' => $it->tanggal_mulai, 'tanggal_selesai_disahkan' => $it->tanggal_selesai, 'tanggal_mulai' => '2026-04-01', 'tanggal_selesai' => '2026-04-30']);
+        JadwalItem::geser($it, '2026-04-01', '2026-04-30');
         $this->spt('diterima', $this->a, $it, '2026-04-06', '2026-04-10');
 
         $row = $this->untuk(2)[0]['item'][0];

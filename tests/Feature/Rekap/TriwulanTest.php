@@ -9,6 +9,7 @@ use App\Services\Triwulan;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 class TriwulanTest extends TestCase
@@ -73,7 +74,7 @@ class TriwulanTest extends TestCase
         $this->assertSame('2026-04-01', $this->triwulan('tanggal_lhp')->tanggalDasarItem($item)->toDateString()); // items have no LHP: end date
         $this->assertSame('2026-03-31', $this->triwulan('tanggal_mulai')->tanggalDasarItem($item)->toDateString());
 
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-06-30', 'tanggal_selesai' => '2026-07-01']); // moved by an approved Perubahan PKPT
+        JadwalItem::geser($item, '2026-06-30', '2026-07-01'); // moved by an approved Perubahan PKPT
         $this->assertSame('2026-06-30', $this->triwulan('tanggal_mulai')->tanggalDasarItem($item->fresh())->toDateString());
         $this->assertSame('2026-07-01', $this->triwulan('tanggal_selesai')->tanggalDasarItem($item->fresh())->toDateString());
     }

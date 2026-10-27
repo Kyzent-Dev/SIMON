@@ -11,6 +11,7 @@ use App\Services\Publik\JadwalPublik;
 use App\Support\CachePublik;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Support\JadwalItem;
 use Tests\TestCase;
 
 /**
@@ -60,12 +61,15 @@ class JadwalHalamanTest extends TestCase
     {
         $item = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,
             'tanggal_mulai' => '2026-07-01', 'tanggal_selesai' => '2026-07-31', 'target_spt' => 4]);
-        $item->update(['tanggal_mulai_disahkan' => $item->tanggal_mulai, 'tanggal_selesai_disahkan' => $item->tanggal_selesai, 'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-28']);
+        JadwalItem::geser($item, '2026-08-03', '2026-08-28');
+
+        // Columns from the page's own data, not its markup (Fase 11.2 Task 6 butir 2): semula 1 Jul → Jul M1 = 31, 31 Jul → Jul M5 = 35;
+        // bar 3 Aug → Agu M1 = 36, 28 Aug → Agu M4 = 39.
+        $bar = collect(Livewire::test(Jadwal::class)->viewData('linimasa')['baris'])->flatMap(fn ($b) => collect($b['lajur'])->flatten(1))
+            ->firstWhere('item.id', $item->id);
+        $this->assertSame([36, 39, [31, 35]], [$bar['mulai'], $bar['selesai'], $bar['semula']]);
 
         $html = $this->get('/jadwal')->getContent();
-        // Semula 1 Jul → Jul M1 = 31, 31 Jul → Jul M5 = 35 → 32 / 37 (dashed outline). Bar 3 Aug → Agu M1 = 36, 28 Aug → Agu M4 = 39 → 37 / 41.
-        $this->assertMatchesRegularExpression('/data-semula[^>]*grid-column: 32 \/ 37/', $html);
-        $this->assertMatchesRegularExpression('/data-bar[^>]*grid-column: 37 \/ 41/', $html);
         $this->assertStringContainsString('Jadwal direvisi: semula 1–31 Juli 2026', $html);
         $this->assertStringContainsString('aria-label="Jenis Satu, Irban C, Belum ditentukan, 3 Agustus–28 Agustus 2026"', $html);
         $this->assertStringContainsString('0 dari 4 SPT selesai', $html);

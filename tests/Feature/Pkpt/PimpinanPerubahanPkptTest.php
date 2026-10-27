@@ -3,6 +3,7 @@
 namespace Tests\Feature\Pkpt;
 
 use App\Actions\Pkpt\Perubahan\AjukanPerubahan;
+use App\Actions\Pkpt\Perubahan\BuangPerubahan;
 use App\Actions\Pkpt\Perubahan\BuatPerubahan;
 use App\Actions\Pkpt\Perubahan\PutuskanPerubahan;
 use App\Actions\Pkpt\Perubahan\SimpanOperasi;
@@ -20,8 +21,10 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Services\PerubahanPkpt;
 use App\Support\Navigation;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -154,6 +157,19 @@ class PimpinanPerubahanPkptTest extends TestCase
         $this->pimpinan->forceFill(['role' => Role::Admin])->save();
         $c->call('setujui')->assertForbidden();
         $this->assertSame(StatusPerubahan::Diajukan, $p->fresh()->status);
+
+        // Fase 11.2 Task 6 butir 15: Tolak called directly after the role changed, and the action itself, refuse too.
+        $this->pimpinan->forceFill(['role' => Role::Pimpinan])->save();
+        $c = Livewire::test(Detail::class, ['perubahan' => $p])->set('komentar', 'Tolak lewat panggilan langsung.');
+        $this->pimpinan->forceFill(['role' => Role::Admin])->save();
+        $c->call('tolak')->assertForbidden();
+        try {
+            app(PutuskanPerubahan::class)->handle($this->admin, $p, false, 'Tolak oleh Admin.');
+            $this->fail('AuthorizationException diharapkan.');
+        } catch (AuthorizationException) {
+        }
+        $p->refresh();
+        $this->assertSame([StatusPerubahan::Diajukan, null], [$p->status, $p->komentar_putusan]);
     }
 
     public function test_nav_item_and_old_route_redirect(): void
@@ -161,5 +177,35 @@ class PimpinanPerubahanPkptTest extends TestCase
         $item = collect(Navigation::groups(Role::Pimpinan))->flatMap(fn ($g) => $g['items'])->firstWhere('label', 'Perubahan PKPT');
         $this->assertSame(['pimpinan.perubahan-pkpt', 'arrow-path', ['pimpinan.perubahan-pkpt.show']], [$item['route'], $item['icon'], $item['aktif']]);
         $this->actingAs($this->pimpinan)->get('/pimpinan/revisi-jadwal')->assertRedirect(route('pimpinan.perubahan-pkpt'));
+    }
+
+    /** Fase 11.2 Task 6 butir 12: an empty rejection reason keeps the modal open and moves focus to the textarea. */
+    public function test_komentar_tolak_kosong_memfokuskan_textarea(): void
+    {
+        $p = $this->diajukan();
+        $this->actingAs($this->pimpinan);
+        Livewire::test(Detail::class, ['perubahan' => $p])->set('tolakOpen', true)->call('tolak')
+            ->assertHasErrors('komentar')->assertSet('tolakOpen', true)->assertDispatched('fokus-ke', id: 'komentar')
+            ->assertSeeHtml('id="komentar"');
+    }
+
+    /** Fase 11.2 Task 6 butir 13: the page size is fixed (no per-page control), so the client cannot raise it. */
+    public function test_per_page_tidak_bisa_diubah_klien(): void
+    {
+        $this->actingAs($this->pimpinan);
+        $c = Livewire::test(Daftar::class)->assertSet('perPage', 20);
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        $c->set('perPage', 100000);
+    }
+
+    /** Fase 11.2 Task 6 butir 18: the bell link of a package that was discarded later leads to the list with a toast, not a 404. */
+    public function test_tautan_ke_paket_yang_dibuang_dialihkan_dengan_toast(): void
+    {
+        $p = app(BuatPerubahan::class)->handle($this->admin, $this->pkpt, ['jenis' => 'perubahan', 'alasan' => 'Akan dibuang.']);
+        $url = route('pimpinan.perubahan-pkpt.show', $p);
+        $this->actingAs($this->pimpinan)->get($url)->assertOk(); // control
+        app(BuangPerubahan::class)->handle($this->admin, $p);
+        $this->get($url)->assertRedirect(route('pimpinan.perubahan-pkpt'))
+            ->assertSessionHas('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
     }
 }

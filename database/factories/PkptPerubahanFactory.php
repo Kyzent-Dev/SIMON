@@ -43,6 +43,12 @@ class PkptPerubahanFactory extends Factory
         ]);
     }
 
+    /** Nomor, tanggal and berkas SK filled (PkptPerubahan::skLengkap()); the model stamps sk_lengkap_pada itself. */
+    public function skLengkap(): static
+    {
+        return $this->state(['nomor_sk' => '800/1/SK/2026', 'tanggal_sk' => '2026-06-01', 'berkas_sk' => 'perubahan-pkpt/sk-uji.pdf']);
+    }
+
     public function ditolak(): static
     {
         return $this->state([

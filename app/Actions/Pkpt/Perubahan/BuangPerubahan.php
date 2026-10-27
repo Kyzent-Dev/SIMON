@@ -23,7 +23,7 @@ class BuangPerubahan
 
         $berkas = DB::transaction(function () use ($p) {
             $p = $this->kunciTerbuka($p);
-            if ($p->nomor_urut !== null) {
+            if (! $p->bisaDibuang()) {
                 throw ValidationException::withMessages(['perubahan' => self::BASI]);
             }
             PkptUsulan::where('perubahan_id', $p->id)->get()->each(fn (PkptUsulan $u) => $u->forceFill(['status' => StatusUsulan::Terbuka, 'perubahan_id' => null])->save());
