@@ -5,7 +5,7 @@
 <div x-data="{ buka: false }" x-effect="const v = $wire.pilihEkspor; if (buka && ! v) $nextTick(() => $refs.ekspor?.querySelector('[data-ekspor]')?.focus()); buka = v">
     <x-ui.page-header :title="$judul" description="Rencana dan realisasi SPT per triwulan.">
         <x-slot:actions>
-            <x-app.export-buttons aksi="bukaEkspor" x-ref="ekspor" />
+            <div x-ref="ekspor" class="contents"><x-app.export-buttons aksi="bukaEkspor" /></div>
         </x-slot:actions>
     </x-ui.page-header>
 
