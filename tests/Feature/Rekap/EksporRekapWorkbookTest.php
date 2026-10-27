@@ -298,7 +298,7 @@ class EksporRekapWorkbookTest extends TestCase
         $this->a->update(['nama' => 'Gabungan']);
         $this->b->update(['nama' => 'Irban: B']);
         Irban::factory()->create(['nama' => 'Irban B']);
-        Irban::factory()->create(['nama' => 'IRBAN b']);
+        Irban::factory()->create(['nama' => 'IRBAN/ b']); // differs in the database (case-insensitive unique on MySQL), same title once sanitized
         Irban::factory()->create(['nama' => str_repeat('é', 31).'1']);
         Irban::factory()->create(['nama' => str_repeat('é', 31).'2']);
 

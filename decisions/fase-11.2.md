@@ -231,3 +231,23 @@ Berkas desain diikuti: `DESIGN.md`, `design/dashboard/_shared.md`, `admin.md`, `
 - **Cast `(int)` di ImporSpt: Selesai.** Pada irban dan jenis (item/pkpt id tidak dibandingkan dengan `!==`).
 - **KlasifikasiTest: Selesai.** `assertStatus(405)` dipertahankan; ditambah pernyataan bahwa tidak ada rute POST/PUT/PATCH/DELETE di bawah `admin/klasifikasi`.
 - **EksporRekapWorkbookTest: Selesai.** Pernyataan ada sel berakhiran ", Terlambat" pada ekspor detail.
+
+## Di luar lingkup
+
+Tidak dikerjakan di Fase 11.2; tetap terbuka di `docs/plans/serah-terima.md`.
+- **Pengganti tahun di header:** fitur baru, belum dijadwalkan pengguna.
+- **Logo resmi Diskominfo:** menunggu aset dari pengguna.
+- **Suite MySQL 8, `PenomoranKonkurensiTest` di Linux, uji `DEPLOY.md` di Linux (supervisor, crontab, `flock`, Nginx, `unzip`/`7z`), gladi `mariadb-dump`:** menunggu server staging.
+- **Kinerja impor 2000 baris, SQLite IMMEDIATE PHP >= 8.4, `memory_limit` 512M, target 5.000 SPT dalam satu tahun, CSP:** ruling Fase 11; butuh pemantauan atau peninjauan terpisah.
+- **Fase 11 Task 3 "catatan hanya median / EXPLAIN":** catatan riwayat pengukuran, bukan cacat kode.
+- **Fase 11 Task 6 `databases` memakai `env('DB_CONNECTION')`, kegagalan cadangan senyap tanpa `BACKUP_MAIL_TO`:** disengaja (jebakan `spatie/laravel-backup`) dan perilaku paket yang sudah terdokumentasi.
+- **Fase 11 Task 7:** seeder demo dijepit ke 2026 (`shortcut:` sudah ada), `ObjekSeeder` contoh di produksi (pengingat di `DEPLOY.md`), `LoncengNotifikasiTest` memeriksa subset jenis (disengaja).
+- **Keputusan produk yang sudah tercatat sebagai keputusan:** tab "Belum dibaca (N)", irban menerima dua notifikasi saat persetujuan, persetujuan menimpa `komentar_putusan`, kontrol urut dan slide butuh JS, tabel dan daftar seluler sama-sama di DOM, grafik Status SPT pastel < 3:1 (legenda dan tabel kembar membawa data), form pengajuan memuat semua pegawai (`decisions/fase-4.md`), keputusan Fase 6 Task 3 berbahasa Inggris (file fase lama).
+- **`RealisasiDemoSeeder` menambah seeding dev:** pengamatan saja.
+
+## Fase 11.2, Task 11
+
+- **Suite SQLite (`php artisan test`): hijau.** 1227 test, 1226 lulus, 1 dilewati (`SlideTest` EXIF terpadu, tanpa ekstensi `exif` lokal), 13.264 asersi.
+- **Suite MySQL/MariaDB (`sintas_uji`, dibuat lalu dibuang; basis `sintas` tidak disentuh):** putaran penuh pertama 1227 test, 1225 lulus, 1 dilewati, 1 galat: `EksporRekapWorkbookTest::test_sheet_titles_are_made_unique`, `Duplicate entry 'IRBAN b' for key 'irban_nama_unique'`. Penyebab: kolasi MySQL tidak peka huruf, sehingga `Irban B` dan `IRBAN b` tidak bisa menjadi dua irban (SQLite peka huruf). Perbaikan hanya portabilitas tes: irban ketiga bernama `IRBAN/ b` (judul sheet tetap `IRBAN b` setelah sanitasi, jadi bentrokan judul tak peka huruf tetap diuji; asersi tidak berubah). `EksporRekapWorkbookTest` penuh di MySQL: 18 lulus; tes itu di SQLite lulus; suite SQLite penuh diulang setelah perubahan (hasil di baris berikutnya). Tidak ada kegagalan khusus MySQL lain.
+- **`vendor/bin/pint --test`:** hijau.
+- **Suite SQLite diulang setelah perbaikan tes:** 1227 test, 1226 lulus, 1 dilewati, 13.384 asersi (hijau).
