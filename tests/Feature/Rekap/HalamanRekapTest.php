@@ -5,9 +5,12 @@ namespace Tests\Feature\Rekap;
 use App\Enums\Role;
 use App\Livewire\Rekap;
 use App\Models\Pkpt;
+use App\Models\Spt;
 use App\Models\User;
 use App\Services\Ekspor;
 use App\Services\Ekspor\PembangunRekap;
+use App\Services\RekapTriwulan;
+use App\Services\Triwulan;
 use App\Support\Navigation;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,7 +85,9 @@ class HalamanRekapTest extends TestCase
         foreach (['TW I 2 1 50', 'TW II 3 2 67', 'TW III 1 0 0', 'TW IV 3 1 33', 'Total 9 4 44', 'REGULER 6 2 4', 'Total 8 3 5', 'Jenis Satu 6 2 33 5', 'Jenis Dua 3 2 67 3', 'Total 9 4 44 8'] as $r) {
             $this->assertContains($r, $b, $r);
         }
-        $t->assertSee('Per Irban')->assertSee('Gabungan')->assertSee('Rencana vs Realisasi')->assertSee('Per Klasifikasi')->assertSee('Per Jenis Penugasan')->assertDontSee('Irban A');
+        $t->assertSee('Per Irban')->assertSee('Gabungan')->assertSee('Rencana vs Realisasi')->assertSee('Per Klasifikasi')->assertSee('Per Jenis Penugasan');
+        // Pimpinan's Irban filter lists the irbans, so "no per-irban table" is checked in the panel only.
+        $this->assertStringNotContainsString('Irban A', substr($t->html(), strpos($t->html(), 'id="rekap-panel"')));
 
         $b = $this->baris($this->halaman($this->pimpinan)->html()); // default tab: Per Irban
         foreach (['TW I 2 1 50', 'TW IV 3 1 33', 'Total 6 3 50', 'Total 3 1 33', 'TW III 0 0 –'] as $r) {
@@ -227,5 +232,63 @@ class HalamanRekapTest extends TestCase
         $this->halaman($this->irbanA)->call('bukaEkspor', 'xlsx')->assertSet('pilihEkspor', true);
         $lain = User::factory()->create(['role' => Role::BagianUmum]);
         Livewire::actingAs($lain)->test(Rekap::class)->assertForbidden();
+    }
+
+    /** Rekap Saya lists only the years the irban has SPT or PKPT items in (plus the current and selected year), not other irbans' years. */
+    public function test_tahun_list_of_an_irban_is_limited_to_its_own_years(): void
+    {
+        $irbanB = User::factory()->create(['role' => Role::Irban, 'irban_id' => $this->b->id]);
+        Spt::where('irban_id', $this->b->id)->where('tanggal_mulai', 'like', '2025-12-01%')->update(['tahun' => 2025]); // s11 sits in 2025
+
+        // Fixture: B's only 2025 SPT (s11) and the Draf 2027 PKPT item of A.
+        $this->assertSame([2027, 2026], array_keys($this->halaman($this->irbanA)->viewData('tahunList')));
+        $this->assertSame([2026, 2025], array_keys($this->halaman($irbanB)->viewData('tahunList')));
+        $this->assertSame([2027, 2026, 2025], array_keys($this->halaman($this->pimpinan)->viewData('tahunList'))); // control: Pimpinan sees all
+        $this->assertContains(2031, array_keys($this->halaman($this->irbanA, ['tahun' => '2031'])->viewData('tahunList'))); // the selected year stays
+    }
+
+    public function test_pimpinan_can_filter_by_irban_with_a_select_and_irban_has_none(): void
+    {
+        $t = $this->halaman($this->pimpinan);
+        $t->assertSeeHtml('id="rekap-irban"')->assertSee('Semua irban');
+        $this->assertSame([$this->a->id => 'Irban A', $this->b->id => 'Irban B'], $t->viewData('irbanOptions'));
+
+        $t->set('irban', (string) $this->b->id);
+        $panel = substr($t->html(), strpos($t->html(), 'id="rekap-panel"'));
+        $this->assertStringContainsString('Irban B', $panel);
+        $this->assertStringNotContainsString('Irban A', $panel);
+        $t->call('bukaEkspor', 'xlsx')->set('bagianEkspor', ['rr'])->call('unduhEkspor')
+            ->assertFileDownloaded('rekap-triwulan-2026-irban-'.$this->b->kode_nomor.'-rr.xlsx');
+
+        $this->halaman($this->irbanA)->assertDontSeeHtml('id="rekap-irban"');
+    }
+
+    public function test_detail_tab_does_not_run_the_recap_calculation(): void
+    {
+        $dihitung = new \ArrayObject;
+        $this->app->bind(RekapTriwulan::class, fn () => new class($dihitung, app(Triwulan::class)) extends RekapTriwulan
+        {
+            public function __construct(private \ArrayObject $dihitung, Triwulan $tw)
+            {
+                parent::__construct($tw);
+            }
+
+            public function hitung(int $tahun, ?int $irbanId = null): array
+            {
+                $this->dihitung[] = $tahun;
+
+                return parent::hitung($tahun, $irbanId);
+            }
+        });
+
+        $this->halaman($this->pimpinan)->assertSet('tab', 'irban');
+        $this->assertCount(1, $dihitung); // control: the summary tab calculates
+
+        $dihitung->exchangeArray([]);
+        $t = $this->halaman($this->pimpinan);
+        $dihitung->exchangeArray([]); // the first render was the summary tab
+        $t->set('tab', 'detail')->assertSee('Detail Realisasi')->assertDontSee('belum disahkan');
+        $t->set('tahun', '2031')->assertSee('PKPT 2031 belum disahkan');
+        $this->assertCount(0, $dihitung);
     }
 }

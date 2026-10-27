@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Enums\Role;
+use App\Enums\StatusPkpt;
 use App\Livewire\Concerns\MintaEkspor;
+use App\Models\Irban;
 use App\Models\Pkpt;
 use App\Models\Spt;
 use App\Services\Ekspor\PembangunRekap;
@@ -102,8 +104,14 @@ class Rekap extends Component
         };
         $detail = $this->tab === 'detail';
 
-        $rekap = app(RekapTriwulan::class)->hitung($f['tahun'], $f['irban']);
-        $tahunList = Spt::whereNotNull('tahun')->distinct()->pluck('tahun')->merge(Pkpt::distinct()->pluck('tahun'))
+        // The Detail tab needs only the year's status for its alert, not the whole calculation.
+        $rekap = $detail
+            ? ['tahun' => $f['tahun'], 'pkpt_disahkan' => Pkpt::where('tahun', $f['tahun'])->where('status', StatusPkpt::Disahkan)->exists()]
+            : app(RekapTriwulan::class)->hitung($f['tahun'], $f['irban']);
+        // An Irban account only lists the years it has SPT or PKPT items in; the current year and the selected one stay.
+        $milik = $pimpinan ? null : $user->irban_id;
+        $tahunList = Spt::whereNotNull('tahun')->when($milik, fn ($q, $id) => $q->where('irban_id', $id))->distinct()->pluck('tahun')
+            ->merge(Pkpt::when($milik, fn ($q, $id) => $q->whereHas('items', fn ($i) => $i->where('irban_id', $id)))->distinct()->pluck('tahun'))
             ->push((int) now('Asia/Jakarta')->year, $f['tahun'])->unique()->sortDesc()->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
 
         return view('livewire.rekap', [
@@ -112,6 +120,7 @@ class Rekap extends Component
             'bagian' => $detail ? [] : $pembangun->bagian($rekap, $f['tw'], $this->tab),
             'detail' => $detail ? app(RealisasiItemPkpt::class)->untuk($f['tahun'], $f['tw'], $f['irban']) : null,
             'tahunList' => $tahunList,
+            'irbanOptions' => $pimpinan ? Irban::orderBy('nama')->pluck('nama', 'id')->all() : [],
             'pimpinan' => $pimpinan,
         ])->title($pimpinan ? 'Rekap Triwulanan' : 'Rekap Saya');
     }

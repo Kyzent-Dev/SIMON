@@ -18,6 +18,10 @@ use App\Services\Ekspor\PembangunRegister;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Jobs\SyncJob;
+use Illuminate\Queue\SyncQueue;
+use Illuminate\Queue\TimeoutExceededException;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -199,6 +203,79 @@ class EksporTest extends TestCase
         $this->assertSame('gagal', $e->fresh()->status);
         Storage::disk('local')->assertMissing("ekspor/{$e->id}.xlsx");
         Notification::assertSentToTimes($this->bu, EksporGagal::class, 1);
+    }
+
+    public function test_time_out_through_the_queue_marks_gagal_and_removes_partial_file(): void
+    {
+        Notification::fake();
+        $e = $this->buatRow('xlsx');
+        Storage::disk('local')->put("ekspor/{$e->id}.xlsx", 'partial');
+        // What the worker does on a time-out: serialize the job, then fail() the queue job, which calls BuatEkspor::failed() on the unserialized command.
+        $antrean = new class extends SyncQueue
+        {
+            public function muatan(object $job): string
+            {
+                return $this->createPayload($job, 'default');
+            }
+        };
+        $antrean->setContainer($this->app);
+        $job = new SyncJob($this->app, $antrean->muatan(new BuatEkspor($e)), 'sync', 'default');
+
+        // On a time-out Laravel rolls the open DB transaction back to level 0 when failed jobs are stored in the database; that would wipe RefreshDatabase's transaction.
+        config(['queue.failed.driver' => 'null']);
+        $job->fail(new TimeoutExceededException('timeout'));
+
+        $this->assertSame('gagal', $e->fresh()->status);
+        Storage::disk('local')->assertMissing("ekspor/{$e->id}.xlsx");
+        Notification::assertSentToTimes($this->bu, EksporGagal::class, 1);
+    }
+
+    /** A worker killed mid-write never runs failed(): the partial file must still be reachable by ekspor:bersihkan through `path`. */
+    public function test_partial_file_of_a_killed_job_is_found_by_cleanup(): void
+    {
+        $e = $this->buatRow('xlsx');
+        $this->app->bind(PembangunRegister::class, fn () => new class extends PembangunRegister
+        {
+            public function export(User $u, array $f): ArrayExport
+            {
+                throw new \RuntimeException('boom');
+            }
+        });
+        Storage::disk('local')->put("ekspor/{$e->id}.xlsx", 'partial');
+
+        $this->assertThrows(fn () => app(Ekspor::class)->tulis($e), \RuntimeException::class);
+
+        $this->assertSame("ekspor/{$e->id}.xlsx", $e->fresh()->path);
+        $this->assertSame('menunggu', $e->fresh()->status);
+        $e->forceFill(['created_at' => now()->subDays(8)])->save();
+        $this->artisan('ekspor:bersihkan')->assertSuccessful();
+        Storage::disk('local')->assertMissing("ekspor/{$e->id}.xlsx");
+        $this->assertNull(EksporModel::find($e->id));
+    }
+
+    public function test_failure_keeps_the_first_error_when_the_failure_page_lookup_breaks_too(): void
+    {
+        Notification::fake();
+        Exceptions::fake();
+        $e = $this->buatRow('xlsx');
+        $this->app->bind(PembangunRegister::class, fn () => new class extends PembangunRegister
+        {
+            public function export(User $u, array $f): ArrayExport
+            {
+                throw new \RuntimeException('boom');
+            }
+
+            public function halaman(User $u): string
+            {
+                throw new \LogicException('halaman rusak');
+            }
+        });
+
+        app()->call([new BuatEkspor($e), 'handle']); // must not throw the second error out of the job
+
+        $this->assertSame('gagal', $e->fresh()->status);
+        Exceptions::assertReported(fn (\RuntimeException $x) => $x->getMessage() === 'boom');
+        Notification::assertSentTo($this->bu, EksporGagal::class, fn (EksporGagal $n) => $n->url() === '/');
     }
 
     public function test_failed_hook_ignores_finished_export(): void

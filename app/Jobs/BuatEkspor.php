@@ -32,15 +32,19 @@ class BuatEkspor implements ShouldQueue
             ini_set('memory_limit', '512M');
         }
         set_time_limit(570);
+        $gagal = null;
         try {
             $layanan->tulis($e);
         } catch (Throwable $ex) {
-            $this->failed($ex);
-
-            return;
+            $gagal = $ex;
         } finally {
             ini_set('memory_limit', $memori);
             set_time_limit($waktu);
+        }
+        if ($gagal) {
+            $this->failed($gagal); // outside the catch: a second error here must not replace the first
+
+            return;
         }
         Notification::send($penerima->pengguna($e->user), new EksporSiap($e));
     }
@@ -55,6 +59,8 @@ class BuatEkspor implements ShouldQueue
         }
         Storage::disk('local')->delete("ekspor/{$e->id}.{$e->format}");
         $e->update(['status' => 'gagal']);
-        Notification::send(app(PenerimaNotifikasi::class)->pengguna($e->user), new EksporGagal($e->nama_file, app(Ekspor::class)->pembangun($e->jenis)->halaman($e->user)));
+        // rescue(): a broken halaman() is reported but must not stop the notification.
+        $halaman = rescue(fn () => app(Ekspor::class)->pembangun($e->jenis)->halaman($e->user), '/');
+        Notification::send(app(PenerimaNotifikasi::class)->pengguna($e->user), new EksporGagal($e->nama_file, $halaman));
     }
 }

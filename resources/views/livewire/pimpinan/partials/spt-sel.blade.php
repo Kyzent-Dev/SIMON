@@ -16,7 +16,7 @@
         @endif
     </span>
 </td>
-<td class="max-w-72 min-w-48 py-2">
+<td class="max-w-72 min-w-40 py-2">
     @if ($r['kendala'])
         @include('livewire.pimpinan.partials.kendala')
     @else

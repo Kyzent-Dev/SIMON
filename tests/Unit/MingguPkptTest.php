@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\MingguPkpt;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -91,5 +92,43 @@ class MingguPkptTest extends TestCase
         $this->assertCount(5, MingguPkpt::daftar(2026, 4));
         $this->assertCount(4, MingguPkpt::daftar(2026, 3));
         $this->assertCount(5, MingguPkpt::daftar(2026, 12));
+    }
+
+    /** A PKPT week is Monday–Friday: a range touching a week only on its Saturday/Sunday does not belong to it. */
+    public function test_weekend_overlap_alone_is_not_a_week(): void
+    {
+        $minggu = fn (string $a, string $b) => array_map(fn ($w) => [$w['bulan'], $w['minggu']], MingguPkpt::untukRentang(CarbonImmutable::parse($a), CarbonImmutable::parse($b), 2026));
+
+        $this->assertSame([[3, 3]], $minggu('2026-03-14', '2026-03-16')); // Sat 14 Mar – Mon 16 Mar: week 2 only on its Saturday
+        $this->assertSame([[3, 2]], $minggu('2026-03-13', '2026-03-15')); // Fri – Sun: the Sunday adds no week
+        $this->assertSame([], $minggu('2026-03-14', '2026-03-15')); // a weekend alone
+        $this->assertSame([], $minggu('2026-01-03', '2026-01-04')); // not pulled into the year-edge fallback either
+        $this->assertSame([[1, 1]], $minggu('2026-01-01', '2026-01-03')); // control: weekdays of the stub week still map to week 1
+    }
+
+    public function test_mutable_carbon_arguments_are_not_changed(): void
+    {
+        $mulai = Carbon::parse('2026-03-14 15:30');
+        $selesai = Carbon::parse('2026-03-20 08:00');
+
+        $hasil = MingguPkpt::untukRentang($mulai, $selesai, 2026);
+
+        $this->assertSame([[3, 3]], array_map(fn ($w) => [$w['bulan'], $w['minggu']], $hasil));
+        $this->assertSame(['2026-03-14 15:30:00', '2026-03-20 08:00:00'], [$mulai->toDateTimeString(), $selesai->toDateTimeString()]);
+    }
+
+    public function test_daftar_uses_jakarta_time_whatever_the_default_zone(): void
+    {
+        $lama = date_default_timezone_get();
+        date_default_timezone_set('UTC');
+        try {
+            $d = MingguPkpt::daftar(2026, 1);
+        } finally {
+            date_default_timezone_set($lama);
+        }
+
+        $this->assertSame('Asia/Jakarta', $d[0]['mulai']->getTimezone()->getName());
+        $this->assertSame('2026-01-05 00:00:00', $d[0]['mulai']->toDateTimeString());
+        $this->assertSame('2026-01-09', $d[0]['selesai']->toDateString());
     }
 }

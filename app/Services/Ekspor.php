@@ -69,6 +69,8 @@ class Ekspor
         $p->otorisasi($user);
         $filter = $p->filter($user, $ekspor->filter);
         $path = "ekspor/{$ekspor->id}.{$ekspor->format}";
+        // Stored before writing: a worker killed mid-write never runs failed(), and ekspor:bersihkan finds the partial file only through `path`.
+        $ekspor->update(['path' => $path]);
 
         if ($ekspor->format === 'xlsx') {
             Excel::store($p->export($user, $filter), $path, 'local');

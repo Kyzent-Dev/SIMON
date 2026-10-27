@@ -41,6 +41,9 @@ class RekapSheet extends DefaultValueBinder implements FromArray, WithColumnWidt
     /** @var list<list<int|string>> */
     private array $baris;
 
+    /** Set by RekapWorkbook when two sheets would end up with the same name after sanitizing. */
+    private ?string $judulUnik = null;
+
     /** Row numbers per section. @var list<array{judul: int, kepala: int, akhir: int, kolom: string, tipe: list<string>, total: list<int>, gabung: list<array{0: int, 1: int}>}> */
     private array $tata = [];
 
@@ -77,7 +80,28 @@ class RekapSheet extends DefaultValueBinder implements FromArray, WithColumnWidt
     /** Excel sheet names: at most 31 characters, none of `: \ / ? * [ ]`. */
     public function title(): string
     {
+        return $this->judulUnik ?? $this->judulBersih();
+    }
+
+    private function judulBersih(): string
+    {
         return mb_substr(str_replace([':', '\\', '/', '?', '*', '[', ']'], '', $this->nama), 0, 31);
+    }
+
+    /**
+     * Excel compares sheet names case-insensitively; a taken name gets " (2)", " (3)"... inside the 31 characters.
+     *
+     * @param  list<string>  $dipakai  lower-cased names already taken, extended here
+     */
+    public function unikkan(array &$dipakai): void
+    {
+        $dasar = $this->judulBersih();
+        for ($n = 2, $judul = $dasar; in_array(mb_strtolower($judul), $dipakai, true); $n++) {
+            $akhiran = " ({$n})";
+            $judul = mb_substr($dasar, 0, 31 - mb_strlen($akhiran)).$akhiran;
+        }
+        $dipakai[] = mb_strtolower($judul);
+        $this->judulUnik = $judul;
     }
 
     public function columnWidths(): array
@@ -135,6 +159,7 @@ class RekapSheet extends DefaultValueBinder implements FromArray, WithColumnWidt
                 }
             }
             $s->freezePane('A4');
+            $s->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd(1, 3); // the title block, same rows as the frozen pane
             $s->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)->setPaperSize(PageSetup::PAPERSIZE_A4)->setFitToWidth(1)->setFitToHeight(0);
         }];
     }

@@ -6,6 +6,7 @@ use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
 use App\Enums\SumberSpt;
 use App\Models\Spt;
+use App\Models\SptDokumen;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -22,7 +23,7 @@ class PenandaSpt
     }
 
     /** The flag rules; today and the late threshold are read once by the caller (untukBanyak reads them once per batch). */
-    private function hitung(Spt $spt, CarbonInterface $hariIni, int $batas): array
+    private function hitung(Spt $spt, CarbonInterface $hariIni, int $batas, ?bool $final = null): array
     {
         $diterima = $spt->status_pengajuan === StatusPengajuan::Diterima;
         $tanggal = $hariIni->toDateString();
@@ -39,7 +40,7 @@ class PenandaSpt
         }
         // Imported legacy SPT have no final document in SINTAS by nature.
         if ($diterima && $spt->sumber !== SumberSpt::Impor && $spt->tanggal_mulai !== null && $tanggal > $spt->tanggal_mulai->toDateString()
-            && ! $this->adaFinal($spt)) {
+            && ! ($final ?? $this->adaFinal($spt))) {
             $penanda[] = 'spt_final_belum_diupload';
         }
 
@@ -56,10 +57,11 @@ class PenandaSpt
     {
         $spts = new EloquentCollection($spts->all());
         $spts->loadMissing('pkptItem');
-        $spts->loadExists(['dokumen as final_ada' => fn ($q) => $q->where('jenis', 'final')]);
+        // Looked up beside the models, not loaded onto them: the caller's SPT stay as they were.
+        $final = SptDokumen::whereIn('spt_id', $spts->modelKeys())->where('jenis', 'final')->distinct()->pluck('spt_id')->flip();
         [$hariIni, $batas] = [now('Asia/Jakarta')->startOfDay(), $this->settings->get('penanda.batas_terlambat_hari')];
 
-        return $spts->mapWithKeys(fn (Spt $spt) => [$spt->id => $this->hitung($spt, $hariIni, $batas)])->all();
+        return $spts->mapWithKeys(fn (Spt $spt) => [$spt->id => $this->hitung($spt, $hariIni, $batas, $final->has($spt->id))])->all();
     }
 
     public function perluKendala(Spt $spt): bool
@@ -69,9 +71,7 @@ class PenandaSpt
 
     private function adaFinal(Spt $spt): bool
     {
-        return array_key_exists('final_ada', $spt->getAttributes())
-            ? (bool) $spt->final_ada
-            : $spt->dokumen()->where('jenis', 'final')->exists();
+        return $spt->dokumen()->where('jenis', 'final')->exists();
     }
 
     private function tidakSesuaiPkpt(Spt $spt): bool

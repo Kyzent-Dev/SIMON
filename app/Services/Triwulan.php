@@ -61,6 +61,13 @@ class Triwulan
         };
     }
 
+    /** SPT whose basis date falls in quarter $tw of any year (the "Terlambat (semua tahun)" view of Monitoring). */
+    public function batasiTriwulan(EloquentBuilder|Builder $q, int $tw): void
+    {
+        $kolom = DB::raw($this->kolomDasar());
+        $q->whereMonth($kolom, '>=', ($tw - 1) * 3 + 1)->whereMonth($kolom, '<=', $tw * 3);
+    }
+
     /** SPT whose basis date (kolomDasar) falls in year $tahun (or its quarter $tw), and in month $bulan when given. */
     public function batasi(EloquentBuilder|Builder $q, int $tahun, ?int $tw = null, ?int $bulan = null): void
     {

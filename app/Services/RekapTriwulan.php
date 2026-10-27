@@ -41,7 +41,9 @@ class RekapTriwulan
         $perIrban = $kosong($irban, $rr);
         $perKlasifikasi = $kosong($klasifikasi, $kl);
         $perJenis = $kosong($jenis, $jn);
-        $tanpaJenis = array_fill(1, 4, $jn);
+        // Key 0 = "Tanpa jenis penugasan": SPT without a jenis, and any jenis id missing from the list above (created meanwhile).
+        $perJenis[0] = array_fill(1, 4, $jn);
+        $kunciJenis = fn (?int $id) => isset($perJenis[$id]) ? $id : 0;
 
         $items = PkptItem::aktif()
             ->whereHas('pkpt', fn ($q) => $q->where('tahun', $tahun)->where('status', StatusPkpt::Disahkan))
@@ -55,7 +57,7 @@ class RekapTriwulan
             if (isset($perIrban[$item->irban_id])) {
                 $perIrban[$item->irban_id][$tw]['rencana'] += $target;
             }
-            $perJenis[$item->jenis_penugasan_id][$tw]['rencana'] += $target;
+            $perJenis[$kunciJenis($item->jenis_penugasan_id)][$tw]['rencana'] += $target;
         }
 
         $q = Spt::where('status_pengajuan', StatusPengajuan::Diterima)->when($irbanId, fn ($q) => $q->where('irban_id', $irbanId));
@@ -72,20 +74,18 @@ class RekapTriwulan
             if (isset($perIrban[$spt->irban_id])) {
                 $perIrban[$spt->irban_id][$tw]['realisasi'] += $realisasi;
             }
-            $perKlasifikasi[$spt->klasifikasi_id][$tw]['jumlah']++;
-            $perKlasifikasi[$spt->klasifikasi_id][$tw][$selesai ? 'selesai' : 'berjalan']++;
-            if ($spt->jenis_penugasan_id === null) {
-                $tanpaJenis[$tw]['realisasi'] += $realisasi;
-                $tanpaJenis[$tw]['jumlah']++;
-            } else {
-                $perJenis[$spt->jenis_penugasan_id][$tw]['realisasi'] += $realisasi;
-                $perJenis[$spt->jenis_penugasan_id][$tw]['jumlah']++;
+            if (isset($perKlasifikasi[$spt->klasifikasi_id])) {
+                $perKlasifikasi[$spt->klasifikasi_id][$tw]['jumlah']++;
+                $perKlasifikasi[$spt->klasifikasi_id][$tw][$selesai ? 'selesai' : 'berjalan']++;
             }
+            $k = $kunciJenis($spt->jenis_penugasan_id);
+            $perJenis[$k][$tw]['realisasi'] += $realisasi;
+            $perJenis[$k][$tw]['jumlah']++;
         }
 
         $barisJenis = $jenis->map(fn ($j) => ['id' => $j->id, 'nama' => $j->nama, ...$this->tabel($perJenis[$j->id])])->all();
-        if (array_sum(array_column($tanpaJenis, 'jumlah')) > 0) {
-            $barisJenis[] = ['id' => null, 'nama' => 'Tanpa jenis penugasan', ...$this->tabel($tanpaJenis)];
+        if (array_sum(array_column($perJenis[0], 'jumlah')) + array_sum(array_column($perJenis[0], 'rencana')) > 0) {
+            $barisJenis[] = ['id' => null, 'nama' => 'Tanpa jenis penugasan', ...$this->tabel($perJenis[0])];
         }
 
         return [

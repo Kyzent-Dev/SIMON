@@ -168,11 +168,13 @@ class Pkpt extends Component
         }
         $pkpt = PkptModel::where('tahun', (int) $this->tahun)->first();
         $disahkan = $pkpt?->status === StatusPkpt::Disahkan;
+        // Jenis and effective dates feed the table, the cards and the open usulan modal; the calendar gets them from KalenderPkpt.
+        $perluBaris = $this->tampilan === 'tabel' || $this->usulanOpen;
         $items = $disahkan
-            ? $pkpt->items()->aktif()->where('irban_id', $user->irban_id)->with('jenisPenugasan')
+            ? $pkpt->items()->aktif()->where('irban_id', $user->irban_id)->when($perluBaris, fn ($q) => $q->with('jenisPenugasan'))
                 ->orderBy('tanggal_mulai')->orderBy('id')->get()
             : collect();
-        $rentang = $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $kesesuaian->rentang($i)]);
+        $rentang = $perluBaris ? $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $kesesuaian->rentang($i)]) : collect();
         $tahunList = PkptModel::pluck('tahun')->push(now('Asia/Jakarta')->year)
             ->unique()->sortDesc()->mapWithKeys(fn ($t) => [$t => $t])->all();
 

@@ -19,7 +19,7 @@ class MingguPkpt
     /** @return list<array{minggu: int, mulai: CarbonImmutable, selesai: CarbonImmutable}> */
     public static function daftar(int $tahun, int $bulan): array
     {
-        $rabu = CarbonImmutable::create($tahun, $bulan, 1)->startOfDay()->next(CarbonInterface::WEDNESDAY);
+        $rabu = CarbonImmutable::create($tahun, $bulan, 1, 0, 0, 0, 'Asia/Jakarta')->next(CarbonInterface::WEDNESDAY);
         if ($rabu->day > 7) { // next() skips Wednesday the 1st
             $rabu = $rabu->subWeek();
         }
@@ -45,13 +45,18 @@ class MingguPkpt
         }
 
         $hasil = [];
+        $hariKerja = false;
         for ($senin = $awal->startOfWeek(CarbonInterface::MONDAY); $senin->lte($akhir); $senin = $senin->addWeek()) {
+            if ($senin->addDays(4)->endOfDay()->lt($awal)) {
+                continue; // only the Saturday/Sunday of this week overlap: the PKPT week is Monday–Friday
+            }
+            $hariKerja = true;
             $w = self::dari($senin);
             if ($w['tahun'] === $tahun) {
                 $hasil[] = ['bulan' => $w['bulan'], 'minggu' => $w['minggu']];
             }
         }
-        if ($hasil !== []) {
+        if ($hasil !== [] || ! $hariKerja) {
             return $hasil;
         }
 

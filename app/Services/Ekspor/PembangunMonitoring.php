@@ -65,6 +65,12 @@ class PembangunMonitoring implements Pembangun
         return route('pimpinan.monitoring', absolute: false);
     }
 
+    /** Status text of a MonitoringSpt row in files, shared with the Rekap detail export. */
+    public static function labelStatus(array $r): string
+    {
+        return $r['status']->label().(in_array('terlambat', $r['penanda'], true) ? ', Terlambat' : '');
+    }
+
     /** @return list<list<?string>> */
     private function baris(array $filter): array
     {
@@ -75,8 +81,7 @@ class PembangunMonitoring implements Pembangun
                 $out[] = [
                     $r['nomor_lengkap'], $r['irban'], $g['label'], $pkpt,
                     $r['mulai'] && $r['selesai'] ? Tanggal::rentang($r['mulai'], $r['selesai']) : '–',
-                    self::KESESUAIAN[$r['kesesuaian']],
-                    $r['status']->label().(in_array('terlambat', $r['penanda'], true) ? ', Terlambat' : ''),
+                    self::KESESUAIAN[$r['kesesuaian']], self::labelStatus($r),
                     $r['kendala'] ? "{$r['kendala']['kategori']}: {$r['kendala']['uraian']}" : null,
                 ];
             }

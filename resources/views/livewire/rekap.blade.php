@@ -12,6 +12,9 @@
     <div class="mb-4 flex flex-wrap items-end gap-3">
         <div class="w-28"><x-ui.select label="Tahun" name="tahun" id="rekap-tahun" wire:model.live="tahun" :options="$tahunList" :value="$this->tahun" /></div>
         <div class="w-40"><x-ui.select label="Triwulan" name="tw" id="rekap-tw" wire:model.live="tw" :options="\App\Services\Ekspor\PembangunRekap::TW" placeholder="Semua TW" :value="$this->tw" /></div>
+        @if ($pimpinan)
+            <div class="w-full min-w-0 sm:w-48"><x-ui.select label="Irban" name="irban" id="rekap-irban" wire:model.live="irban" :options="$irbanOptions" placeholder="Semua irban" :value="$this->irban" /></div>
+        @endif
     </div>
 
     @unless ($rekap['pkpt_disahkan'])

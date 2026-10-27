@@ -5,11 +5,11 @@
 <title>Rekap Triwulanan {{ $tahun }}</title>
 <style>
     @page { margin: 28px 32px; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #151C1A; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: {{ \App\Support\PaletGrafik::TEKS }}; }
     h1 { font-size: 15px; margin: 0 0 4px; }
     h2 { font-size: 12px; margin: 16px 0 0; page-break-after: avoid; }
     h3 { font-size: 10px; margin: 8px 0 0; }
-    p { margin: 0 0 3px; color: #4B5955; }
+    p { margin: 0 0 3px; color: {{ \App\Support\PaletGrafik::TEKS_SEKUNDER }}; }
     table { width: 60%; border-collapse: collapse; margin-top: 4px; }
     th { background: #F1F5F4; text-align: left; font-weight: bold; }
     th, td { border: 1px solid #D5DEDB; padding: 4px 5px; }
@@ -19,10 +19,10 @@
     tr, .blok { page-break-inside: avoid; }
     table.grafik-tabel, table.grafik-bar { width: 100%; margin-top: 0; }
     .grafik-tabel td, .grafik-bar td { border: 0; padding: 1px 3px; }
-    .grafik-label { width: 28%; color: #151C1A; }
+    .grafik-label { width: 28%; color: {{ \App\Support\PaletGrafik::TEKS }}; }
     .grafik-area { width: 78%; }
-    .grafik-angka { color: #151C1A; padding-left: 4px; }
-    .legenda { color: #4B5955; }
+    .grafik-angka { color: {{ \App\Support\PaletGrafik::TEKS }}; padding-left: 4px; }
+    .legenda { color: {{ \App\Support\PaletGrafik::TEKS_SEKUNDER }}; }
 </style>
 </head>
 <body>

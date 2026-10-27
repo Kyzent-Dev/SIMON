@@ -65,6 +65,27 @@ class KalenderIrbanTest extends TestCase
             ->set('tampilan', 'bogus')->assertSet('tampilan', 'kalender')->assertSee('data-kalender-pkpt', false);
     }
 
+    /** Jenis and effective dates are for the table, the cards and the open modal: the calendar view does not eager-load them in the page. */
+    public function test_calendar_view_skips_the_work_only_the_table_needs(): void
+    {
+        $jenisQuery = function (string $tampilan): int {
+            $n = 0;
+            $t = Livewire::actingAs($this->user)->test(IrbanPage::class)->set('tampilan', $tampilan);
+            \DB::listen(function ($q) use (&$n) {
+                $n += preg_match('/from ["`]jenis_penugasan["`]/', $q->sql);
+            });
+            $t->call('$refresh');
+
+            return $n;
+        };
+
+        $kalender = $jenisQuery('kalender');
+        $tabel = $jenisQuery('tabel');
+
+        $this->assertSame(1, $kalender); // KalenderPkpt reads the jenis itself; the page adds no second load
+        $this->assertSame(1, $tabel); // the table has its own eager load
+    }
+
     public function test_only_own_items_and_wilayah(): void
     {
         $jenis = JenisPenugasan::create(['nama' => 'Jenis Rahasia Irban Lain', 'warna' => '#332288', 'warna_teks' => '#FFFFFF']);

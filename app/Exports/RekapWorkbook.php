@@ -9,7 +9,13 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 class RekapWorkbook implements Export, WithMultipleSheets
 {
     /** @param  list<RekapSheet>  $sheets */
-    public function __construct(private array $sheets) {}
+    public function __construct(private array $sheets)
+    {
+        $dipakai = [];
+        foreach ($sheets as $s) {
+            $s->unikkan($dipakai);
+        }
+    }
 
     public function sheets(): array
     {

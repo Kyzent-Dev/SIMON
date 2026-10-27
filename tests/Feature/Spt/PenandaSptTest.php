@@ -103,6 +103,23 @@ class PenandaSptTest extends TestCase
         $this->assertContains('spt_final_belum_diupload', $this->penanda($sistem));
     }
 
+    public function test_untuk_banyak_leaves_the_callers_models_untouched(): void
+    {
+        $this->hari('2026-03-11');
+        $tanpa = $this->spt(final: false);
+        $dengan = $this->spt();
+        $spts = Spt::whereKey([$tanpa->id, $dengan->id])->get();
+
+        $penanda = app(PenandaSpt::class)->untukBanyak($spts);
+
+        // Positive control: the batch still tells the two apart.
+        $this->assertContains('spt_final_belum_diupload', $penanda[$tanpa->id]);
+        $this->assertNotContains('spt_final_belum_diupload', $penanda[$dengan->id]);
+        foreach ($spts as $spt) {
+            $this->assertArrayNotHasKey('final_ada', $spt->getAttributes());
+        }
+    }
+
     public function test_tidak_sesuai_pkpt_kendala_and_moved_item(): void
     {
         $this->hari('2026-03-15');

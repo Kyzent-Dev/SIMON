@@ -41,7 +41,15 @@ class PembangunRekap implements Pembangun
 
     private const KOLOM_DETAIL = ['Jenis Penugasan', 'Periode Penugasan (PKPT)', 'Nomor SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'];
 
+    /** hitung() results of this instance (one request or one job), so jumlah() and export() do not recompute: "tahun|irban" => result. */
+    private array $hasilHitung = [];
+
     public function __construct(private RekapTriwulan $rekap, private RealisasiItemPkpt $detailRealisasi) {}
+
+    private function hitung(int $tahun, ?int $irban = null): array
+    {
+        return $this->hasilHitung["{$tahun}|{$irban}"] ??= $this->rekap->hitung($tahun, $irban);
+    }
 
     /** Known codes only, unique, in canonical order; nothing left → the default of tab `irban`. */
     public static function bagianTerpilih(mixed $nilai): array
@@ -77,7 +85,7 @@ class PembangunRekap implements Pembangun
     {
         $ringkas = 0;
         if (array_diff($filter['bagian'], ['detail'])) {
-            $data = $this->rekap->hitung($filter['tahun'], $filter['irban']);
+            $data = $this->hitung($filter['tahun'], $filter['irban']);
             foreach ($this->bagian($data, $filter['tw'], $filter['irban'] ? 'irban' : 'gabungan') as $s) {
                 $ringkas += in_array($s['kode'], $filter['bagian'], true) ? 2 + count($s['tabel'][0]['baris']) : 0;
             }
@@ -101,11 +109,11 @@ class PembangunRekap implements Pembangun
         $dibuat = now('Asia/Jakarta')->translatedFormat('d F Y H.i').' WIB';
         $sheets = [];
         if (! $filter['irban'] && array_diff($filter['bagian'], ['detail'])) {
-            $sheets[] = new RekapSheet($judul, 'Gabungan', $dibuat, $this->bagianSheet($this->rekap->hitung($filter['tahun']), $filter, true));
+            $sheets[] = new RekapSheet($judul, 'Gabungan', $dibuat, $this->bagianSheet($this->hitung($filter['tahun']), $filter, true));
         }
         $detail = in_array('detail', $filter['bagian'], true) ? array_column($this->detail($filter), null, 'id') : [];
         foreach (Irban::orderBy('id')->when($filter['irban'], fn ($q, $id) => $q->whereKey($id))->get(['id', 'nama']) as $i) {
-            $bagian = $this->bagianSheet($this->rekap->hitung($filter['tahun'], $i->id), $filter, false);
+            $bagian = $this->bagianSheet($this->hitung($filter['tahun'], $i->id), $filter, false);
             if (isset($detail[$i->id])) {
                 $bagian[] = ['judul' => self::DETAIL, 'kolom' => self::KOLOM_DETAIL, 'tipe' => ['label', 'tanggal', 'nomor', 'tanggal', 'teks', 'teks', 'panjang'],
                     'baris' => $detail[$i->id]['baris'], 'total' => [], 'gabung' => $detail[$i->id]['gabung']];
@@ -139,7 +147,7 @@ class PembangunRekap implements Pembangun
 
     public function html(User $user, array $filter): string
     {
-        $data = $this->rekap->hitung($filter['tahun'], $filter['irban']);
+        $data = $this->hitung($filter['tahun'], $filter['irban']);
         $pilihan = $filter['bagian'];
 
         return view('pdf.rekap-triwulan', [
@@ -220,8 +228,7 @@ class PembangunRekap implements Pembangun
                 foreach ($it['spt'] ?: [null] as $r) {
                     $baris[] = [...($awal ?? ['', '']), ...($r ? [
                         $r['nomor_lengkap'], Tanggal::rentang($r['mulai'], $r['selesai']),
-                        $r['kesesuaian'] === 'sesuai' ? 'Sesuai' : ($r['kesesuaian'] === 'tidak_sesuai' ? 'Tidak Sesuai PKPT' : 'Non-PKPT'),
-                        $r['status']->label().(in_array('terlambat', $r['penanda'], true) ? ' · Terlambat' : ''),
+                        PembangunMonitoring::KESESUAIAN[$r['kesesuaian']], PembangunMonitoring::labelStatus($r),
                         $r['kendala'] ? $r['kendala']['kategori'].': '.$r['kendala']['uraian'] : '–',
                     ] : ['–', 'Belum ada SPT', '–', '–', '–'])];
                     $awal = null;

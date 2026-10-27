@@ -112,8 +112,13 @@ class DetailRealisasiTest extends TestCase
 
     public function test_pimpinan_irban_param_scopes_to_one_irban(): void
     {
-        $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['irban' => (string) $this->b->id])
-            ->assertSee('Audit Ketaatan OPD')->assertDontSee('Irban A')->assertDontSee('Pengawasan Dana BOS')->assertDontSee('Irban C');
+        $t = $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['irban' => (string) $this->b->id]);
+        $panel = substr($t->html(), strpos($t->html(), 'id="rekap-panel"')); // the Irban filter itself lists every irban
+
+        $t->assertSee('Audit Ketaatan OPD')->assertDontSee('Pengawasan Dana BOS');
+        $this->assertStringContainsString('Irban B', $panel);
+        $this->assertStringNotContainsString('Irban A', $panel);
+        $this->assertStringNotContainsString('Irban C', $panel);
     }
 
     public function test_irban_sees_only_own_irban_even_with_tampered_param(): void

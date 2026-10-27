@@ -68,7 +68,8 @@
                 <x-ui.button type="button" variant="secondary" size="sm" icon="chevron-up" class="max-lg:h-11" x-on:click="$dispatch('monitoring-grup', false)">Tutup semua</x-ui.button>
             </div>
 
-            <x-ui.table grouped label="Monitoring SPT {{ $this->tahun }}" class="hidden md:block">
+            {{-- px-3 cells (the first cell keeps its 40px indent) and narrower min widths: the expanded table fits beside the open sidebar at 1280 (no sideways scroll there). --}}
+            <x-ui.table grouped label="Monitoring SPT {{ $this->tahun }}" class="hidden md:block [&_td]:pr-3! [&_td+td]:pl-3! [&_thead_th]:px-3!">
                 <x-slot:head>
                     <x-ui.th>Jenis Penugasan</x-ui.th>
                     <x-ui.th class="whitespace-normal!">Periode Penugasan (PKPT)</x-ui.th>
@@ -82,7 +83,8 @@
                     <tbody wire:key="g-{{ $g['item_id'] ?? 'luar' }}-{{ $kunci }}" x-data="{ buka: @js($terbuka) }" x-on:monitoring-grup.window="buka = $event.detail">
                         <tr>
                             <th scope="rowgroup" colspan="6" class="h-12 bg-neutral-50 px-2 text-left text-sm font-semibold text-neutral-900">
-                                <div class="flex items-center gap-x-3 gap-y-1">
+                                {{-- sticky + w-max: the label and the SPT count stay in view while the table scrolls sideways (the row spans the whole table width). --}}
+                                <div class="sticky left-0 flex w-max items-center gap-x-3 gap-y-1">
                                     <button type="button" x-on:click="buka = !buka" x-bind:aria-expanded="buka.toString()" aria-expanded="{{ $terbuka ? 'true' : 'false' }}"
                                         aria-label="Tampilkan SPT {{ $g['label'] }}{{ $p ? ' '.$p : '' }}"
                                         class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-mint-700 hover:bg-mint-50 lg:size-8">
@@ -99,18 +101,18 @@
                                     @if ($g['irban'])
                                         <span class="font-normal text-neutral-500">{{ $g['irban'] }}</span>
                                     @endif
-                                    <span class="ml-auto shrink-0 pr-2 font-normal text-neutral-500 tabular-nums">{{ number_format(count($g['spt']), 0, ',', '.') }} SPT</span>
+                                    <span class="shrink-0 pr-2 font-normal text-neutral-500 tabular-nums">{{ number_format(count($g['spt']), 0, ',', '.') }} SPT</span>
                                 </div>
                             </th>
                         </tr>
                         @foreach ($g['spt'] as $r)
                             <tr wire:key="s-{{ $r['id'] }}-{{ $kunci }}" x-show="buka" @unless ($terbuka) x-cloak @endunless>
-                                <td class="min-w-56 !pl-10 before:absolute before:inset-y-0 before:left-6 before:w-0.5 before:bg-neutral-200">
+                                <td class="min-w-48 !pl-10 before:absolute before:inset-y-0 before:left-6 before:w-0.5 before:bg-neutral-200">
                                     <a href="{{ $r['url'] }}" wire:navigate class="font-medium whitespace-nowrap text-mint-700 underline-offset-2 hover:underline">{{ $r['nomor_lengkap'] }}</a>
                                     <span class="block text-xs text-neutral-600">{{ $r['jenis']['nama'] ?? 'Tanpa jenis penugasan' }} · {{ $r['irban'] }}</span>
                                 </td>
-                                <td class="min-w-40 text-neutral-600">{{ $p ?? '–' }}</td>
-                                <td class="min-w-40">{{ $r['mulai'] && $r['selesai'] ? Tanggal::rentang($r['mulai'], $r['selesai']) : '–' }}</td>
+                                <td class="min-w-28 text-neutral-600">{{ $p ?? '–' }}</td>
+                                <td class="min-w-32">{{ $r['mulai'] && $r['selesai'] ? Tanggal::rentang($r['mulai'], $r['selesai']) : '–' }}</td>
                                 @include('livewire.pimpinan.partials.spt-sel')
                             </tr>
                         @endforeach

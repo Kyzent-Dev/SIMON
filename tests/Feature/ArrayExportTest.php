@@ -25,4 +25,13 @@ class ArrayExportTest extends TestCase
             $this->assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('B'.($i + 2))->getDataType());
         }
     }
+
+    public function test_heading_row_repeats_on_every_printed_page(): void
+    {
+        Excel::store(new ArrayExport(['Kolom'], [['a'], ['b']]), 'uji-judul-cetak.xlsx', 'local');
+
+        $sheet = IOFactory::load(Storage::disk('local')->path('uji-judul-cetak.xlsx'))->getActiveSheet();
+
+        $this->assertSame([1, 1], $sheet->getPageSetup()->getRowsToRepeatAtTop());
+    }
 }

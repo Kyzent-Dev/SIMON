@@ -178,6 +178,21 @@ class MonitoringSptTest extends TestCase
         $this->assertSame(['i1' => [2]], $this->ringkas($this->ids(['jenis' => 'J1', 'kesesuaian' => 'tidak_sesuai', 'tw' => 2])));
     }
 
+    /** "Terlambat (semua tahun)" with a quarter: the quarter of every year, not of the selected year only. */
+    public function test_tw_with_the_terlambat_chip_covers_all_years(): void
+    {
+        $lama = Spt::factory()->diterima()->create(['irban_id' => $this->a->id, 'pkpt_item_id' => null, 'jenis_penugasan_id' => $this->j1->id,
+            'tanggal_mulai' => '2025-05-01', 'tanggal_selesai' => '2025-05-10']);
+        $lama->forceFill(['tahun' => 2025])->save();
+        $ids = fn (array $f) => collect(app(MonitoringSpt::class)->baris($f))->flatMap(fn ($g) => array_column($g['spt'], 'id'))->all();
+
+        $this->assertEqualsCanonicalizing([$this->m[2]->id, $lama->id], $ids(['penanda' => 'terlambat', 'tw' => 2]));
+        $this->assertSame([], $ids(['penanda' => 'terlambat', 'tw' => 1]));
+        $this->assertSame([$this->m[2]->id], $ids(['tw' => 2, 'status' => 'penyusunan_laporan'])); // control: without the chip the year stays
+        $this->assertSame(2, app(MonitoringSpt::class)->jumlah(['penanda' => 'terlambat', 'tw' => 2]));
+        $this->assertSame(2, app(MonitoringSpt::class)->jumlah(['penanda' => 'terlambat', 'tw' => 2, 'tahun' => 2025])); // the chip ignores the selected year, as before
+    }
+
     public function test_invalid_filter_values_fall_back(): void
     {
         $monitoring = app(MonitoringSpt::class);
@@ -240,6 +255,29 @@ class MonitoringSptTest extends TestCase
 
         $this->assertSame($awal, count(DB::getQueryLog()));
         $this->assertSame(1000, array_sum(array_map(fn ($g) => count($g['spt']), $groups)));
+    }
+
+    /** barisSpt() loads the relations it reads by itself: a caller that passes bare SPT still gets a constant query count. */
+    public function test_baris_spt_loads_its_own_relations(): void
+    {
+        $monitoring = app(MonitoringSpt::class);
+        $hitung = function (int $berapa) use ($monitoring) {
+            $spts = Spt::where('status_pengajuan', 'diterima')->orderBy('id')->take($berapa)->get(); // bare: no relations loaded
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $baris = $monitoring->barisSpt($spts);
+            DB::disableQueryLog();
+
+            return [count(DB::getQueryLog()), $baris];
+        };
+        $hitung(1); // settings cache warm-up
+        [$satu, $baris] = $hitung(1);
+        [$semua, $banyak] = $hitung(6);
+
+        $this->assertCount(1, $baris);
+        $this->assertCount(6, $banyak);
+        $this->assertSame($satu, $semua);
+        $this->assertContains('Irban A', array_column($banyak, 'irban'));
     }
 
     public function test_untuk_banyak_equals_untuk_for_every_spt(): void

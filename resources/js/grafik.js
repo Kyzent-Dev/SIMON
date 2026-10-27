@@ -35,7 +35,6 @@ async function muatChart() {
         d.plugins.legend.labels.usePointStyle = true;
         d.locale = 'id-ID';
     }
-    if (reduce()) chartJs.defaults.animation = false;
     return chartJs;
 }
 

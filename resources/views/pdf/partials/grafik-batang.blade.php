@@ -33,7 +33,8 @@
                     @else
                         @foreach ($b['nilai'] as $i => $n)
                             <table class="grafik-bar"><tr>
-                                <td class="grafik-area"><div style="width: {{ $pct($n) }}%; height: 10px; background: {{ $warna($i)['isi'] }}; border: 1px solid {{ $warna($i)['garis'] }};"></div></td>
+                                {{-- A zero draws no bar: its 1px border would show as a sliver. --}}
+                                <td class="grafik-area">@if ($n > 0)<div style="width: {{ $pct($n) }}%; height: 10px; background: {{ $warna($i)['isi'] }}; border: 1px solid {{ $warna($i)['garis'] }};"></div>@endif</td>
                                 <td class="grafik-angka">{{ is_array($b['teks'] ?? null) ? $b['teks'][$i] : ($b['teks'] ?? $n) }}</td>
                             </tr></table>
                         @endforeach

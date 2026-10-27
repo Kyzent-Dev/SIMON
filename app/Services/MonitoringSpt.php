@@ -8,6 +8,7 @@ use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Spt;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /** Monitoring table (PRD §7.9): accepted SPT grouped per PKPT item, then "Di luar PKPT". Shared by the page, export and dashboard cards. */
@@ -96,7 +97,8 @@ class MonitoringSpt
     {
         return Spt::where('status_pengajuan', StatusPengajuan::Diterima)
             ->when(! $f['penanda'], fn ($q) => $q->where('tahun', $f['tahun']))
-            ->when($f['tw'], fn ($q, $tw) => $this->triwulan->batasi($q, $f['tahun'], $tw))
+            // The quarter follows the year scope: all years while the Terlambat chip is on, else the selected year.
+            ->when($f['tw'], fn ($q, $tw) => $f['penanda'] ? $this->triwulan->batasiTriwulan($q, $tw) : $this->triwulan->batasi($q, $f['tahun'], $tw))
             ->when($f['irban'], fn ($q, $id) => $q->where('irban_id', $id))
             ->when($f['jenis'], fn ($q, $id) => $q->where('jenis_penugasan_id', $id))
             ->when($f['kesesuaian'] === 'non_pkpt', fn ($q) => $q->whereNull('pkpt_item_id'))
@@ -139,27 +141,32 @@ class MonitoringSpt
         $spts = $this->query($f)
             ->with(['irban:id,nama', 'jenisPenugasan', 'kendala', 'pkptItem.irban:id,nama', 'pkptItem.jenisPenugasan'])
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
+        $hari = now('Asia/Jakarta')->toDateString(); // once per call, not per row
         $hasil = [];
         foreach ($this->saring($spts, $f) as $h) {
-            $hasil[] = [$h[0], $this->bentukBaris(...$h)];
+            $hasil[] = [$h[0], $this->bentukBaris($h[0], $h[1], $h[2], $hari)];
         }
 
         return $hasil;
     }
 
     /**
-     * Rows (the shape documented on baris()) for already loaded SPT, no filters; one PenandaSpt batch. Eager-load
-     * irban, jenisPenugasan and kendala beforehand to keep the query count constant.
+     * Rows (the shape documented on baris()) for already loaded SPT, no filters; one PenandaSpt batch. Loads the
+     * irban, jenisPenugasan and kendala relations itself (only what is missing), so the query count stays constant.
      *
      * @param  Collection<int, Spt>  $spts
      * @return list<array>
      */
     public function barisSpt(Collection $spts): array
     {
-        return array_map(fn ($h) => $this->bentukBaris(...$h), $this->saring($spts, []));
+        $spts = new EloquentCollection($spts->all());
+        $spts->loadMissing(['irban:id,nama', 'jenisPenugasan', 'kendala']);
+        $hari = now('Asia/Jakarta')->toDateString();
+
+        return array_map(fn ($h) => $this->bentukBaris($h[0], $h[1], $h[2], $hari), $this->saring($spts, []));
     }
 
-    private function bentukBaris(Spt $spt, array $flags, string $kesesuaian): array
+    private function bentukBaris(Spt $spt, array $flags, string $kesesuaian, string $hari): array
     {
         return [
             'id' => $spt->id,
@@ -169,7 +176,7 @@ class MonitoringSpt
             'mulai' => $spt->tanggal_mulai,
             'selesai' => $spt->tanggal_selesai,
             'kesesuaian' => $kesesuaian,
-            'status' => $spt->status(now('Asia/Jakarta')->toDateString()),
+            'status' => $spt->status($hari),
             'penanda' => $flags,
             'kendala' => $spt->kendala ? ['kategori' => $spt->kendala->kategori, 'uraian' => $spt->kendala->uraian] : null,
             'url' => route('spt.show', $spt->id),

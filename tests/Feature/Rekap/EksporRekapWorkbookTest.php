@@ -10,10 +10,12 @@ use App\Models\Irban;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\Ekspor;
+use App\Services\Ekspor\PembangunMonitoring;
 use App\Services\Ekspor\PembangunRekap;
 use App\Services\RealisasiItemPkpt;
 use App\Services\RekapTriwulan;
 use App\Services\Settings;
+use App\Services\Triwulan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -182,6 +184,9 @@ class EksporRekapWorkbookTest extends TestCase
                 $this->assertSame($sel($data['irban']['baris'][0]['tw'][$n]), array_slice($this->baris($s, $irban->nama, $tw), 2, 3), "{$irban->nama} {$tw}");
             }
             $this->assertSame($sel($data['irban']['baris'][0]['total']), array_slice($this->baris($s, $irban->nama, 'Total'), 2, 3));
+            foreach ($data['jenis']['baris'] as $j) { // per jenis too, not only per irban: rencana | realisasi | % | jumlah SPT
+                $this->assertSame([$j['total']['rencana'], $j['total']['realisasi'], $j['total']['persen'] ?? '–', $j['total']['jumlah']], array_slice($this->baris($s, $j['nama'], 'Setahun'), 2, 4), "{$irban->nama} {$j['nama']}");
+            }
             foreach ($data['klasifikasi']['baris'] as $k) {
                 $this->assertSame([$k['total']['jumlah'], $k['total']['berjalan'], $k['total']['selesai']], array_slice($this->baris($s, $k['nama'], 'Setahun'), 2, 3));
             }
@@ -285,5 +290,72 @@ class EksporRekapWorkbookTest extends TestCase
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape')->output();
 
         $this->assertGreaterThan(2, preg_match_all('#/Type\s*/Page\b#', $pdf));
+    }
+
+    /** Sheet names must stay unique after sanitizing and cutting to 31 characters, also against "Gabungan" and case-insensitively. */
+    public function test_sheet_titles_are_made_unique(): void
+    {
+        $this->a->update(['nama' => 'Gabungan']);
+        $this->b->update(['nama' => 'Irban: B']);
+        Irban::factory()->create(['nama' => 'Irban B']);
+        Irban::factory()->create(['nama' => 'IRBAN b']);
+        Irban::factory()->create(['nama' => str_repeat('é', 31).'1']);
+        Irban::factory()->create(['nama' => str_repeat('é', 31).'2']);
+
+        $nama = $this->buku($this->pimpinan, [])->getSheetNames();
+
+        $this->assertSame(['Gabungan', 'Gabungan (2)', 'Irban B', 'Irban B (2)', 'IRBAN b (3)', str_repeat('é', 31), str_repeat('é', 27).' (2)'], $nama);
+        $this->assertSame(count($nama), count(array_unique(array_map('mb_strtolower', $nama))));
+    }
+
+    /** jumlah() and export() of one request share one hitung() per scope (tahun, irban). */
+    public function test_jumlah_and_export_calculate_each_scope_once(): void
+    {
+        $panggilan = new \ArrayObject;
+        $this->app->bind(RekapTriwulan::class, fn () => new class($panggilan, app(Triwulan::class)) extends RekapTriwulan
+        {
+            public function __construct(private \ArrayObject $panggilan, Triwulan $tw)
+            {
+                parent::__construct($tw);
+            }
+
+            public function hitung(int $tahun, ?int $irbanId = null): array
+            {
+                $this->panggilan[] = "{$tahun}|{$irbanId}";
+
+                return parent::hitung($tahun, $irbanId);
+            }
+        });
+        $p = app(PembangunRekap::class);
+        $f = $p->filter($this->pimpinan, ['tahun' => 2026]);
+
+        $p->jumlah($this->pimpinan, $f);
+        $p->export($this->pimpinan, $f);
+
+        // Gabungan + one per irban; the Gabungan scope is shared with jumlah().
+        $this->assertEqualsCanonicalizing(['2026|', "2026|{$this->a->id}", "2026|{$this->b->id}"], $panggilan->getArrayCopy());
+
+        $panggilan->exchangeArray([]);
+        $f = $p->filter($this->pimpinan, ['tahun' => 2026, 'irban' => $this->a->id]);
+        $baru = app(PembangunRekap::class);
+        $baru->jumlah($this->pimpinan, $f);
+        $baru->export($this->pimpinan, $f);
+        $this->assertSame(["2026|{$this->a->id}"], $panggilan->getArrayCopy());
+    }
+
+    public function test_print_titles_repeat_the_title_rows(): void
+    {
+        $s = $this->buku($this->pimpinan, [])->getSheetByName('Irban A');
+
+        $this->assertSame([1, 3], $s->getPageSetup()->getRowsToRepeatAtTop());
+    }
+
+    public function test_detail_status_and_kesesuaian_use_the_same_labels_as_monitoring(): void
+    {
+        $s = $this->buku($this->pimpinan, ['bagian' => ['detail']])->getSheetByName('Irban A');
+        $sel = array_merge(...array_map(fn ($r) => [$r[4] ?? null, $r[5] ?? null], $s->toArray(null, true, true, false)));
+
+        $this->assertContains(PembangunMonitoring::KESESUAIAN['sesuai'], $sel);
+        $this->assertContains('Selesai', $sel);
     }
 }
