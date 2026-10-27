@@ -18,11 +18,20 @@ class FileContohTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var list<string> */
+    private array $berkasSementara = [];
+
+    protected function tearDown(): void
+    {
+        array_map(fn ($f) => @unlink($f), $this->berkasSementara);
+        parent::tearDown();
+    }
+
     /** @return list<array<string, string>> keyed by SptImportParser::HEADERS */
     private function barisContoh(): array
     {
-        $tim = Tim::where('nama', 'Tim 1')->firstOrFail()->anggota()->orderBy('urutan')->get();
-        [$sup, $ketua, $a1, $a2] = $tim->map(fn ($a) => Pegawai::findOrFail($a->pegawai_id)->nip)->all();
+        // Own personnel (not the seed's Tim 1), so the test does not depend on how many members the seed gives a team.
+        [$sup, $ketua, $a1, $a2] = array_map(fn ($n) => Pegawai::factory()->create(['nip' => '19900101202001100'.$n])->nip, [1, 2, 3, 4]);
         $dasar = [
             'irban' => 'Irban I', 'klasifikasi' => 'REGULER', 'jenis_penugasan' => 'Reviu LKjIP', 'periode_diperiksa' => 'Tahun 2023',
             'nip_supervisor' => $sup, 'nip_ketua' => $ketua, 'nip_anggota' => "$a1;$a2",
@@ -65,7 +74,9 @@ class FileContohTest extends TestCase
                 $sheet->setCellValueExplicit([$c + 1, $r + 2], (string) $row[$h], 's');
             }
         }
-        $path = tempnam(sys_get_temp_dir(), 'contoh').'.xlsx';
+        $dasar = tempnam(sys_get_temp_dir(), 'contoh');
+        $path = $dasar.'.xlsx';
+        $this->berkasSementara = [...$this->berkasSementara, $dasar, $path];
         IOFactory::createWriter($s, 'Xlsx')->save($path);
 
         return $path;
@@ -79,8 +90,10 @@ class FileContohTest extends TestCase
 
         $this->assertCount(7, $rows);
         foreach (array_slice($rows, 0, 5) as $r) {
-            $this->assertNotSame('error', $r['status'], json_encode($r['errors']));
+            $this->assertContains($r['status'], ['valid', 'warning'], json_encode($r['errors']));
+            $this->assertSame([], $r['errors']);
         }
+        $this->assertSame(['error', 'error'], array_column(array_slice($rows, 5), 'status')); // kontrol: baris buruk memang galat
         $this->assertSame(['Irban "Irban IX" tidak ditemukan.'], array_column($rows[5]['errors'], 'pesan'));
         $this->assertSame(['Nomor dan tanggal LHP diisi bersama.'], array_column($rows[6]['errors'], 'pesan'));
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Actions\MasterData\ImportPegawai;
 use App\Exports\ArrayExport;
+use App\Livewire\Concerns\HapusUnggahanSementara;
 use App\Services\Import\PegawaiImportParser;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -16,7 +17,7 @@ use Throwable;
 #[Title('Impor Pegawai')]
 class PegawaiImpor extends Component
 {
-    use WithFileUploads;
+    use HapusUnggahanSementara, WithFileUploads;
 
     public $file = null;
 
@@ -62,7 +63,7 @@ class PegawaiImpor extends Component
             return;
         }
         $this->namaFile = $this->file->getClientOriginalName();
-        $this->file->delete(); // remove the Livewire temp upload too
+        $this->hapusUnggahan($this->file); // remove the Livewire temp upload (and its sidecar) too
         $this->file = null; // the upload is never stored; only parsed cells are kept
         $this->step = 2;
     }
@@ -90,7 +91,12 @@ class PegawaiImpor extends Component
         if ($this->step !== 2 || ($galat > 0 && ! $this->lewati)) {
             return;
         }
-        $this->diimpor = app(ImportPegawai::class)->handle($rows, $this->namaFile);
+        if (count($rows) === $galat) { // every row is an error: nothing to import
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+
+            return;
+        }
+        $this->diimpor = app(ImportPegawai::class)->handle(auth()->user(), $rows, $this->namaFile);
         $this->step = 3;
         $this->dispatch('toast', type: 'success', message: "{$this->diimpor} pegawai diimpor.");
     }
@@ -99,7 +105,7 @@ class PegawaiImpor extends Component
     {
         Gate::authorize('manage-master-data');
 
-        return Excel::download(new ArrayExport(PegawaiImportParser::HEADERS, [], ['B']), 'templat-pegawai.xlsx');
+        return Excel::download(new ArrayExport(PegawaiImportParser::HEADERS, [], ['B:B']), 'templat-pegawai.xlsx');
     }
 
     public function unduhGalat()

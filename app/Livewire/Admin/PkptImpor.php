@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Actions\Pkpt\ImportPkptItems;
 use App\Exports\ArrayExport;
+use App\Livewire\Concerns\HapusUnggahanSementara;
 use App\Models\Pkpt;
 use App\Services\Import\PkptItemImportParser;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +17,7 @@ use Throwable;
 
 class PkptImpor extends Component
 {
-    use WithFileUploads;
+    use HapusUnggahanSementara, WithFileUploads;
 
     public Pkpt $pkpt;
 
@@ -70,7 +71,7 @@ class PkptImpor extends Component
             return;
         }
         $this->namaFile = $this->file->getClientOriginalName();
-        $this->file->delete(); // remove the Livewire temp upload too
+        $this->hapusUnggahan($this->file); // remove the Livewire temp upload (and its sidecar) too
         $this->file = null; // the upload is never stored; only parsed cells are kept
         $this->step = 2;
     }
@@ -99,8 +100,14 @@ class PkptImpor extends Component
         if ($this->step !== 2 || ($galat > 0 && ! $this->lewati)) {
             return;
         }
+        // Nothing importable: every row is an error, or the only non-error rows are duplicates that get skipped.
+        if (! array_filter($rows, fn ($r) => $r['status'] === 'valid' || ($r['status'] === 'warning' && ! $this->lewatiDuplikat))) {
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+
+            return;
+        }
         try {
-            $this->diimpor = app(ImportPkptItems::class)->handle($this->pkpt, $rows, $this->lewatiDuplikat, $this->namaFile);
+            $this->diimpor = app(ImportPkptItems::class)->handle(auth()->user(), $this->pkpt, $rows, $this->lewatiDuplikat, $this->namaFile);
         } catch (ValidationException $e) {
             $this->dispatch('toast', type: 'error', message: collect($e->errors())->flatten()->first());
 

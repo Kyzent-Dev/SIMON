@@ -279,4 +279,13 @@ class SptImportParserTest extends TestCase
         $raw = (new SptImportParser)->read($this->xlsx([$this->baris(), array_fill_keys(SptImportParser::HEADERS, ''), $this->baris(['nomor_spt' => 'B'])]));
         $this->assertSame([2, 4], array_column($raw, 'baris'));
     }
+
+    public function test_nomor_sudah_ada_tanpa_peka_huruf(): void
+    {
+        Spt::factory()->diterima()->create(['nomor_lengkap' => '700/751/I/SPT/2025']);
+        [$r] = $this->analisis([$this->baris(['nomor_spt' => '700/751/i/spt/2025'])]);
+        $this->assertSame(['Nomor SPT 700/751/i/spt/2025 sudah ada.'], $this->pesan($r));
+        [$r] = $this->analisis([$this->baris(['nomor_spt' => '700/752/I/SPT/2025'])]); // kontrol: nomor lain tidak bentrok
+        $this->assertSame([], $this->pesan($r));
+    }
 }

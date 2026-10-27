@@ -73,13 +73,15 @@ class PkptItemImportParser
         }, array_values($raw));
 
         $irbans = [];
-        foreach (Irban::all(['id', 'nama', 'kode_nomor']) as $i) {
+        $semuaIrban = Irban::all(['id', 'nama', 'kode_nomor']);
+        foreach ($semuaIrban as $i) {
             $irbans[mb_strtolower(trim($i->nama))] = $i;
         }
-        foreach (Irban::all(['id', 'nama', 'kode_nomor']) as $i) {
+        foreach ($semuaIrban as $i) {
             $irbans[mb_strtolower(trim((string) $i->kode_nomor))] ??= $i;
         }
         $jenis = JenisPenugasan::all(['id', 'nama'])->keyBy(fn ($j) => mb_strtolower(trim($j->nama)));
+        $ada = ['irban' => $semuaIrban->pluck('id')->flip()->all(), 'jenis' => $jenis->pluck('id')->flip()->all()];
         $seen = $pkpt->items()->aktif()->get(['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai'])
             ->mapWithKeys(fn ($i) => [$i->irban_id.'|'.$i->jenis_penugasan_id.'|'.$i->tanggal_mulai->toDateString().'|'.$i->tanggal_selesai->toDateString() => true])->all();
 
@@ -109,7 +111,7 @@ class PkptItemImportParser
             $data = ['irban_id' => $irban?->id, 'jenis_penugasan_id' => $jp?->id] + $dates
                 + ['keterangan' => $r['keterangan'], 'target_spt' => $r['target_spt']];
             try {
-                SavePkptItem::validated($pkpt, $data);
+                SavePkptItem::validated($pkpt, $data, $ada);
             } catch (ValidationException $e) {
                 $map = ['irban_id' => 'irban', 'jenis_penugasan_id' => 'jenis_penugasan'];
                 foreach ($e->errors() as $field => $msgs) {

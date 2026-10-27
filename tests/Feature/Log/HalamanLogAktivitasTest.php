@@ -11,6 +11,7 @@ use App\Models\Pegawai;
 use App\Models\Spt;
 use App\Models\SptKendala;
 use App\Models\User;
+use App\Support\LabelAktivitas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -191,6 +192,104 @@ class HalamanLogAktivitasTest extends TestCase
             $this->baris(['subject_type' => (new Spt)->getMorphClass(), 'subject_id' => 1, 'diinput_oleh' => Pegawai::factory()->create()->id] + $this->causer($u));
         }
         $this->assertSame($sedikit, $hitung());
+    }
+
+    public function test_aksi_lainnya_menyertakan_event_null(): void
+    {
+        $admin = $this->user(Role::Admin);
+        $this->bersih();
+        $this->baris(['event' => 'impor']);
+        $this->baris(['event' => null]);
+        $this->baris(['event' => 'created']); // kontrol: bukan "lainnya"
+
+        $t = Livewire::actingAs($admin)->withQueryParams(['aksi' => 'lainnya'])->test(LogAktivitas::class);
+        $this->assertSame(2, $t->viewData('baris')->total());
+        $this->assertSame(1, Livewire::actingAs($admin)->withQueryParams(['aksi' => 'created'])->test(LogAktivitas::class)->viewData('baris')->total());
+    }
+
+    public function test_nilai_url_tidak_valid_dikosongkan_di_properti_bukan_di_render(): void
+    {
+        $admin = $this->user(Role::Admin);
+        $t = Livewire::actingAs($admin)->withQueryParams(['aksi' => 'zzz', 'dari' => 'x', 'pengguna' => 'abc', 'objek' => 'zzz', 'spt' => 'q'])->test(LogAktivitas::class);
+        foreach (['aksi', 'dari', 'pengguna', 'objek', 'spt'] as $k) {
+            $t->assertSet($k, '');
+        }
+        $t->assertDontSee('Atur ulang');
+        // Ubahan dari klien juga dinormalkan lewat updated().
+        $t->set('aksi', 'zzz')->assertSet('aksi', '')->set('spt', '12')->assertSet('spt', '12');
+    }
+
+    public function test_aksi_aturulang_dan_updated_menjaga_gate(): void
+    {
+        $admin = $this->user(Role::Admin);
+        foreach (['aturUlang', 'set'] as $aksi) {
+            $c = Livewire::actingAs($admin)->test(LogAktivitas::class);
+            $admin->role = Role::Irban;
+            $aksi === 'set' ? $c->set('aksi', 'deleted')->assertForbidden() : $c->call('aturUlang')->assertForbidden();
+            $admin->role = Role::Admin;
+        }
+    }
+
+    public function test_chip_spt_dan_baris_impor(): void
+    {
+        $admin = $this->user(Role::Admin);
+        $this->bersih();
+        $this->baris(['log_name' => 'impor', 'event' => 'impor', 'properties' => ['jenis' => 'pegawai', 'berkas' => 'BERKAS-Y.xlsx', 'jumlah' => 1234]]);
+
+        $t = Livewire::actingAs($admin)->test(LogAktivitas::class)->assertDontSee('SPT #7')->assertSee('Pegawai: 1.234 baris dari BERKAS-Y.xlsx');
+        $this->assertSame(1, $t->viewData('baris')->total());
+        $t = Livewire::actingAs($admin)->withQueryParams(['spt' => 7])->test(LogAktivitas::class)->assertSee('SPT #7');
+        $this->assertSame(0, $t->viewData('baris')->total());
+    }
+
+    public function test_kunci_diff_bisa_dipenggal_di_garis_bawah_dan_waktu_satu_format(): void
+    {
+        $admin = $this->user(Role::Admin);
+        $this->bersih();
+        $a = $this->baris(['event' => 'updated', 'created_at' => '2026-03-05 07:30:00', 'properties' => ['attributes' => ['nomor_lengkap' => 'X']]]);
+
+        $html = Livewire::actingAs($admin)->test(LogAktivitas::class)->html();
+        $this->assertStringContainsString('nomor_<wbr>lengkap', $html);
+        $this->assertSame('05 Maret 2026 07.30 WIB', LabelAktivitas::waktu($a->created_at));
+        $this->assertStringContainsString('05 Maret 2026 07.30 WIB', $html);
+    }
+
+    public function test_tautan_admin_di_kartu_spt(): void
+    {
+        $spt = Spt::factory()->diterima()->create();
+        $this->bersih();
+        $this->baris(['subject_type' => (new Spt)->getMorphClass(), 'subject_id' => $spt->id, 'event' => 'updated']);
+
+        $html = $this->actingAs($this->user(Role::Admin))->get(route('spt.show', $spt))->assertOk()->getContent();
+        $this->assertStringContainsString(e(route('admin.log', ['spt' => $spt->id])), $html);
+        $this->assertStringNotContainsString(route('pimpinan.log'), $html);
+    }
+
+    public function test_jumlah_query_tetap_untuk_banyak_jenis_subjek(): void
+    {
+        $admin = $this->user(Role::Admin);
+        $u = $this->user(Role::Irban);
+        $this->bersih();
+        $hitung = function () use ($admin) {
+            DB::enableQueryLog();
+            Livewire::actingAs($admin)->test(LogAktivitas::class);
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+
+            return $n;
+        };
+        $tambah = function (int $n) use ($u) {
+            for ($i = 0; $i < $n; $i++) {
+                $kelas = [Spt::class, Pegawai::class, SptKendala::class, Irban::class][$i % 4];
+                $this->baris(['subject_type' => (new $kelas)->getMorphClass(), 'subject_id' => $i + 1] + $this->causer($u));
+            }
+        };
+        $tambah(4);
+        $sedikit = $hitung();
+        $tambah(16);
+        $this->assertSame($sedikit, $hitung());
+        $this->assertGreaterThan(3, $sedikit); // kontrol: ada query nyata yang dihitung
     }
 
     public function test_navigasi(): void

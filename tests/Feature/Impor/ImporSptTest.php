@@ -207,14 +207,14 @@ class ImporSptTest extends TestCase
         $this->actingAs($this->admin);
         $pegawai = (new PegawaiImportParser)->analyze([['baris' => 2, 'nama_bergelar' => 'Budi, S.E.', 'nip' => '199001012015011001', 'pangkat' => 'Penata',
             'golongan' => 'III/c', 'jabatan' => 'Auditor', 'aktif' => 'ya']]);
-        $this->assertSame(1, app(ImportPegawai::class)->handle($pegawai, 'pegawai.xlsx'));
+        $this->assertSame(1, app(ImportPegawai::class)->handle($this->admin, $pegawai, 'pegawai.xlsx'));
 
         $pkpt = Pkpt::factory()->create(['tahun' => 2027]);
         $p = new PkptItemImportParser;
         $items = $p->analyze($pkpt, [['baris' => 2, 'irban' => 'Irban I', 'jenis_penugasan' => 'Reviu LKjIP', 'tanggal_mulai' => '02/03/2027',
             'tanggal_selesai' => '20/03/2027', 'keterangan' => '', 'target_spt' => '']]);
-        $this->assertSame(1, app(ImportPkptItems::class)->handle($pkpt, $items, true, 'pkpt.xlsx'));
-        $this->assertSame(0, app(ImportPkptItems::class)->handle($pkpt, [], true, 'kosong.xlsx'));
+        $this->assertSame(1, app(ImportPkptItems::class)->handle($this->admin, $pkpt, $items, true, 'pkpt.xlsx'));
+        $this->assertSame(0, app(ImportPkptItems::class)->handle($this->admin, $pkpt, [], true, 'kosong.xlsx'));
 
         $log = Aktivitas::where('log_name', 'impor')->orderBy('id')->get();
         $this->assertSame([['jenis' => 'pegawai', 'berkas' => 'pegawai.xlsx', 'jumlah' => 1], ['jenis' => 'pkpt', 'berkas' => 'pkpt.xlsx', 'jumlah' => 1]],

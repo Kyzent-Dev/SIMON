@@ -4,6 +4,7 @@ namespace Tests\Feature\MasterData;
 
 use App\Enums\Role;
 use App\Livewire\Admin\PegawaiImpor as Page;
+use App\Models\Aktivitas;
 use App\Models\Pegawai;
 use App\Models\User;
 use App\Services\Import\PegawaiImportParser;
@@ -21,10 +22,19 @@ class PegawaiImporTest extends TestCase
 
     private const H = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'aktif'];
 
+    /** @var list<string> */
+    private array $berkasSementara = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->withoutVite();
+    }
+
+    protected function tearDown(): void
+    {
+        array_map(fn ($f) => @unlink($f), $this->berkasSementara);
+        parent::tearDown();
     }
 
     /** @param list<list<mixed>> $rows */
@@ -252,5 +262,52 @@ class PegawaiImporTest extends TestCase
     public function test_template_headers_include_email(): void
     {
         $this->assertSame(['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'email', 'aktif'], PegawaiImportParser::HEADERS);
+    }
+
+    public function test_email_sudah_dipakai_tanpa_peka_huruf(): void
+    {
+        Pegawai::factory()->create(['nip' => $this->nip(8), 'email' => 'Ada@Example.test']);
+        $h = ['nama_bergelar', 'nip', 'pangkat', 'golongan', 'jabatan', 'email', 'aktif'];
+        $r = (new PegawaiImportParser)->parse($this->xlsx([
+            ['A', $this->nip(1), '', '', '', 'ada@example.test', ''],
+            ['B', $this->nip(2), '', '', '', 'lain@example.test', ''], // kontrol
+        ], $h));
+        $this->assertSame(['error', 'valid'], array_column($r, 'status'));
+        $this->assertSame('Email sudah dipakai pegawai lain.', $r[0]['errors'][0]['pesan']);
+    }
+
+    public function test_templat_memformat_kolom_nip_sebagai_teks_seluruh_kolom(): void
+    {
+        $c = Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)->call('unduhTemplat');
+        $path = tempnam(sys_get_temp_dir(), 'tp');
+        $this->berkasSementara[] = $path;
+        file_put_contents($path, base64_decode($c->effects['download']['content']));
+        $sheet = IOFactory::load($path)->getActiveSheet();
+        $this->assertSame('@', $sheet->getColumnStyle('B')->getNumberFormat()->getFormatCode());
+        $this->assertNull($sheet->getColumnStyle('A')); // kontrol: hanya kolom NIP
+    }
+
+    public function test_berkas_hanya_judul_ditolak(): void
+    {
+        Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)
+            ->set('file', $this->upload($this->xlsx([])))->assertSet('step', 1)->assertHasErrors('file');
+    }
+
+    public function test_semua_galat_dengan_lewati_ditolak_server(): void
+    {
+        $c = Livewire::actingAs(User::factory()->admin()->create())->test(Page::class)
+            ->set('file', $this->upload($this->xlsx([['Bad', '1', '', '', '', ''], ['Bad2', '2', '', '', '', '']])))
+            ->set('lewati', true)->assertSee('2 galat');
+        $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+        $this->assertSame(0, Pegawai::count());
+        $this->assertNull(Aktivitas::imporTerakhir());
+    }
+
+    public function test_ringkasan_impor_dicatat_atas_nama_pengguna(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $c = Livewire::actingAs($admin)->test(Page::class)->set('file', $this->upload($this->xlsx([['Budi', $this->nip(1), '', '', '', '']])))->call('impor');
+        $this->assertSame($admin->id, Aktivitas::imporTerakhir()->causer_id);
+        $this->assertSame('pegawai', Aktivitas::imporTerakhir()->properties['jenis']);
     }
 }

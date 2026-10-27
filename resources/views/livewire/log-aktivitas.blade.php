@@ -74,7 +74,7 @@
                     <x-app.log-aktivitas-baris :a="$a" />
                 @endforeach
             </x-ui.table>
-            <x-ui.pagination :paginator="$baris" perPageModel="perPage" :perPageOptions="[25]" class="mt-4" />
+            <x-ui.pagination :paginator="$baris" :perPageOptions="[]" class="mt-4" />
         @endif
     </div>
 </div>

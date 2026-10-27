@@ -24,6 +24,7 @@ use App\Models\SptPersonel;
 use App\Models\Tim;
 use App\Models\TimAnggota;
 use App\Models\User;
+use Carbon\CarbonInterface;
 
 /** Labels of the activity log (Fase 10 E2): one source for the log page, SPT detail and dashboard. */
 class LabelAktivitas
@@ -82,9 +83,15 @@ class LabelAktivitas
         return $subjectType ? class_basename($subjectType) : (string) $logName;
     }
 
-    public static function aksi(string $event): string
+    public static function aksi(?string $event): string
     {
-        return self::AKSI[$event] ?? $event;
+        return self::AKSI[$event ?? ''] ?? ($event ?? '—');
+    }
+
+    /** One time format for every log line: Jakarta time, e.g. "05 Maret 2026 14.30 WIB". */
+    public static function waktu(CarbonInterface $waktu): string
+    {
+        return $waktu->copy()->setTimezone('Asia/Jakarta')->translatedFormat('d F Y H.i').' WIB';
     }
 
     public static function jenisImpor(string $jenis): string

@@ -11,16 +11,19 @@ use Illuminate\Validation\ValidationException;
 
 class SavePkptItem
 {
-    /** Item rules; returns normalized attributes or throws ValidationException. Reusable by the import (Task 3). */
-    public static function validated(Pkpt $pkpt, array $data): array
+    /**
+     * Item rules; returns normalized attributes or throws ValidationException. Reusable by the import.
+     * $ada (['irban' => [id => true], 'jenis' => [id => true]]) replaces the per-row existence queries when the caller already loaded the ids.
+     */
+    public static function validated(Pkpt $pkpt, array $data, ?array $ada = null): array
     {
         $errors = [];
         $irban = $data['irban_id'] ?? null;
         $jenis = $data['jenis_penugasan_id'] ?? null;
-        if (! $irban || ! Irban::whereKey($irban)->exists()) {
+        if (! $irban || ! ($ada ? isset($ada['irban'][$irban]) : Irban::whereKey($irban)->exists())) {
             $errors['irban_id'] = 'Pilih irban.';
         }
-        if (! $jenis || ! JenisPenugasan::whereKey($jenis)->exists()) {
+        if (! $jenis || ! ($ada ? isset($ada['jenis'][$jenis]) : JenisPenugasan::whereKey($jenis)->exists())) {
             $errors['jenis_penugasan_id'] = 'Pilih jenis penugasan.';
         }
 

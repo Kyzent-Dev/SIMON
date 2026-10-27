@@ -17,7 +17,7 @@
     $label = LabelAktivitas::objek($a->subject_type, $a->log_name);
     $adalahSpt = $a->subject_type === (new Spt)->getMorphClass() && $a->subject_id;
     $nomor = $a->subject?->nomor_lengkap ?? $baru['nomor_lengkap'] ?? $lama['nomor_lengkap'] ?? null;
-    $waktu = $a->created_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y H.i');
+    $waktu = LabelAktivitas::waktu($a->created_at);
 @endphp
 <tbody x-data="{ buka: false }" wire:key="log-{{ $a->id }}">
     <tr>
@@ -32,7 +32,7 @@
                 @else
                     <span aria-hidden="true" class="-ml-2 size-11 shrink-0 lg:size-8"></span>
                 @endif
-                <span>{{ $waktu }} WIB</span>
+                <span>{{ $waktu }}</span>
             </span>
         </td>
         <td class="min-w-36">{{ $a->causer?->name ?? 'Sistem' }}</td>
@@ -60,7 +60,7 @@
                             <tbody>
                                 @foreach ($kolom as $k)
                                     <tr class="align-top">
-                                        <th scope="row" class="pr-3 pb-1 text-left font-semibold [overflow-wrap:anywhere]">{{ $k }}</th>
+                                        <th scope="row" class="pr-3 pb-1 text-left font-semibold [overflow-wrap:break-word]">{!! str_replace('_', '_<wbr>', e($k)) !!}</th>
                                         <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($lama[$k] ?? null, $k) }}</td>
                                         <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($baru[$k] ?? null, $k) }}</td>
                                     </tr>

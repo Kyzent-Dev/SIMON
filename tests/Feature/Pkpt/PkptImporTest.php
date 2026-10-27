@@ -4,6 +4,7 @@ namespace Tests\Feature\Pkpt;
 
 use App\Enums\Role;
 use App\Livewire\Admin\PkptImpor as Page;
+use App\Models\Aktivitas;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
 use App\Models\Pkpt;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\Import\PkptItemImportParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -212,5 +214,64 @@ class PkptImporTest extends TestCase
             $admin->role = Role::Admin;
         }
         $this->assertSame(0, $this->pkpt->items()->count());
+    }
+
+    public function test_raw_rusak_dilaporkan_sebagai_galat_baris(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $c = Livewire::actingAs($admin)->test(Page::class, ['pkpt' => $this->pkpt])->set('file', $this->upload($this->xlsx([$this->row()])))->assertSet('step', 2);
+        $c->set('raw', [['baris' => 2], 'bukan-array', ['baris' => 4, 'irban' => ['x'], 'tanggal_mulai' => null, 'target_spt' => 5, 'keterangan' => new \stdClass]])
+            ->assertSet('step', 2)->assertSee('3 galat')->call('impor')->assertSet('step', 2);
+        $this->assertSame(0, $this->pkpt->items()->count());
+    }
+
+    public function test_berkas_hanya_judul_ditolak(): void
+    {
+        Livewire::actingAs(User::factory()->admin()->create())->test(Page::class, ['pkpt' => $this->pkpt])
+            ->set('file', $this->upload($this->xlsx([])))->assertSet('step', 1)->assertHasErrors('file');
+    }
+
+    public function test_tanpa_baris_yang_dapat_diimpor_ditolak_server(): void
+    {
+        $admin = User::factory()->admin()->create();
+        // Semua galat + lewati.
+        $c = Livewire::actingAs($admin)->test(Page::class, ['pkpt' => $this->pkpt])
+            ->set('file', $this->upload($this->xlsx([$this->row([0 => 'zzz']), $this->row([0 => 'yyy'])])))->set('lewati', true);
+        $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+        // Hanya duplikat yang dilewati.
+        PkptItem::factory()->create(['pkpt_id' => $this->pkpt->id, 'irban_id' => $this->irban->id, 'jenis_penugasan_id' => $this->jenis->id,
+            'tanggal_mulai' => '2026-03-02', 'tanggal_selesai' => '2026-03-20']);
+        $c = Livewire::actingAs($admin)->test(Page::class, ['pkpt' => $this->pkpt])->set('file', $this->upload($this->xlsx([$this->row()])))
+            ->assertSee('1 peringatan');
+        $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+        $this->assertSame(1, $this->pkpt->items()->count());
+        $this->assertNull(Aktivitas::imporTerakhir());
+        $c->set('lewatiDuplikat', false)->call('impor')->assertSet('step', 3)->assertSet('diimpor', 1); // kontrol
+    }
+
+    public function test_analisis_tidak_menjalankan_query_per_baris(): void
+    {
+        $hitung = function (int $baris) {
+            $raw = array_map(fn ($i) => ['baris' => $i + 2, 'irban' => 'Irban I', 'jenis_penugasan' => 'Reviu Laporan', 'tanggal_mulai' => '02/03/2026',
+                'tanggal_selesai' => '20/03/2026', 'keterangan' => "K{$i}", 'target_spt' => '2'], range(0, $baris - 1));
+            DB::enableQueryLog();
+            $hasil = (new PkptItemImportParser)->analyze($this->pkpt, $raw);
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+            $this->assertCount($baris, $hasil);
+            $this->assertNotContains('error', array_column($hasil, 'status')); // kontrol: baris benar-benar divalidasi
+
+            return $n;
+        };
+        $sedikit = $hitung(2);
+        $this->assertSame($sedikit, $hitung(30));
+    }
+
+    public function test_ringkasan_impor_dicatat_atas_nama_pengguna(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Livewire::actingAs($admin)->test(Page::class, ['pkpt' => $this->pkpt])->set('file', $this->upload($this->xlsx([$this->row()])))->call('impor');
+        $this->assertSame($admin->id, Aktivitas::imporTerakhir()->causer_id);
     }
 }

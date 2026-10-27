@@ -19,6 +19,7 @@ use App\Services\KesesuaianPkpt;
 use App\Services\Penomoran;
 use App\Services\Settings;
 use App\Support\Tanggal;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -155,8 +156,8 @@ class SptImportParser
             'jenis' => JenisPenugasan::all(['id', 'nama'])->keyBy(fn ($j) => $kunci($j->nama)),
             'objek' => $objek,
             'pegawai' => Pegawai::whereIn('nip', array_unique($nip))->pluck('id', 'nip')->all(),
-            // Lower-cased: MySQL's unique index compares case-insensitively.
-            'nomor' => Spt::whereIn('nomor_lengkap', array_filter(array_column($raw, 'nomor_spt')))->pluck('nomor_lengkap')
+            // Compared lower-cased on every driver (MySQL's unique index is case-insensitive, SQLite's `=` is not).
+            'nomor' => Spt::whereIn(DB::raw('lower(nomor_lengkap)'), array_values(array_unique(array_map($kunci, array_filter(array_column($raw, 'nomor_spt'))))))->pluck('nomor_lengkap')
                 ->mapWithKeys(fn ($n) => [$kunci($n) => true])->all(),
             'item' => PkptItem::aktif()->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')
                 ->where('pkpt.status', StatusPkpt::Disahkan)->whereIn('pkpt.tahun', $tahunMulai)

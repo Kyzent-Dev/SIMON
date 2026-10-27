@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Impor;
 
-use App\Actions\Spt\ImporSpt;
 use App\Livewire\Admin\Impor as Page;
 use App\Models\Aktivitas;
 use App\Models\Spt;
@@ -11,7 +10,6 @@ use App\Services\Import\SptImportParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
@@ -85,8 +83,7 @@ class HalamanImporTest extends TestCase
         $this->assertSame(3, Spt::count());
         $this->assertSame(3, Aktivitas::imporTerakhir()->properties['jumlah']);
         $this->assertNull($c->get('file'));
-        // TemporaryUploadedFile::delete() leaves its small .json sidecar to Livewire's own 24 h cleanup.
-        $this->assertSame([], preg_grep('/\.json$/', Storage::disk('tmp-for-tests')->allFiles('livewire-tmp'), PREG_GREP_INVERT), 'the Livewire temp upload is deleted');
+        $this->assertSame([], Storage::disk('tmp-for-tests')->allFiles('livewire-tmp'), 'the Livewire temp upload and its .json sidecar are deleted');
         $c->call('ulangi')->assertSet('step', 1)->assertSet('raw', []);
     }
 
@@ -109,9 +106,35 @@ class HalamanImporTest extends TestCase
     public function test_toast_balapan(): void
     {
         $c = $this->unggah([$this->baris(['nomor_spt' => '700/9/I/SPT/2025'])])->assertSet('step', 2);
-        // The number is taken between the server-side recompute and the write: ImporSpt turns the unique violation into this exception.
-        $this->mock(ImporSpt::class)->shouldReceive('handle')->andThrow(ValidationException::withMessages(['impor' => 'Nomor SPT 700/9/I/SPT/2025 sudah dipakai. Muat ulang pratinjau.']));
-        $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Nomor SPT 700/9/I/SPT/2025 sudah dipakai. Muat ulang pratinjau.');
+        // Real race: another request takes the number after the server-side recompute but before our insert (the `creating` hook runs inside the import transaction).
+        $diambil = false;
+        Spt::creating(function () use (&$diambil) {
+            if (! $diambil) {
+                $diambil = true;
+                Spt::withoutEvents(fn () => Spt::factory()->diterima()->create(['nomor_lengkap' => '700/9/I/SPT/2025']));
+            }
+        });
+        try {
+            $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Nomor SPT 700/9/I/SPT/2025 sudah dipakai. Muat ulang pratinjau.');
+        } finally {
+            Spt::getEventDispatcher()->forget('eloquent.creating: '.Spt::class);
+        }
+        $this->assertTrue($diambil);
+        $this->assertSame(0, Spt::count()); // the whole import rolled back (the racing row shares our connection in this test)
+    }
+
+    public function test_berkas_hanya_judul_ditolak(): void
+    {
+        $this->unggah([])->assertSet('step', 1)->assertHasErrors('file');
+    }
+
+    public function test_semua_galat_dengan_lewati_ditolak_server(): void
+    {
+        $c = $this->unggah([$this->baris(['irban' => 'Irban IX']), $this->baris(['nomor_spt' => '700/2/I/SPT/2025', 'irban' => 'Irban IX'])])
+            ->assertSet('step', 2)->assertSee('2 galat')->set('lewati', true);
+        $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+        $this->assertSame(0, Spt::count());
+        $this->assertNull(Aktivitas::imporTerakhir());
     }
 
     public function test_kartu_impor_terakhir(): void

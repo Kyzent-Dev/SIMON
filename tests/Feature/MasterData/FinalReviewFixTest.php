@@ -11,6 +11,7 @@ use App\Models\Irban;
 use App\Models\Pegawai;
 use App\Models\Tim;
 use App\Models\TimAnggota;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -57,7 +58,7 @@ class FinalReviewFixTest extends TestCase
         $nip = '123456789012345678';
         $this->raceOnCreate(Pegawai::class, 'pegawai', ['nama_bergelar' => 'X', 'nip' => $nip, 'aktif' => true]);
 
-        $e = $this->errors(fn () => app(ImportPegawai::class)->handle([['status' => 'valid', 'data' => $this->pegawaiData($nip)]]));
+        $e = $this->errors(fn () => app(ImportPegawai::class)->handle(User::factory()->admin()->create(), [['status' => 'valid', 'data' => $this->pegawaiData($nip)]]));
         $this->assertStringContainsString('Impor dibatalkan', $e['file'][0]);
     }
 

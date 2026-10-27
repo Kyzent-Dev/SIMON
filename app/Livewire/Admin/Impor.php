@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Actions\Spt\ImporSpt;
 use App\Exports\ArrayExport;
+use App\Livewire\Concerns\HapusUnggahanSementara;
 use App\Services\Import\SptImportParser;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ use Throwable;
 /** Impor Data Lama (legacy SPT): same stepper as PkptImpor. The file is parsed and dropped; rows are recomputed on the server from `raw`. */
 class Impor extends Component
 {
-    use WithFileUploads;
+    use HapusUnggahanSementara, WithFileUploads;
 
     public $file = null;
 
@@ -63,7 +64,7 @@ class Impor extends Component
             return;
         }
         $this->namaFile = $this->file->getClientOriginalName();
-        $this->file->delete(); // remove the Livewire temp upload too
+        $this->hapusUnggahan($this->file); // remove the Livewire temp upload (and its sidecar) too
         $this->file = null; // the upload is never stored; only parsed cells are kept
         $this->pindah(2);
     }
@@ -92,6 +93,11 @@ class Impor extends Component
         if ($this->step !== 2 || ($galat > 0 && ! $this->lewati)) {
             return;
         }
+        if (count($rows) === $galat) { // every row is an error: nothing to import
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada baris yang dapat diimpor.');
+
+            return;
+        }
         try {
             $this->diimpor = app(ImporSpt::class)->handle(auth()->user(), $rows, $this->namaFile);
         } catch (ValidationException $e) {
@@ -107,7 +113,11 @@ class Impor extends Component
     {
         Gate::authorize('manage-master-data');
         // TEXT_COLUMNS holds names; ArrayExport wants column letters.
-        $huruf = array_map(fn ($h) => Coordinate::stringFromColumnIndex(array_search($h, SptImportParser::HEADERS, true) + 1).':'.Coordinate::stringFromColumnIndex(array_search($h, SptImportParser::HEADERS, true) + 1), SptImportParser::TEXT_COLUMNS);
+        $huruf = array_map(function ($h) {
+            $kolom = Coordinate::stringFromColumnIndex(array_search($h, SptImportParser::HEADERS, true) + 1);
+
+            return "{$kolom}:{$kolom}";
+        }, SptImportParser::TEXT_COLUMNS);
 
         return Excel::download(new ArrayExport(SptImportParser::HEADERS, [], $huruf), 'templat-impor-spt.xlsx');
     }

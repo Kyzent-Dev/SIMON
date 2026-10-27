@@ -4,6 +4,7 @@ namespace App\Services\Import;
 
 use App\Actions\MasterData\SavePegawai;
 use App\Models\Pegawai;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -91,7 +92,7 @@ class PegawaiImportParser
         $rules = SavePegawai::rules();
         $rules['nip'] = ['required', 'digits:18']; // uniqueness is a warning here, not an error
         $rules['email'] = ['nullable', 'string', 'max:255', 'email:rfc']; // uniqueness is checked below against the row's NIP
-        $emailDipakai = Pegawai::whereIn('email', array_filter(array_map(fn ($r) => mb_strtolower($r['email'] ?? ''), $raw)))->pluck('nip', 'email')->mapWithKeys(fn ($nip, $e) => [mb_strtolower($e) => $nip]);
+        $emailDipakai = Pegawai::whereIn(DB::raw('lower(email)'), array_filter(array_map(fn ($r) => mb_strtolower($r['email'] ?? ''), $raw)))->pluck('nip', 'email')->mapWithKeys(fn ($nip, $e) => [mb_strtolower($e) => $nip]);
         $seen = [];
         $seenEmail = [];
         $out = [];
