@@ -103,12 +103,7 @@ class Slide extends Component
     public function pindahkan(int $id, int $posisi, UrutkanSlide $action): void
     {
         Gate::authorize('manage-master-data');
-        $ids = $this->urutanIds();
-        $dari = array_search($id, $ids, true);
-        abort_if($dari === false, 404);
-        array_splice($ids, $dari, 1);
-        array_splice($ids, max(0, min($posisi, count($ids))), 0, [$id]);
-        $this->simpanUrutan($ids, $action);
+        $this->urutkan(fn () => $action->pindahkan($id, $posisi));
     }
 
     public function aturAktif(int $id, bool $aktif, AturAktifSlide $action): void
@@ -121,32 +116,19 @@ class Slide extends Component
     private function geser(int $id, int $arah, UrutkanSlide $action): void
     {
         Gate::authorize('manage-master-data');
-        $ids = $this->urutanIds();
-        $i = array_search($id, $ids, true);
-        abort_if($i === false, 404);
-        $j = $i + $arah;
-        if (! isset($ids[$j])) {
-            return; // already at the end; the button is disabled
-        }
-        [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]];
-        $this->simpanUrutan($ids, $action);
+        $this->urutkan(fn () => $action->geser($id, $arah));
     }
 
-    private function simpanUrutan(array $ids, UrutkanSlide $action): void
+    private function urutkan(\Closure $ubah): void
     {
         try {
-            $action->handle($ids);
+            $ubah();
         } catch (ValidationException $e) {
             $this->dispatch('toast', type: 'error', message: $e->validator->errors()->first());
 
             return;
         }
         $this->dispatch('toast', type: 'success', message: 'Urutan slide disimpan.');
-    }
-
-    private function urutanIds(): array
-    {
-        return LandingSlide::orderBy('urutan')->orderBy('id')->pluck('id')->all();
     }
 
     public function render()

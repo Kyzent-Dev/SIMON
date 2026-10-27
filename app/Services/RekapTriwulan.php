@@ -50,7 +50,8 @@ class RekapTriwulan
             ->when($irbanId, fn ($q) => $q->where('irban_id', $irbanId))
             ->get();
         foreach ($items as $item) {
-            if (! $rencana = $this->rencanaItem($item, $tahun)) {
+            $rencana = $this->rencanaItem($item, $tahun);
+            if ($rencana === null) {
                 continue;
             }
             [$tw, $target] = $rencana;

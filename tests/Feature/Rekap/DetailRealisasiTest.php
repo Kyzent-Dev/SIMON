@@ -101,6 +101,19 @@ class DetailRealisasiTest extends TestCase
         }
     }
 
+    public function test_hovering_any_row_of_an_item_tints_its_rowspan_cells_too(): void
+    {
+        $html = $this->detail(User::factory()->create(['role' => Role::Pimpinan]), ['tw' => '1'])->html();
+
+        // Each item is a group; the rows and the two rowspan cells all follow the group hover (a rowspan cell belongs to the first row only).
+        $this->assertGreaterThanOrEqual(3, substr_count($html, '<tbody wire:key="dt-'));
+        $this->assertSame(substr_count($html, '<tbody wire:key="dt-'), substr_count($html, 'class="group/item"'));
+        $this->assertMatchesRegularExpression('/<th scope="rowgroup" rowspan="\d+" class="[^"]*group-hover\/item:bg-neutral-50!"/', $html);
+        $this->assertMatchesRegularExpression('/<td rowspan="\d+" class="[^"]*group-hover\/item:bg-neutral-50!"/', $html);
+        $this->assertStringContainsString('<tr wire:key="dt-', $html);
+        $this->assertMatchesRegularExpression('/<tr wire:key="dt-\d+-\d+" class="group-hover\/item:bg-neutral-50!"/', $html);
+    }
+
     public function test_mobile_card_has_selengkapnya_toggle_for_long_kendala(): void
     {
         $this->spt->kendala()->create(['kategori' => 'Cuaca', 'dibuat_oleh' => User::factory()->create()->id, 'uraian' => str_repeat('Banjir menghambat perjalanan tim. ', 4)]);

@@ -18,9 +18,11 @@ class BerandaController extends Controller
 
         try {
             $ringkasan = $publik->ringkasan(['tahun' => $tahun]);
+            $adaPkpt = $publik->adaDisahkan($tahun);
         } catch (Throwable $e) {
             report($e);
             $ringkasan = null; // landing.md States: "—" + "Data belum tersedia"
+            $adaPkpt = false;
         }
 
         $slides = LandingSlide::where('aktif', true)->orderBy('urutan')->orderBy('id')->get()
@@ -37,6 +39,7 @@ class BerandaController extends Controller
             'tahun' => $tahun,
             'tanggal' => $hariIni->translatedFormat('d F Y'),
             'ringkasan' => $ringkasan,
+            'adaPkpt' => $adaPkpt,
             'slides' => $slides,
         ]);
     }

@@ -55,7 +55,7 @@
     {{-- Filter bar: one sticky white bar ≥768 (two rows at 768–1023), a Filter (n) button + bottom drawer below. Focus lands here after a chip is removed. --}}
     <section id="filter-realisasi" tabindex="-1" aria-label="Filter realisasi"
         x-data x-on:fokus-filter.window="$nextTick(() => $el.focus())"
-        class="z-20 -mx-4 mt-6 border-b border-neutral-200 bg-white px-4 py-3 focus:outline-none md:sticky md:top-16 md:-mx-6 md:px-6">
+        class="z-20 -mx-4 mt-6 border-b border-neutral-200 bg-white px-4 py-3 focus:outline-none md:-mx-6 md:px-6 lg:sticky lg:top-16">
         <div class="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-6">
             @include('livewire.publik.partials.filter-realisasi', ['sfx' => ''])
         </div>
@@ -270,7 +270,8 @@
                 <div class="mt-4 flex justify-end md:hidden">
                     <x-ui.button type="button" variant="secondary" size="sm" wire:click="urutkan" class="min-h-11">
                         {{ svg($urut === 'asc' ? 'heroicon-m-bars-arrow-up' : 'heroicon-m-bars-arrow-down', 'size-5', ['aria-hidden' => 'true']) }}
-                        Urutkan: {{ $urut === 'asc' ? 'Terlama' : 'Terbaru' }}
+                        {{-- The action, not the state (the next click does this): currently newest first → "terlama dulu". --}}
+                        Urutkan {{ $urut === 'asc' ? 'terbaru' : 'terlama' }} dulu
                     </x-ui.button>
                 </div>
                 <ul role="list" aria-label="Rincian realisasi" class="mt-3 space-y-3 md:hidden">

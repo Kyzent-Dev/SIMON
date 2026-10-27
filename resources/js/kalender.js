@@ -12,7 +12,7 @@ export default () => ({
         this.$watch('drawerBuka', (v) => { if (!v && this.drawer) this.aktif = null; });
         // Livewire morphs keep Alpine state: drop a detail whose item is no longer rendered (year change, revision sent).
         this.unhook = this.$wire.$hook('morphed', () => this.$nextTick(() => {
-            if (this.aktif !== null && !this.$root.querySelector(`[data-kartu="${this.aktif}"]`)) this.tutup(document.getElementById('judul-kalender'));
+            if (this.aktif !== null && !this.$root.querySelector(`[data-kartu="${this.aktif}"]`)) this.tutup(this.$refs.judul);
         }));
     },
 
@@ -35,7 +35,7 @@ export default () => ({
         const sasaran = fokus ?? this.pemicu;
         this.aktif = null;
         this.drawerBuka = false;
-        setTimeout(() => (sasaran?.isConnected && sasaran.offsetParent ? sasaran : document.getElementById('judul-kalender'))?.focus(), 0);
+        setTimeout(() => (sasaran?.isConnected && sasaran.offsetParent ? sasaran : this.$refs.judul)?.focus(), 0);
     },
 
     // Outside click: another card opens instead; a click on a control keeps focus there, anywhere else focus returns to the card.

@@ -29,10 +29,13 @@ export default ({ count, interval = 7000 }) => ({
     },
     next() { this.go(this.i + 1); },
     prev() { this.go(this.i - 1); },
+    // ←/→ only when bare: Alt+← is browser Back, Ctrl/Cmd+← word or tab navigation.
+    key(e, dir) { if (!(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)) this.go(this.i + dir); },
     toggle() { this.playing = !this.playing; this.sync(); },
     enter(e) { if (e.pointerType === 'mouse') { this.hover = true; this.sync(); } },
     leave(e) { if (e.pointerType === 'mouse') { this.hover = false; this.sync(); } },
-    focusIn() { this.focus = true; this.sync(); },
+    // Only keyboard focus pauses (:focus-visible): after a mouse click the button keeps focus, which must not hold autoplay stopped.
+    focusIn(e) { this.focus = !!e.target.matches?.(':focus-visible'); this.sync(); },
     focusOut(e) { if (!this.$root.contains(e.relatedTarget)) { this.focus = false; this.sync(); } },
     down(e) { this.x0 = e.clientX; },
     up(e) {

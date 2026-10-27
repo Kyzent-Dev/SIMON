@@ -10,6 +10,8 @@ use App\Livewire\Admin\Slide as Page;
 use App\Models\LandingSlide;
 use App\Models\User;
 use App\Services\Settings;
+use App\Support\GambarSlide;
+use App\Support\GambarTidakTerbaca;
 use Database\Seeders\LandingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -160,7 +162,162 @@ class SlideTest extends TestCase
     public function test_list_switch_has_title_in_accessible_name(): void
     {
         LandingSlide::factory()->create(['judul' => 'Alfa']);
-        $this->page()->assertSeeHtml('role="switch"')->assertSeeHtml('aria-label="Aktif: Alfa"');
+        // The name sits on the switch input itself, not elsewhere on the page.
+        $this->assertMatchesRegularExpression('/<input[^>]*role="switch"[^>]*aria-label="Aktif: Alfa"/', $this->page()->html());
+        // Control: the drawer's own switch has no title label, only its visible one.
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*name="aktif_form"[^>]*aria-label=/', $this->page()->html());
+    }
+
+    public function test_preview_text_has_a_minimum_size_in_a_narrow_drawer(): void
+    {
+        $html = $this->page()->call('create')->html();
+        foreach (['text-[max(9px,1.1cqw)]', 'text-[max(14px,3.75cqw)]', 'text-[max(11px,1.4cqw)]', 'text-[max(10px,1cqw)]'] as $kelas) {
+            $this->assertStringContainsString($kelas, $html);
+        }
+        $this->assertStringNotContainsString('text-[1.4cqw]', $html);
+    }
+
+    public function test_transparent_png_is_stored_on_white_not_black(): void
+    {
+        $png = imagecreatetruecolor(1200, 700);
+        imagealphablending($png, false);
+        imagesavealpha($png, true);
+        imagefill($png, 0, 0, imagecolorallocatealpha($png, 0, 0, 0, 127)); // fully transparent
+        ob_start();
+        imagepng($png);
+        $file = UploadedFile::fake()->createWithContent('t.png', (string) ob_get_clean());
+
+        $this->page()->call('create')->set('judul', 'Transparan')->set('alt', 'x')->set('gambar', $file)->call('save')->assertHasNoErrors();
+        $s = LandingSlide::firstOrFail();
+        $webp = imagecreatefromwebp(Storage::disk('public')->path($s->gambar.'-960.webp'));
+        $rgb = imagecolorat($webp, 10, 10);
+        $this->assertGreaterThan(250, ($rgb >> 16) & 255);
+        $this->assertGreaterThan(250, ($rgb >> 8) & 255);
+        $this->assertGreaterThan(250, $rgb & 255);
+    }
+
+    /** A real PNG cut short: the header (getimagesize, mimes, dimensions) is fine, GD cannot decode the body. */
+    private function terpotong(): UploadedFile
+    {
+        $img = imagecreatetruecolor(1200, 700);
+        for ($i = 0; $i < 4000; $i++) {
+            imagesetpixel($img, random_int(0, 1199), random_int(0, 699), random_int(0, 0xFFFFFF));
+        }
+        ob_start();
+        imagepng($img, null, 0);
+        $bytes = (string) ob_get_clean();
+
+        return UploadedFile::fake()->createWithContent('potong.png', substr($bytes, 0, (int) (strlen($bytes) * .5)));
+    }
+
+    public function test_save_reports_a_gd_decode_failure_as_a_gambar_error_and_leaves_no_files(): void
+    {
+        $this->page()->call('create')->set('judul', 'A')->set('alt', 'x')->set('gambar', $this->terpotong())->call('save')
+            ->assertHasErrors(['gambar'])->assertSee('Gambar tidak dapat dibaca. Unggah ulang file lain.');
+        $this->assertSame(0, LandingSlide::count());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    private int $tulisan = 0;
+
+    /** Replace the public disk with one whose `put` of the 960 variant fails (the 1920 variant is written first). Returns the real disk. */
+    private function failSecondVariant()
+    {
+        $nyata = Storage::disk('public');
+        $disk = \Mockery::mock($nyata)->makePartial();
+        $disk->shouldReceive('put')->andReturnUsing(function ($path, $isi) use ($nyata) {
+            if (str_contains($path, '-960.')) {
+                return false;
+            }
+            $this->tulisan++;
+
+            return $nyata->put($path, $isi);
+        });
+        Storage::set('public', $disk);
+
+        return $nyata;
+    }
+
+    public function test_failed_second_variant_removes_the_first_and_is_not_an_unreadable_image(): void
+    {
+        $disk = $this->failSecondVariant();
+        $galat = null;
+        try {
+            GambarSlide::simpan(UploadedFile::fake()->image('a.jpg', 1920, 1080));
+        } catch (\Throwable $e) {
+            $galat = $e;
+        }
+        $this->assertInstanceOf(\RuntimeException::class, $galat);
+        $this->assertSame('Gambar slide gagal disimpan.', $galat->getMessage());
+        $this->assertNotInstanceOf(GambarTidakTerbaca::class, $galat);
+        $this->assertSame([], $disk->allFiles());
+        // Control: the 1920 variant really was written before the failure.
+        $this->assertSame(1, $this->tulisan);
+
+        // Through the action the failure stays a storage error; only an undecodable image becomes a gambar validation error.
+        $galat = null;
+        try {
+            app(SimpanSlide::class)->handle(null, ['judul' => 'A', 'kutipan' => null, 'pemilik_nama' => null,
+                'pemilik_jabatan' => null, 'alt' => 'x', 'dekoratif' => false, 'aktif' => true], UploadedFile::fake()->image('a.jpg', 1920, 1080));
+        } catch (\Throwable $e) {
+            $galat = $e;
+        }
+        $this->assertInstanceOf(\RuntimeException::class, $galat);
+        $this->assertNotInstanceOf(ValidationException::class, $galat);
+        $this->assertSame('Gambar slide gagal disimpan.', $galat->getMessage());
+        $this->assertSame(0, LandingSlide::count());
+    }
+
+    public function test_database_failure_removes_the_new_files_and_keeps_the_old_ones(): void
+    {
+        $this->isi($this->page())->call('save');
+        $s = LandingSlide::firstOrFail();
+        $lama = $s->gambar;
+        $sebelum = Storage::disk('public')->allFiles();
+        $this->assertNotEmpty($sebelum);
+
+        LandingSlide::saving(fn () => throw new \LogicException('DB gagal'));
+        try {
+            app(SimpanSlide::class)->handle($s, ['judul' => 'Baru', 'kutipan' => null, 'pemilik_nama' => null,
+                'pemilik_jabatan' => null, 'alt' => 'x', 'dekoratif' => false, 'aktif' => true], UploadedFile::fake()->image('n.jpg', 1920, 1080));
+            $this->fail('Kegagalan basis data tidak sampai ke pemanggil.');
+        } catch (\LogicException $e) {
+            $this->assertSame('DB gagal', $e->getMessage());
+        }
+        $this->assertEqualsCanonicalizing($sebelum, Storage::disk('public')->allFiles());
+        $this->assertSame($lama, $s->fresh()->gambar);
+    }
+
+    public function test_upright_size_swaps_for_quarter_turns_only(): void
+    {
+        $this->assertSame([800, 1200], GambarSlide::ukuranTegak(1200, 800, 90));
+        $this->assertSame([800, 1200], GambarSlide::ukuranTegak(1200, 800, 270));
+        $this->assertSame([1200, 800], GambarSlide::ukuranTegak(1200, 800, 180));
+        $this->assertSame([1200, 800], GambarSlide::ukuranTegak(1200, 800, 0));
+    }
+
+    /** JPEG with an EXIF APP1 segment that says Orientation = $orientasi (little-endian TIFF). */
+    private function jpegDenganExif(int $lebar, int $tinggi, int $orientasi): UploadedFile
+    {
+        ob_start();
+        imagejpeg(imagecreatetruecolor($lebar, $tinggi));
+        $jpeg = (string) ob_get_clean();
+        $tiff = "II*\x00\x08\x00\x00\x00"."\x01\x00"."\x12\x01\x03\x00\x01\x00\x00\x00".pack('v', $orientasi)."\x00\x00"."\x00\x00\x00\x00";
+        $app1 = "\xFF\xE1".pack('n', 2 + 6 + strlen($tiff))."Exif\x00\x00".$tiff;
+
+        return UploadedFile::fake()->createWithContent('foto.jpg', substr($jpeg, 0, 2).$app1.substr($jpeg, 2));
+    }
+
+    public function test_minimum_width_is_measured_after_the_exif_rotation(): void
+    {
+        if (! function_exists('exif_read_data')) {
+            $this->markTestSkipped('Ekstensi exif tidak tersedia; logika tukar sisi dicakup test_upright_size_swaps_for_quarter_turns_only.');
+        }
+        // Stored 800 x 1200 with Orientation 8 (90 degrees): upright it is 1200 wide, so it passes; without the turn it is 800 and fails.
+        $this->page()->call('create')->set('judul', 'A')->set('alt', 'x')->set('gambar', $this->jpegDenganExif(800, 1200, 8))->call('save')->assertHasNoErrors();
+        // Control: the same size stored upright (Orientation 1) is 800 wide and rejected.
+        $this->page()->call('create')->set('judul', 'B')->set('alt', 'x')->set('gambar', $this->jpegDenganExif(800, 1200, 1))->call('save')
+            ->assertHasErrors(['gambar'])->assertSee('Lebar gambar minimal 960 piksel.');
     }
 
     public function test_judul_and_alt_rules(): void

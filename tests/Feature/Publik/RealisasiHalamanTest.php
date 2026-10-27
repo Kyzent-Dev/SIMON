@@ -4,6 +4,7 @@ namespace Tests\Feature\Publik;
 
 use App\Livewire\Publik\Realisasi;
 use App\Models\JenisPenugasan;
+use App\Models\Pkpt;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\RekapTriwulan;
 use App\Services\Settings;
@@ -186,10 +187,10 @@ class RealisasiHalamanTest extends TestCase
     public function test_mobile_cards_have_a_sort_button_bound_to_urut(): void
     {
         // Same `urutkan` action and `?urut` as the table header; the label shows the current order.
-        $this->get('/realisasi')->assertSee('Urutkan: Terbaru')->assertDontSee('Urutkan: Terlama');
+        $this->get('/realisasi')->assertSee('Urutkan terlama dulu')->assertDontSee('Urutkan terbaru dulu');
         Livewire::test(Realisasi::class)->assertSeeHtml('wire:click="urutkan"')
-            ->call('urutkan')->assertSet('urut', 'asc')->assertSee('Urutkan: Terlama')->assertDontSee('Urutkan: Terbaru');
-        Livewire::withQueryParams(['urut' => 'asc'])->test(Realisasi::class)->assertSee('Urutkan: Terlama');
+            ->call('urutkan')->assertSet('urut', 'asc')->assertSee('Urutkan terbaru dulu')->assertDontSee('Urutkan terlama dulu');
+        Livewire::withQueryParams(['urut' => 'asc'])->test(Realisasi::class)->assertSee('Urutkan terbaru dulu');
     }
 
     public function test_charts_update_only_when_a_chart_input_changes(): void
@@ -203,6 +204,31 @@ class RealisasiHalamanTest extends TestCase
         Livewire::test(Realisasi::class)->set('proporsi', 'jenis')->assertDispatched('grafik-publik');
         Livewire::withQueryParams(['irban' => (string) $this->a->id])->test(Realisasi::class)->call('hapus', 'irban')->assertDispatched('grafik-publik');
         Livewire::withQueryParams(['irban' => (string) $this->a->id])->test(Realisasi::class)->call('aturUlang')->assertDispatched('grafik-publik');
+    }
+
+    /** The radios are bound with wire:model: the browser selects the segment whose value equals the property, so '' selected none. */
+    public function test_bar_card_tw_switch_property_always_holds_the_effective_tw(): void
+    {
+        $t = Livewire::test(Realisasi::class)->assertSet('twGrafik', '0'); // no TW filter → Setahun
+        $t->set('tw', '1')->assertSet('twGrafik', '1')->set('twGrafik', '3')->assertSet('twGrafik', '3'); // an explicit pick wins
+        $t->set('tw', '2')->assertSet('twGrafik', '2'); // a new TW filter takes over again
+        $t->call('aturUlang')->assertSet('twGrafik', '0');
+    }
+
+    public function test_every_chart_input_dispatches_and_page_or_sort_never_do(): void
+    {
+        Pkpt::factory()->disahkan()->create(['tahun' => 2025]);
+        $inputs = [['tahun', '2025'], ['tw', '1'], ['bulan', '2'], ['irban', (string) $this->a->id], ['wilayah', (string) $this->kecX->id],
+            ['jenis', (string) $this->j1->id], ['perIrban', true], ['proporsi', 'jenis'], ['twGrafik', '2']];
+        foreach ($inputs as [$prop, $nilai]) {
+            Livewire::test(Realisasi::class)->set($prop, $nilai)->assertDispatched('grafik-publik');
+        }
+        // Each filter chip's remove button, too.
+        foreach (['tw' => '1', 'bulan' => '2', 'irban' => (string) $this->a->id, 'wilayah' => (string) $this->kecX->id, 'jenis' => (string) $this->j1->id] as $filter => $nilai) {
+            Livewire::withQueryParams([$filter => $nilai])->test(Realisasi::class)->call('hapus', $filter)->assertDispatched('grafik-publik');
+        }
+        // Control: the same component, no input → nothing dispatched; sort and page leave the charts alone.
+        Livewire::test(Realisasi::class)->assertNotDispatched('grafik-publik');
     }
 
     public function test_kpi_numbers_use_mint_700(): void

@@ -57,6 +57,72 @@ class JadwalHalamanTest extends TestCase
         $this->assertStringContainsString('5 Januari 2026 – 31 Maret 2026', $html);
     }
 
+    public function test_hari_ini_marker_and_month_tint_sit_on_the_current_week(): void
+    {
+        $html = $this->get('/jadwal')->getContent();
+
+        // 15 Des 2026 → column 58: the chip is centred on it, the 1px line sits in its cell, and the five December cells (56–60) are tinted.
+        $this->assertStringContainsString('style="left: calc((58 - 0.5) / 60 * 100%)">Hari ini', $html);
+        $this->assertSame(5, preg_match_all('/<span\s+class="[^"]*border-l[^"]*bg-mint-50">/', $html));
+        $this->assertSame(1, substr_count($html, 'inset-y-0 left-1/2 w-0.5'));
+        // Control: in another year (a second Disahkan PKPT) there is no marker at all.
+        Pkpt::factory()->disahkan()->create(['tahun' => 2025]);
+        $this->get('/jadwal?tahun=2025')->assertSee('Jadwal PKPT 2025')->assertDontSee('Hari ini');
+    }
+
+    public function test_bar_label_is_measured_and_short_bars_keep_the_text_in_a_title(): void
+    {
+        // 3 weeks (Aug M1–M3): 3 columns, far below 8; a1 spans 16 columns.
+        PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->a->id, 'jenis_penugasan_id' => $this->j2->id,
+            'tanggal_mulai' => '2026-08-03', 'tanggal_selesai' => '2026-08-18']);
+        $html = $this->get('/jadwal')->getContent();
+
+        // The label is a span shown by the measured column count (kolMin), not a fixed server rule.
+        $this->assertStringContainsString('kolMin: 8', $html);
+        $this->assertMatchesRegularExpression('/x-bind:title="kolMin <= 16 \? null : /', $html);
+        $this->assertMatchesRegularExpression('/<span x-show="kolMin <= 16"\s*>Irban A · Kec X, Kec Y<\/span>/', $html);
+        // Short bar: title for sighted pointer users from the first paint, the label span stays hidden (x-cloak) until measured.
+        $this->assertMatchesRegularExpression('/<button[^>]*data-bar[^>]*title="Irban A · [^"]*"[^>]*x-bind:title="kolMin <= 3 /', $html);
+        $this->assertMatchesRegularExpression('/<span x-show="kolMin <= 3"\s+x-cloak\s*>/', $html);
+        // Control: the long bar has no static title and its span is not cloaked.
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*aria-label="Jenis Satu, Irban A, Kec X, Kec Y, 5 Januari[^>]*\stitle="/', $html);
+    }
+
+    public function test_legend_chips_are_toggle_buttons_and_filter_drawer_opens_on_tahun(): void
+    {
+        $html = $this->get('/jadwal')->getContent();
+
+        $this->assertSame(2, preg_match_all('/<button type="button" data-jenis="\d+" aria-pressed="false" x-bind:aria-pressed="\(sorot === \d+\)\.toString\(\)"/', $html));
+        // Mobile Filter button opens the named drawer; its Tahun select takes initial focus (no timer needed).
+        $this->assertStringContainsString("\$dispatch('open-modal', { name: 'filter-jadwal' })", $html);
+        $this->assertMatchesRegularExpression('/<select[^>]*id="tahun-m"[^>]*autofocus/', $html);
+        $this->assertStringNotContainsString('setTimeout', $html);
+    }
+
+    public function test_toggle_has_icons_and_detail_is_modal_only_as_a_bottom_sheet(): void
+    {
+        $html = $this->get('/jadwal')->getContent();
+
+        $this->assertSame(2, preg_match_all('/<label[^>]*>\s*<input type="radio" name="tampilan"[^>]*>\s*(?:<!--.*?-->)?<svg[^>]*aria-hidden="true"/s', $html));
+        // Not a hard-coded aria-modal="true" on the detail: the desktop popover is non-modal, the sheet (<768) turns it on.
+        $this->assertStringContainsString('aria-modal="false" x-bind:aria-modal="modal.toString()"', $html);
+        $this->assertStringContainsString('x-trap.noreturn="aktif !== null" role="dialog" aria-modal="false"', $html);
+        // The two views stay hidden until Alpine picks one (no flash of both), and are visible again without JS.
+        $this->assertSame(2, substr_count($html, 'x-cloak data-tampilan'));
+        $this->assertStringContainsString('[data-tampilan][x-cloak]{display:block!important}', $html);
+    }
+
+    public function test_monthly_week_headings_carry_their_date_range_and_hatch_is_a_utility(): void
+    {
+        $html = $this->get('/jadwal')->getContent();
+
+        // Januari 2026: Minggu 1 is Mon 5 – Fri 9 (MingguPkpt); the range sits next to the heading, not instead of it.
+        $this->assertMatchesRegularExpression('/Minggu 1(?:<!--.*?-->)?\s*<span[^>]*>· 5–9 Januari 2026<\/span>/su', $html);
+        // The week-5 hatch is the shared utility, not an arbitrary gradient class.
+        $this->assertSame(16, substr_count($html, 'arsir-minggu'));
+        $this->assertStringNotContainsString('repeating-linear-gradient', $html);
+    }
+
     public function test_revised_item_shows_original_outline_and_text(): void
     {
         $item = PkptItem::factory()->create(['pkpt_id' => $this->a1->pkpt_id, 'irban_id' => $this->c->id, 'jenis_penugasan_id' => $this->j1->id,

@@ -8,6 +8,8 @@ export default () => ({
     aktif: null,
     pemicu: null,
     pos: { top: 0, left: 0 },
+    modal: false, // bottom sheet (<768): modal + page scroll locked; the desktop popover is non-modal
+    lepasHook: null,
 
     init() {
         const q = new URL(location.href).searchParams.get('tampilan');
@@ -20,10 +22,18 @@ export default () => ({
         });
         // Alpine state survives Livewire morphs: after a filter change drop a highlight whose jenis is no longer rendered,
         // and let the legend re-measure its rows.
-        this.$wire.$hook('morphed', () => this.$nextTick(() => {
+        // A detail whose item is gone after the morph would leave an empty dialog open.
+        this.lepasHook = this.$wire.$hook('morphed', () => this.$nextTick(() => {
             if (this.sorot !== null && !this.$root.querySelector(`[data-jenis="${this.sorot}"]`)) this.sorot = null;
+            if (this.aktif !== null && !this.$root.querySelector(`#detail-${this.aktif}`)) this.aktif = null;
             window.dispatchEvent(new CustomEvent('jadwal-dirender'));
         }));
+        this.$watch(() => this.aktif !== null && this.modal, (kunci) => { document.documentElement.style.overflow = kunci ? 'hidden' : ''; });
+    },
+
+    destroy() {
+        this.lepasHook?.();
+        document.documentElement.style.overflow = '';
     },
 
     sorotJenis(id) {
@@ -36,6 +46,7 @@ export default () => ({
 
     buka(id, el) {
         this.pemicu = el;
+        this.modal = innerWidth < 768;
         this.aktif = id;
         this.$nextTick(() => this.posisi());
     },
@@ -59,7 +70,9 @@ export default () => ({
 
     // Fixed position under the trigger (above it when there is no room), kept inside the viewport.
     posisi() {
-        if (this.aktif === null || !this.pemicu || innerWidth < 768) return;
+        if (this.aktif === null) return;
+        this.modal = innerWidth < 768;
+        if (!this.pemicu || this.modal) return;
         const r = this.pemicu.getBoundingClientRect();
         const panel = this.$refs.detail;
         const w = panel.offsetWidth, h = panel.offsetHeight;

@@ -16,9 +16,11 @@ use App\Models\Objek;
 use App\Models\Pegawai;
 use App\Models\Spt;
 use App\Models\User;
+use App\Services\Publik\JadwalPublik;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\Settings;
 use App\Support\CachePublik;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -241,5 +243,23 @@ class CachePublikTest extends TestCase
         });
 
         $this->assertGreaterThan($sebelum, CachePublik::versi());
+    }
+
+    /** The database/Redis stores serialize with `serializable_classes => false`: an object in a cached value comes back as __PHP_Incomplete_Class. The array store used by default in tests does not serialize, which hid it. */
+    public function test_cached_values_survive_a_serializing_store(): void
+    {
+        config(['cache.stores.array.serialize' => true]);
+        Cache::forgetDriver('array');
+        Cache::store('array')->put('uji', ['x' => 1], 60);
+        $this->assertSame(['x' => 1], Cache::store('array')->get('uji'), 'control: the store round-trips plain arrays');
+
+        $jadwal = app(JadwalPublik::class);
+        $pertama = $jadwal->item(2026, null);
+        $dariCache = $jadwal->item(2026, null); // second call: through the store
+        $this->assertNotEmpty($pertama);
+        $this->assertInstanceOf(CarbonImmutable::class, $dariCache[0]['mulai']);
+        $this->assertEquals($pertama, $dariCache);
+        // and the pages built on it render from cache
+        $this->get('/jadwal')->assertOk()->assertDontSee('Jadwal gagal dimuat');
     }
 }

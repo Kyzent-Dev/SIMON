@@ -1,6 +1,6 @@
 {{-- Public footer (design/public/landing.md "Footer", DESIGN §1.6 motif, §3.4 pairs on mint-950, §6 accent-400 focus on dark). Shared by layouts/public and the
      Admin Kontak & Footer preview. Data: Settings group `kontak` ($kontak, read from Settings when not passed); an empty value omits its column.
-     The map iframe is inserted only after "Tampilkan peta" (saves data); without JS the same link opens the map in a new tab. No animation. --}}
+     The map iframe is inserted only after "Tampilkan peta" (saves data); without JS a <noscript> link opens the map in a new tab. No animation. --}}
 @php
     $kontak ??= app(\App\Services\Settings::class)->all()['kontak'];
     $h = $judulTag ?? 'h2';
@@ -44,10 +44,12 @@
             @if ($peta !== '')
                 <section x-data="{ peta: false }">
                     <{{ $h }} class="mb-3 text-base font-semibold text-white">Lokasi</{{ $h }}>
-                    <a x-show="! peta" href="{{ $peta }}" target="_blank" rel="noopener" x-on:click.prevent="peta = true; $nextTick(() => $refs.peta?.focus())"
+                    {{-- A real <button> (it acts on the page); without JS it stays hidden (x-cloak) and the <noscript> link opens the map instead. --}}
+                    <button type="button" x-cloak x-show="! peta" x-on:click="peta = true; $nextTick(() => $refs.peta?.focus())"
                         class="inline-flex h-11 items-center gap-2 rounded-md bg-mint-300 px-4 font-medium text-mint-950 hover:underline focus-visible:outline-accent-400">
                         {{ svg('heroicon-o-map-pin', 'size-5', ['aria-hidden' => 'true']) }}Tampilkan peta
-                    </a>
+                    </button>
+                    <noscript><a href="{{ $peta }}" target="_blank" rel="noopener" class="{{ $link }}">Buka peta<span class="sr-only"> (tab baru)</span></a></noscript>
                     <template x-if="peta">
                         <iframe x-ref="peta" src="{{ $peta }}" title="Peta lokasi kantor" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
                             class="aspect-video w-full rounded-md border-0 bg-mint-900"></iframe>

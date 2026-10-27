@@ -24,7 +24,12 @@ class JadwalPublik
      */
     public function item(int $tahun, ?int $irban): array
     {
-        return CachePublik::ingat('jadwalItem', compact('tahun', 'irban'), fn () => $this->hitungItem($tahun, $irban));
+        // Dates are cached as Y-m-d strings: the cache stores serialize with `serializable_classes => false`, so a cached Carbon would come back as __PHP_Incomplete_Class.
+        $item = CachePublik::ingat('jadwalItem', compact('tahun', 'irban'), fn () => $this->hitungItem($tahun, $irban));
+        $tanggal = fn (string $t) => CarbonImmutable::parse($t);
+
+        return array_map(fn ($i) => [...$i, 'mulai' => $tanggal($i['mulai']), 'selesai' => $tanggal($i['selesai']),
+            'semula' => $i['semula'] ? [$tanggal($i['semula'][0]), $tanggal($i['semula'][1])] : null], $item);
     }
 
     private function hitungItem(int $tahun, ?int $irban): array
@@ -57,16 +62,16 @@ class JadwalPublik
                 'id' => $i->id,
                 'jenis' => ['id' => $j->id, 'nama' => $j->nama, 'warna' => $j->warna, 'warna_teks' => $j->warna_teks],
                 'irban' => $namaIrban[$i->irban_id],
-                'mulai' => $mulai,
-                'selesai' => $akhir,
-                'semula' => $i->semula(),
+                'mulai' => $mulai->toDateString(),
+                'selesai' => $akhir->toDateString(),
+                'semula' => ($semula = $i->semula()) ? [$semula[0]->toDateString(), $semula[1]->toDateString()] : null,
                 'tambahan_ke' => $i->ditambahkanOleh?->nomor_urut,
                 'wilayah' => $wilayah[$i->id] ?? self::BELUM_DITENTUKAN,
                 'selesaiSpt' => (int) ($selesai[$i->id] ?? 0),
                 'target' => $i->target_spt ?? 1,
             ];
         })->all();
-        usort($hasil, fn ($a, $b) => [$a['jenis']['nama'], $a['mulai']->toDateString(), $a['id']] <=> [$b['jenis']['nama'], $b['mulai']->toDateString(), $b['id']]);
+        usort($hasil, fn ($a, $b) => [$a['jenis']['nama'], $a['mulai'], $a['id']] <=> [$b['jenis']['nama'], $b['mulai'], $b['id']]);
 
         return $hasil;
     }

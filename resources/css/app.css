@@ -93,3 +93,8 @@ html.motion-ready [data-motion="bars"]:not([data-motion-done]) [data-bar] { tran
 
 /* WCAG 2.4.11: keep focused fields clear of a sticky form footer. */
 html:has([data-sticky-footer]) { scroll-padding-bottom: 7rem; }
+
+/* Decorative hatch for PKPT week 5 of a four-week month (Jadwal timeline, internal calendar): neutral-200 token, no meaning carried by it. */
+@utility arsir-minggu {
+  background-image: repeating-linear-gradient(135deg, var(--color-neutral-200) 0 2px, transparent 2px 6px);
+}

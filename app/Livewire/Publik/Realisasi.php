@@ -95,6 +95,8 @@ class Realisasi extends Component
         $f = ['tahun' => (int) $this->tahun, 'tw' => $this->angka($this->tw), 'bulan' => $this->angka($this->bulan),
             'irban' => $this->angka($this->irban), 'wilayah' => $this->angka($this->wilayah), 'jenis' => $this->angka($this->jenis)];
         $twGrafik = $this->twGrafik !== '' ? (int) $this->twGrafik : ($f['tw'] ?? 0);
+        // The card's TW switch is a radio group bound to this property: it must hold the effective value, or no segment shows as selected ('' = follow the TW filter, reset in updated()).
+        $this->twGrafik = (string) $twGrafik;
 
         $data = [
             'kpi' => $this->aman(fn () => $svc->ringkasan($f)),

@@ -32,6 +32,8 @@ class RealisasiPublik
     /**
      * Public SPT (one rule): klasifikasi tampil_publik, diterima + marked Selesai, with a PKPT item whose PKPT is Disahkan,
      * with a basis date; narrowed by the filters (tahun/tw/bulan by the Triwulan basis date). Selects nothing.
+     *
+     * @internal Only the public services (this class, JadwalPublik) may build on it: a caller that selects columns itself can leak private data. Public data goes through the methods above.
      */
     public function basis(array $f = []): Builder
     {
@@ -76,6 +78,12 @@ class RealisasiPublik
         $rencana = array_sum($this->rencanaPerIrban($item, $f['tahun'], $f['tw'] ?? null));
 
         return ['selesai' => $selesai, 'item' => $item->count(), 'rencana' => $rencana, 'persen' => $rencana > 0 ? round($selesai / $rencana * 100, 1) : null];
+    }
+
+    /** Whether the year has a Disahkan PKPT at all (a Disahkan PKPT without items is still a PKPT). */
+    public function adaDisahkan(int $tahun): bool
+    {
+        return DB::table('pkpt')->where('tahun', $tahun)->where('status', StatusPkpt::Disahkan->value)->exists();
     }
 
     /** @return list<int>|list<array{irban: string, jumlah: list<int>}> 12 counts Jan–Des, or one series per irban (by name) */

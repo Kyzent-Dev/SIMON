@@ -66,7 +66,7 @@
                         <x-ui.empty-state icon="table-cells" title="Tidak ada item PKPT pada periode ini." description="Coba ubah tahun atau triwulan." class="py-8!" />
                     </x-ui.card>
                 @else
-                    {{-- ≥768: one <tbody> per item; Jenis and Periode PKPT span the item's rows. Continuation rows un-stick their first cell
+                    {{-- ≥768: one <tbody> per item; Jenis and Periode PKPT span the item's rows. Hovering any row of an item tints the whole item (the rowspan cells belong to the first row only). Continuation rows un-stick their first cell
                          (x-ui.table makes every row's first cell sticky) so only the Jenis column stays put when scrolling sideways. --}}
                     <x-ui.table grouped density="compact" label="Detail Realisasi {{ $judulIrban }}" class="hidden md:block">
                         <x-slot:head>
@@ -78,17 +78,17 @@
                             <x-ui.th class="whitespace-normal!">Permasalahan/Kendala</x-ui.th>
                         </x-slot:head>
                         @foreach ($d['item'] as $it)
-                            <tbody wire:key="dt-{{ $it['item_id'] }}">
+                            <tbody wire:key="dt-{{ $it['item_id'] }}" class="group/item">
                                 @foreach ($it['spt'] ?: [null] as $r)
-                                    <tr wire:key="dt-{{ $it['item_id'] }}-{{ $r['id'] ?? 0 }}">
+                                    <tr wire:key="dt-{{ $it['item_id'] }}-{{ $r['id'] ?? 0 }}" class="group-hover/item:bg-neutral-50!">
                                         @if ($loop->first)
-                                            <th scope="rowgroup" rowspan="{{ $loop->count }}" class="z-1 min-w-52 bg-white px-4 py-2 text-left align-top font-normal">
+                                            <th scope="rowgroup" rowspan="{{ $loop->count }}" class="z-1 min-w-52 bg-white px-4 py-2 text-left align-top font-normal group-hover/item:bg-neutral-50!">
                                                 <x-app.type-chip :color="$it['jenis']['warna']" :label="$it['jenis']['nama']" />
                                                 @if ($it['keterangan'])
                                                     <span class="mt-0.5 block text-xs text-neutral-600">{{ $it['keterangan'] }}</span>
                                                 @endif
                                             </th>
-                                            <td rowspan="{{ $loop->count }}" class="relative min-w-40 py-2 align-top whitespace-nowrap">
+                                            <td rowspan="{{ $loop->count }}" class="relative min-w-40 py-2 align-top whitespace-nowrap group-hover/item:bg-neutral-50!">
                                                 {{ Tanggal::rentang($it['mulai'], $it['selesai']) }}
                                                 @if ($it['direvisi'])
                                                     <span title="Jadwal direvisi" class="ml-1 inline-flex align-middle text-neutral-600">{{ svg('heroicon-m-arrow-path', 'size-4', ['aria-hidden' => 'true']) }}<span class="sr-only">Jadwal direvisi</span></span>

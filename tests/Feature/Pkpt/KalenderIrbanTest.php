@@ -11,10 +11,12 @@ use App\Models\Pkpt;
 use App\Models\PkptItem;
 use App\Models\PkptPerubahan;
 use App\Models\User;
+use App\Services\KalenderPkpt;
 use Database\Seeders\IrbanSeeder;
 use Database\Seeders\JenisPenugasanSeeder;
 use Database\Seeders\PkptIrbanIDemo2026Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Tests\Support\JadwalItem;
 use Tests\TestCase;
@@ -117,6 +119,34 @@ class KalenderIrbanTest extends TestCase
                 ->assertDontSee('Ajukan Revisi')->assertSee('Usulkan Perubahan')->assertSee('wire:click="bukaUsulan('.$id.')"', false)
                 ->assertSee('Usulkan item baru');
         }
+    }
+
+    public function test_two_calendars_on_one_page_share_no_id_and_the_popover_is_non_modal(): void
+    {
+        $kalender = app(KalenderPkpt::class)->untuk(2026, $this->irban->id);
+        $html = Blade::render(
+            '<x-app.kalender-pkpt :kalender="$k" :tahun="2026" /><x-app.kalender-pkpt :kalender="$k" :tahun="2026" id="kedua" />', ['k' => $kalender]);
+
+        preg_match_all('/\sid="([^"]+)"/', $html, $m);
+        $this->assertNotEmpty($m[1]);
+        $this->assertSame([], array_keys(array_filter(array_count_values($m[1]), fn ($n) => $n > 1)), 'id ganda');
+        // Control: the second instance really renders ids of its own.
+        $this->assertStringContainsString('id="judul-kedua"', $html);
+        $this->assertStringContainsString('id="judul-kalender"', $html);
+        $this->assertStringContainsString('id="kedua-bulan-g-1"', $html);
+        // The popover leaves the page behind it interactive, so it must not claim to be modal.
+        $this->assertSame(2, substr_count($html, 'role="dialog" aria-modal="false"'));
+        $this->assertStringNotContainsString('id="detail-p-', $html);
+    }
+
+    public function test_cards_carry_the_shared_focus_target_so_the_host_does_not_know_data_kartu(): void
+    {
+        $id = $this->item('2026-06-29')->id;
+        $html = $this->actingAs($this->user)->get('/irban/pkpt')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<button[^>]*data-kartu="'.$id.'"[^>]*data-usulan-pemicu="'.$id.'"/', $html);
+        $this->assertStringContainsString("[data-usulan-pemicu='\${id}']", $html);
+        $this->assertStringNotContainsString("[data-kartu='\${id}']", $html);
     }
 
     /** Fase 9.2 Task 9: an item added by an approved package carries "Tambahan · Perubahan ke-N" on the card and in the detail. */

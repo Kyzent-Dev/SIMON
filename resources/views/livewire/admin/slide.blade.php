@@ -73,7 +73,7 @@
                 :filename="$gambar?->getClientOriginalName() ?? ($editing ? 'Gambar tersimpan' : null)"
                 :size="$gambar ? number_format(max(1, round($gambar->getSize() / 1024)), 0, ',', '.').' KB' : null" />
 
-            {{-- Live preview: the hero at 16:9, sized in container units so it matches the 1280px composition at any drawer width. Decorative. --}}
+            {{-- Live preview: the hero at 16:9, sized in container units so it matches the 1280px composition at any drawer width, with a minimum size per text (9/14/11/10 px) so a narrow drawer stays legible. Decorative. --}}
             <div>
                 <p class="mb-2 text-sm font-medium text-neutral-900">Pratinjau</p>
                 <div aria-hidden="true" class="@container relative aspect-video overflow-hidden rounded-xl bg-mint-950">
@@ -89,10 +89,10 @@
                     </svg>
                     <div class="absolute inset-x-[5%] bottom-[9%] max-w-[50%]">
                         <div class="h-[.25cqw] min-h-[2px] w-[3.2cqw] bg-accent-400"></div>
-                        <p class="mt-[1cqw] text-[1.1cqw] font-semibold tracking-[.08em] text-accent-400 uppercase">Inspektorat Daerah</p>
-                        <p class="mt-[.8cqw] font-display text-[3.75cqw] leading-[1.17] font-extrabold break-words text-white" x-text="$wire.judul || 'Judul slide'">{{ $judul ?: 'Judul slide' }}</p>
-                        <p class="mt-[1cqw] text-[1.4cqw] leading-normal break-words text-mint-200" x-show="$wire.kutipan" x-text="$wire.kutipan">{{ $kutipan }}</p>
-                        <p class="mt-[.8cqw] text-[1cqw] font-medium text-mint-300" x-show="$wire.pemilik_nama"
+                        <p class="mt-[1cqw] text-[max(9px,1.1cqw)] font-semibold tracking-[.08em] text-accent-400 uppercase">Inspektorat Daerah</p>
+                        <p class="mt-[.8cqw] font-display text-[max(14px,3.75cqw)] leading-[1.17] font-extrabold break-words text-white" x-text="$wire.judul || 'Judul slide'">{{ $judul ?: 'Judul slide' }}</p>
+                        <p class="mt-[1cqw] text-[max(11px,1.4cqw)] leading-normal break-words text-mint-200" x-show="$wire.kutipan" x-text="$wire.kutipan">{{ $kutipan }}</p>
+                        <p class="mt-[.8cqw] text-[max(10px,1cqw)] font-medium text-mint-300" x-show="$wire.pemilik_nama"
                             x-text="'— ' + $wire.pemilik_nama + ($wire.pemilik_jabatan ? ', ' + $wire.pemilik_jabatan : '')"></p>
                     </div>
                     {{-- Safe area: where the hero text sits on the public page. --}}

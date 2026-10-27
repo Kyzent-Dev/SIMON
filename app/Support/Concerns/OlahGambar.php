@@ -50,6 +50,12 @@ trait OlahGambar
         return [3 => 180, 6 => 270, 8 => 90][(int) ($exif['Orientation'] ?? 1)] ?? 0;
     }
 
+    /** Width and height after turning the image by $sudut degrees (a quarter turn swaps them). @return array{0: int, 1: int} */
+    public static function ukuranTegak(int $lebar, int $tinggi, int $sudut): array
+    {
+        return $sudut % 180 === 90 ? [$tinggi, $lebar] : [$lebar, $tinggi];
+    }
+
     /** Apply the EXIF orientation before cropping. */
     private static function tegakkan(\GdImage $src, UploadedFile $file): \GdImage
     {

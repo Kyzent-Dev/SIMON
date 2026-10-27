@@ -177,6 +177,30 @@ class RealisasiPublikTest extends TestCase
         $this->assertSame([], $this->svc()->proporsi(['tahun' => 2024], 'irban'));
     }
 
+    public function test_spt_without_jenis_is_labelled_and_ordered_by_count_then_label(): void
+    {
+        $pkpt = Pkpt::factory()->disahkan()->create(['tahun' => 2025]);
+        $item = PkptItem::factory()->create(['pkpt_id' => $pkpt->id, 'irban_id' => $this->c->id]);
+        $zeta = JenisPenugasan::factory()->create(['nama' => 'Jenis Zeta', 'warna' => '#111111']);
+        $alfa = JenisPenugasan::factory()->create(['nama' => 'Jenis Alfa', 'warna' => '#222222']);
+        foreach ([$zeta->id, $zeta->id, $alfa->id, null, null] as $jenis) {
+            $spt = $this->spt('selesai', $this->c, $item, $this->reguler, '2025-05-01', '2025-05-02', [], $jenis);
+            if ($jenis === null) {
+                $spt->forceFill(['jenis_penugasan_id' => null])->save();
+            }
+        }
+
+        // Equal counts (2) fall back to the label: "Jenis Zeta" < "Tanpa jenis penugasan"; the unlabeled slice has no colour.
+        $p = $this->svc()->proporsi(['tahun' => 2025], 'jenis');
+        $this->assertSame([['Jenis Zeta', 2, '#111111'], ['Tanpa jenis penugasan', 2, null], ['Jenis Alfa', 1, '#222222']], array_map(fn ($s) => [$s['label'], $s['jumlah'], $s['warna']], $p));
+
+        // The left join leaves jenis.nama null instead of dropping the row.
+        $rows = collect($this->svc()->tabel(['tahun' => 2025], 'desc', 1)->items());
+        $this->assertCount(5, $rows);
+        $this->assertSame(2, $rows->where('jenis.nama', null)->count());
+        $this->assertSame([null, null], $rows->where('jenis.nama', null)->pluck('jenis.warna')->all());
+    }
+
     public function test_rencana_vs_realisasi(): void
     {
         $setahun = ['periode' => 'Setahun', 'label' => ['Irban A', 'Irban B', 'Irban C'], 'rencana' => [2, 1, 0], 'realisasi' => [1, 1, 0], 'persen' => [50, 100, null]];

@@ -16,7 +16,7 @@
     $hariIni = $linimasa['hariIni'] ?? null;
     // Column 5 of a month with only 4 PKPT weeks (MingguPkpt) is empty and hatched; decorative, inside aria-hidden grids.
     $kosong = fn (int $k) => $k % 5 === 4 && ($linimasa['mingguBulan'][intdiv($k, 5) + 1] ?? 5) === 4;
-    $arsir = 'bg-[repeating-linear-gradient(135deg,var(--color-neutral-200)_0_2px,transparent_2px_6px)]';
+    $arsir = 'arsir-minggu';
     // The irban-specific empty title only when the year really has a Disahkan PKPT (opsi.tahun is clamped to Disahkan years).
     $namaIrban = $irban !== '' && $opsi['adaDisahkan'] ? collect($opsi['irban'])->firstWhere('id', (int) $irban)['nama'] ?? null : null;
     $tahunOpsi = collect($opsi['tahun'])->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
@@ -41,12 +41,12 @@
             {{ svg('heroicon-o-funnel', 'size-5', ['aria-hidden' => 'true']) }} Filter
         </x-ui.button>
         <x-ui.segmented name="tampilan" legend="Tampilan jadwal" :options="['linimasa' => 'Linimasa', 'bulanan' => 'Bulanan']" value="linimasa"
-            x-model="tampilan" penuh class="w-full md:w-auto" />
+            x-model="tampilan" penuh :icons="['linimasa' => 'heroicon-o-chart-bar-square', 'bulanan' => 'heroicon-o-calendar']" class="w-full md:w-auto" />
     </div>
 
     <x-ui.drawer name="filter-jadwal" title="Filter" posisi="bawah">
         <div class="space-y-4">
-            <x-ui.select label="Tahun" name="tahun" id="tahun-m" :options="$tahunOpsi" :value="$tahun" wire:model.live="tahun" />
+            <x-ui.select label="Tahun" name="tahun" id="tahun-m" :options="$tahunOpsi" :value="$tahun" wire:model.live="tahun" autofocus />
             <x-ui.select label="Irban" name="irban" id="irban-m" :options="$irbanOpsi" :value="$irban" placeholder="Semua Irban" wire:model.live="irban" />
         </div>
     </x-ui.drawer>
@@ -71,7 +71,7 @@
             <x-ui.card class="mt-6">
                 <x-ui.empty-state icon="calendar" :title="$namaIrban ? 'Belum ada jadwal '.$namaIrban.' pada tahun '.$tahunAngka : 'Belum ada PKPT yang disahkan untuk tahun '.$tahunAngka">
                     <x-ui.button type="button" x-on:click="const s = document.getElementById('tahun');
-                        if (s && s.offsetParent) { s.focus() } else { $dispatch('open-modal', { name: 'filter-jadwal' }); setTimeout(() => document.getElementById('tahun-m')?.focus(), 300) }">Pilih tahun lain</x-ui.button>
+                        if (s && s.offsetParent) { s.focus() } else { $dispatch('open-modal', { name: 'filter-jadwal' }) }">Pilih tahun lain</x-ui.button>
                 </x-ui.empty-state>
             </x-ui.card>
         @else
@@ -97,11 +97,17 @@
             </div>
 
             {{-- Timeline (Gantt): 12 months × Minggu 1–5. Scrolls inside its own container below 1040 px, first column sticky. --}}
-            <div x-show="tampilan === 'linimasa'" class="relative mt-4 rounded-lg border border-neutral-200 bg-white shadow-xs"
-                x-data="{ more: false, cek() { const b = this.$refs.gulir; this.more = b.scrollLeft + b.clientWidth < b.scrollWidth - 1 } }"
-                x-init="$nextTick(() => cek())" x-on:resize.window="cek()" x-effect="tampilan === 'linimasa' && $nextTick(() => cek())">
+            <div x-show="tampilan === 'linimasa'" x-cloak data-tampilan class="relative mt-4 rounded-lg border border-neutral-200 bg-white shadow-xs"
+                x-data="{ more: false, kolMin: 8,
+                    cek() {
+                        const b = this.$refs.gulir; this.more = b.scrollLeft + b.clientWidth < b.scrollWidth - 1;
+                        // A bar shows its label only when it is at least 96 px wide (jadwal.md): columns needed = 96 / (60-column width), measured.
+                        const lebar = this.$refs.isi.clientWidth - 240;
+                        if (lebar > 0) this.kolMin = Math.ceil(96 / (lebar / 60));
+                    } }"
+                x-init="$nextTick(() => cek())" x-on:resize.window="cek()" x-on:jadwal-dirender.window="cek()" x-effect="tampilan === 'linimasa' && $nextTick(() => cek())">
                 <div x-ref="gulir" x-on:scroll="cek(); posisi()" role="region" aria-label="Linimasa Jadwal PKPT {{ $tahunAngka }}" tabindex="0" class="overflow-x-auto rounded-lg">
-                    <div class="min-w-[1040px]" @if ($awal) data-motion="bars" @endif>
+                    <div x-ref="isi" class="min-w-[1040px]" @if ($awal) data-motion="bars" @endif>
                         <div class="{{ $ruas }} border-b border-neutral-200 bg-neutral-50 text-xs" aria-hidden="true">
                             <div class="sticky left-0 z-10 row-span-3 flex items-end bg-neutral-50 px-4 pb-1.5 font-medium text-neutral-500 shadow-[1px_0_0_var(--color-neutral-200)]">Jenis Penugasan</div>
                             <div class="relative col-span-60 h-6">
@@ -148,12 +154,14 @@
                                                     class="h-[22px] self-center rounded-md border-2 border-dashed border-[color-mix(in_srgb,var(--type)_70%,transparent)] transition-opacity duration-[var(--dur-fast)]"
                                                     style="{{ $gaya($i['jenis']) }} grid-row: {{ $n + 1 }}; grid-column: {{ $bar['semula'][0] + 1 }} / {{ $bar['semula'][1] + 2 }}"></span>
                                             @endif
-                                            {{-- Label inside only when ≥96 px: 8 columns ≈ 107 px at the 1040 px minimum width (240 + 60 × 13.3). --}}
-                                            @php $berlabel = $bar['selesai'] - $bar['mulai'] + 1 >= 8; @endphp
-                                            <button type="button" data-bar data-pemicu aria-label="{{ $label($i) }}" @unless ($berlabel) title="{{ $i['irban'] }} · {{ $i['wilayah'] }}" @endunless
+                                            {{-- Label inside only when the bar is ≥96 px: `kolMin` is measured in the wrapper (8 columns at the 1040 px minimum width);
+                                                 until Alpine measures, the server uses 8 and x-cloak keeps the shorter bars bare. --}}
+                                            @php $kol = $bar['selesai'] - $bar['mulai'] + 1; $teks = $i['irban'].' · '.$i['wilayah']; @endphp
+                                            <button type="button" data-bar data-pemicu aria-label="{{ $label($i) }}" @if ($kol < 8) title="{{ $teks }}" @endif
+                                                x-bind:title="kolMin <= {{ $kol }} ? null : @js($teks)"
                                                 x-on:click="buka({{ $i['id'] }}, $el)" x-bind:class="{ 'opacity-25': redup({{ $i['jenis']['id'] }}) }"
                                                 class="relative z-[1] h-[22px] min-w-0 self-center truncate rounded-md bg-[var(--type)] px-2 text-left text-xs font-semibold text-[var(--type-fg)] transition-opacity duration-[var(--dur-fast)]"
-                                                style="{{ $gaya($i['jenis']) }} grid-row: {{ $n + 1 }}; grid-column: {{ $bar['mulai'] + 1 }} / {{ $bar['selesai'] + 2 }}">@if ($berlabel){{ $i['irban'] }} · {{ $i['wilayah'] }}@endif</button>
+                                                style="{{ $gaya($i['jenis']) }} grid-row: {{ $n + 1 }}; grid-column: {{ $bar['mulai'] + 1 }} / {{ $bar['selesai'] + 2 }}"><span x-show="kolMin <= {{ $kol }}" @if ($kol < 8) x-cloak @endif>{{ $teks }}</span></button>
                                         @endforeach
                                     @endforeach
                                 </div>
@@ -165,7 +173,7 @@
             </div>
 
             {{-- Monthly view: 12 accordion cards, the current month (or January for other years) open. --}}
-            <div x-show="tampilan === 'bulanan'" class="mt-4 space-y-3">
+            <div x-show="tampilan === 'bulanan'" x-cloak data-tampilan class="mt-4 space-y-3">
                 @foreach ($bulanan as $b)
                     <x-ui.card x-data="{ terbuka: {{ $b['bulan'] === $bulanIni ? 'true' : 'false' }} }">
                         <h2>
@@ -178,8 +186,9 @@
                         </h2>
                         <div id="bulan-{{ $b['bulan'] }}" x-show="terbuka" x-collapse.duration.150ms>
                             <div class="pt-4">
+                                @php $mingguBulan = array_column(\App\Support\MingguPkpt::daftar($tahunAngka, $b['bulan']), null, 'minggu'); @endphp
                                 @forelse ($b['minggu'] as $m => $daftar)
-                                    <p class="mt-3 mb-1 text-xs font-semibold tracking-[0.08em] text-neutral-600 uppercase first:mt-0">Minggu {{ $m }}</p>
+                                    <p class="mt-3 mb-1 text-xs font-semibold tracking-[0.08em] text-neutral-600 uppercase first:mt-0">Minggu {{ $m }}@isset($mingguBulan[$m]) <span class="font-normal tracking-normal normal-case tabular-nums">· {{ Tanggal::rentang($mingguBulan[$m]['mulai'], $mingguBulan[$m]['selesai']) }}</span>@endisset</p>
                                     <ul role="list">
                                         @foreach ($daftar as $i)
                                             <li>
@@ -239,7 +248,7 @@
 
             {{-- Detail: popover anchored to the trigger ≥768, bottom sheet <768. tutup() returns focus to the open trigger (x-trap.noreturn, so an outside click on a control keeps its focus). --}}
             <div x-show="aktif !== null" x-cloak x-on:click="tutup()" aria-hidden="true" class="fixed inset-0 z-[60] bg-scrim md:hidden"></div>
-            <div x-ref="detail" x-show="aktif !== null" x-cloak x-trap.noreturn="aktif !== null" role="dialog" aria-modal="true" x-bind:aria-labelledby="'detail-' + aktif"
+            <div x-ref="detail" x-show="aktif !== null" x-cloak x-trap.noreturn="aktif !== null" role="dialog" aria-modal="false" x-bind:aria-modal="modal.toString()" x-bind:aria-labelledby="'detail-' + aktif"
                 x-bind:style="gayaDetail" x-on:keydown.escape.window="aktif !== null && tutup()" x-on:resize.window="posisi()" x-on:scroll.window.passive="posisi()"
                 x-on:click.outside="luar($event)"
                 class="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-xl bg-white p-5 shadow-lg md:inset-x-auto md:bottom-auto md:z-50 md:w-80 md:rounded-lg md:border md:border-neutral-200 md:p-4 md:shadow-md">

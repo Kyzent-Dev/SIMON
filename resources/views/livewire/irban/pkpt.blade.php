@@ -8,9 +8,9 @@
     $tahun = (int) $this->tahun;
     $disahkan = $pkpt?->status === \App\Enums\StatusPkpt::Disahkan;
 @endphp
-{{-- After the modal: back to the visible trigger (table/card button, else the calendar card), else the h1 (pitfall "Fokus setelah aksi"). --}}
+{{-- After the modal: back to the visible `data-usulan-pemicu` trigger (table row, card or calendar card), else the h1 (pitfall "Fokus setelah aksi"). --}}
 <div x-on:usulan-fokus.window="setTimeout(() => { const v = (s) => [...document.querySelectorAll(s)].find((e) => e.offsetParent); const id = $event.detail.id;
-    ((id !== null && (v(`[data-usulan-pemicu='${id}']`) ?? v(`[data-kartu='${id}']`))) || document.getElementById('judul-jadwal'))?.focus() }, 50)">
+    ((id !== null && v(`[data-usulan-pemicu='${id}']`)) || document.getElementById('judul-jadwal'))?.focus() }, 50)">
     <x-ui.page-header title="Jadwal PKPT" title-id="judul-jadwal" :description="'Item PKPT '.$irbanNama.' yang sudah disahkan. Perubahan jadwal berlaku setelah Perubahan PKPT disetujui pimpinan; usulkan perubahan bila jadwal perlu disesuaikan.'">
         @if ($disahkan)
             <x-slot:meta>

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Publik;
 
 use App\Models\LandingSlide;
+use App\Models\Pkpt;
 use App\Models\User;
 use App\Services\Publik\RealisasiPublik;
 use App\Services\Settings;
@@ -119,6 +120,12 @@ class BerandaTest extends TestCase
             ->assertDontSee('Persentase Realisasi')->assertSee('Data per 20 Oktober 2026');
     }
 
+    public function test_disahkan_pkpt_without_items_is_still_a_pkpt(): void
+    {
+        Pkpt::factory()->disahkan()->create(['tahun' => 2026]);
+        $this->get('/')->assertOk()->assertDontSee('Belum ada PKPT yang disahkan untuk 2026.')->assertSee('Persentase Realisasi');
+    }
+
     public function test_failing_stats_show_dash_and_caption(): void
     {
         $this->mock(RealisasiPublik::class)->shouldReceive('ringkasan')->andThrow(new RuntimeException('db down'));
@@ -136,6 +143,16 @@ class BerandaTest extends TestCase
         $this->assertMatchesRegularExpression('/<a href="'.preg_quote(url('/jadwal'), '/').'"[^>]*rounded-xl/', $html);
     }
 
+    public function test_carousel_keys_ignore_modified_arrows_and_only_keyboard_focus_pauses(): void
+    {
+        LandingSlide::factory()->count(2)->create(['aktif' => true]);
+        $html = $this->html();
+        $this->assertStringContainsString('x-on:keydown.left="key($event, -1)"', $html);
+        $this->assertStringContainsString('x-on:keydown.right="key($event, 1)"', $html);
+        $this->assertStringContainsString('x-on:focusin="focusIn($event)"', $html);
+        $this->assertStringNotContainsString('x-on:keydown.left="prev()"', $html);
+    }
+
     public function test_footer_renders_only_filled_columns_and_no_initial_map(): void
     {
         app(Settings::class)->saveGroup('kontak', ['kontak' => ['telepon' => '(0734) 421001', 'email' => '', 'instagram' => 'inspektorat.me',
@@ -147,7 +164,10 @@ class BerandaTest extends TestCase
         $this->assertStringContainsString('href="https://www.instagram.com/inspektorat.me"', $html);
         $this->assertStringContainsString('@inspektorat.me', $html);
         $this->assertStringNotContainsString('Alamat Kantor', $html);
-        $this->assertStringContainsString('Tampilkan peta', $html);
+        // A button (it acts on the page), not a link dressed up as one; the map link exists only for no-JS visitors.
+        $this->assertMatchesRegularExpression('/<button type="button" x-cloak.*?<svg[^>]*>.*?<\/svg>Tampilkan peta\s*<\/button>/s', $html);
+        $this->assertDoesNotMatchRegularExpression('/<a [^>]*>[^<]*Tampilkan peta/', $html);
+        $this->assertMatchesRegularExpression('/<noscript><a href="https:\/\/www\.google\.com\/maps\/embed\?pb=x"/', $html);
         $this->assertDoesNotMatchRegularExpression('/<iframe(?![^>]*x-ref)/', $html); // only the x-if template, never a live iframe
         $this->assertStringContainsString('<template x-if="peta">', $html);
     }

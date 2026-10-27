@@ -18,6 +18,8 @@
     <title>{{ $title ? $title.' · ' : '' }}Inspektorat Daerah Kabupaten Muara Enim</title>
     @vite(['resources/css/app.css', 'resources/js/public.js'])
     @livewireStyles
+    {{-- Without JS Alpine never lifts x-cloak: the Jadwal views (data-tampilan) must still show their content. --}}
+    <noscript><style>[data-tampilan][x-cloak]{display:block!important}</style></noscript>
 </head>
 <body class="flex min-h-dvh flex-col bg-neutral-25">
     <a href="#konten" class="sr-only z-[100] rounded-md bg-white px-4 py-2 font-medium text-mint-700 shadow-md focus:not-sr-only focus:fixed focus:top-2 focus:left-2">Lewati ke konten utama</a>

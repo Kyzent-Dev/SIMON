@@ -19,9 +19,9 @@
             x-data="carousel({ count: {{ $jumlah }}, interval: 7000 })"
             x-bind:class="{ 'hero-jeda': ! running }"
             x-on:pointerenter="enter($event)" x-on:pointerleave="leave($event)"
-            x-on:focusin="focusIn()" x-on:focusout="focusOut($event)"
+            x-on:focusin="focusIn($event)" x-on:focusout="focusOut($event)"
             x-on:pointerdown="down($event)" x-on:pointerup="up($event)" x-on:pointercancel="x0 = null"
-            x-on:keydown.left="prev()" x-on:keydown.right="next()"
+            x-on:keydown.left="key($event, -1)" x-on:keydown.right="key($event, 1)"
         @endif
         class="relative isolate touch-pan-y overflow-hidden bg-mint-950">
         @if ($jumlah === 0)
@@ -103,7 +103,7 @@
     <section aria-labelledby="ringkasan-judul" class="relative z-10 mx-auto max-w-[1200px] px-4 pt-8 md:px-6 lg:-mt-12 lg:pt-0">
         <h2 id="ringkasan-judul" class="sr-only">Ringkasan pengawasan {{ $tahun }}</h2>
         <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-md">
-            @if ($ringkasan !== null && $ringkasan['item'] === 0)
+            @if ($ringkasan !== null && ! $adaPkpt)
                 <p class="p-5 text-neutral-600">Belum ada PKPT yang disahkan untuk {{ $tahun }}.</p>
             @else
                 <div data-motion="stagger" class="grid divide-y divide-neutral-200 md:grid-cols-3 md:divide-x md:divide-y-0">
