@@ -8,6 +8,7 @@ use App\Livewire\Admin\Klasifikasi as Page;
 use App\Models\Klasifikasi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -83,6 +84,7 @@ class KlasifikasiTest extends TestCase
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->post('/admin/klasifikasi')->assertStatus(405);
         $this->actingAs($admin)->delete('/admin/klasifikasi/1')->assertStatus(405); // no such route: the GET-only 404 fallback makes it 405
+        $this->assertFalse(collect(Route::getRoutes()->getRoutes())->contains(fn ($r) => str_starts_with($r->uri(), 'admin/klasifikasi') && array_intersect(['DELETE', 'POST', 'PUT', 'PATCH'], $r->methods())));
         $this->assertCount(5, Klasifikasi::all());
     }
 

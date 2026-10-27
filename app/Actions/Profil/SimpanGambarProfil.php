@@ -40,7 +40,8 @@ class SimpanGambarProfil
         } catch (GambarTidakTerbaca) {
             // GD could not decode a file that passed the header checks (e.g. truncated); nothing was written.
             throw ValidationException::withMessages([$jenis => GambarProfil::TIDAK_TERBACA]);
-        } catch (RuntimeException) {
+        } catch (RuntimeException $e) {
+            report($e); // disk/permission errors must reach the log
             throw ValidationException::withMessages([$jenis => 'Gambar gagal disimpan. Coba lagi.']);
         }
         $lama = $user->{$kolom};

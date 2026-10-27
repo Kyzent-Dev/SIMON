@@ -16,6 +16,7 @@ use App\Notifications\VerifikasiEmailBaru;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -237,6 +238,7 @@ class ProfilTest extends TestCase
         $disk->shouldReceive('delete');
         Storage::shouldReceive('disk')->with('public')->andReturn($disk);
         $admin = User::factory()->admin()->create();
+        Exceptions::fake();
 
         try {
             app(SimpanGambarProfil::class)->handle($admin, 'foto', $this->gambar(300, 300));
@@ -244,6 +246,7 @@ class ProfilTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame(['foto' => ['Gambar gagal disimpan. Coba lagi.']], $e->errors());
         }
+        Exceptions::assertReported(\RuntimeException::class);
     }
 
     public function test_irban_notice_ends_with_exactly_one_period(): void

@@ -55,13 +55,13 @@ class SimpanPengguna
 
         $role = Role::from($data['role']);
 
-        // The last-admin check locks the other admin rows, so two concurrent demotions cannot both pass.
+        // The last-admin check locks every admin row (target included), so two concurrent demotions serialize instead of deadlocking.
         return DB::transaction(function () use ($admin, $user, $role, $data) {
             if ($user && $role !== $user->role) {
                 if ($user->is($admin)) {
                     throw ValidationException::withMessages(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
                 }
-                if ($user->role === Role::Admin && User::where('role', Role::Admin)->whereKeyNot($user->id)->lockForUpdate()->pluck('id')->isEmpty()) {
+                if ($user->role === Role::Admin && User::where('role', Role::Admin)->lockForUpdate()->pluck('id')->reject($user->id)->isEmpty()) {
                     throw ValidationException::withMessages(['role' => 'Harus ada setidaknya satu Admin.']);
                 }
             }

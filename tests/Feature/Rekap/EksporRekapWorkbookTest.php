@@ -357,5 +357,7 @@ class EksporRekapWorkbookTest extends TestCase
 
         $this->assertContains(PembangunMonitoring::KESESUAIAN['sesuai'], $sel);
         $this->assertContains('Selesai', $sel);
+        $semua = array_merge(...array_map(fn ($sh) => array_merge(...$sh->toArray(null, true, true, false)), $this->buku($this->pimpinan, ['bagian' => ['detail']])->getAllSheets()));
+        $this->assertTrue(count(array_filter($semua, fn ($c) => is_string($c) && str_ends_with($c, ', Terlambat'))) > 0, 'A late SPT row shows ", Terlambat" after its status.');
     }
 }

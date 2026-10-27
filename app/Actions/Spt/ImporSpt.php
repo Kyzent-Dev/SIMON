@@ -68,7 +68,7 @@ class ImporSpt
             ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt.tahun'])->keyBy('id');
         foreach ($data as $d) {
             $i = $d['pkpt_item_id'] === null ? null : $item->get($d['pkpt_item_id']);
-            if ($d['pkpt_item_id'] !== null && ($i === null || $i->irban_id !== $d['irban_id'] || $i->jenis_penugasan_id !== $d['jenis_penugasan_id']
+            if ($d['pkpt_item_id'] !== null && ($i === null || (int) $i->irban_id !== (int) $d['irban_id'] || (int) $i->jenis_penugasan_id !== (int) $d['jenis_penugasan_id']
                 || (int) $i->tahun !== (int) substr($d['tanggal_mulai'], 0, 4))) {
                 throw ValidationException::withMessages(['impor' => "Item PKPT untuk SPT {$d['nomor_lengkap']} sudah berubah. Muat ulang pratinjau."]);
             }
