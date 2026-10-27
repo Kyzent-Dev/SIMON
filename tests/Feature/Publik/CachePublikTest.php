@@ -258,7 +258,9 @@ class CachePublikTest extends TestCase
         $dariCache = $jadwal->item(2026, null); // second call: through the store
         $this->assertNotEmpty($pertama);
         $this->assertInstanceOf(CarbonImmutable::class, $dariCache[0]['mulai']);
-        $this->assertEquals($pertama, $dariCache);
+        // Jenis Dua (b1, 1 Apr–30 Jun) sorts before Jenis Satu (a1, 5 Jan–31 Mar).
+        $this->assertSame('2026-04-01', $dariCache[0]['mulai']->toDateString());
+        $this->assertSame('2026-06-30', $dariCache[0]['selesai']->toDateString());
         // and the pages built on it render from cache
         $this->get('/jadwal')->assertOk()->assertDontSee('Jadwal gagal dimuat');
     }
