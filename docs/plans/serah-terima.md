@@ -157,6 +157,9 @@ Dibawa (alasan): (1) logo resmi Diskominfo pengganti `x-app.logo`: menunggu aset
 - Fase 9.1: tab Detail Realisasi kartu mobile selalu terbuka (pimpinan.md: satu kartu per item dengan mini-rows, laporan baca-saja); tautan nomor SPT 24px di desktop (DESIGN §10 mengizinkan, mobile sudah `min-h-11`).
 - Fase 9, Task 1: `PkptItem` `startOfDay()` (tanggal ber-cast immutable, bukan cacat); `opsi()` memberi tahun berjalan bila tak ada PKPT Disahkan (design mensyaratkan judul bertahun); SPT tanpa objek tampil `Belum ditentukan` (design tidak mengatur sel kosong; konstanta `BELUM_DITENTUKAN`).
 - Fase 9, Task 2: `Storage::fake` ganda di `SlideTest` (tidak ada cacat, hanya satu di `setUp`).
+- Fase 9, Task 2: fake global disk `public` membuat seeder menggambar 3 gambar GD (tanpa keputusan); jalur pembungkus `data://` belum diverifikasi.
+- Fase 11, Task 3b: unescape `tanpaEscape()` berlaku ke seluruh slot teks semua email (aman untuk teks sistem saat ini; tanpa keputusan).
+- Fase 11, Task 6: tes cadangan hanya `--only-files`, dump DB diuji manual (Tidak dikerjakan, `decisions/fase-11.2.md` Task 5 butir 5: DB tes SQLite in-memory tak bisa di-dump dan `mysqldump` tidak ada di PATH).
 - Fase 9, Task 3: tanpa JS hanya slide pertama terlihat.
 - Rekap (Fase 8): tabel per jenis menampilkan baris nol (PRD/DESIGN tidak melarang; tabel Klasifikasi juga menampilkan nol dan `bagian()` dipakai layar, xlsx, PDF dan `jumlah()`).
 - Ekspor (Fase 8): `ArrayExport` satu sheet (rekap disusun dengan baris judul bagian).
