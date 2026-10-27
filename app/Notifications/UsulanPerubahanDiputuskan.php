@@ -7,7 +7,6 @@ use App\Enums\StatusUsulan;
 use App\Models\PkptUsulan;
 use App\Services\PenerimaNotifikasi;
 use App\Support\Tanggal;
-use Illuminate\Support\Facades\Notification;
 
 /** An usulan was applied (its package approved) or closed by Admin: the irban accounts + the pegawai who entered it (E5, Task 1 K9). */
 class UsulanPerubahanDiputuskan extends NotifikasiSintas
@@ -34,12 +33,7 @@ class UsulanPerubahanDiputuskan extends NotifikasiSintas
     /** Sends to the irban accounts and, unless already covered, the "Diinput oleh" pegawai's own address. Call after commit. */
     public static function kirim(PkptUsulan $u): void
     {
-        $penerima = app(PenerimaNotifikasi::class);
-        $akun = $penerima->irban($u->irban_id);
-        Notification::send($akun, new self($u));
-        if ($email = $penerima->emailPegawai($u->diinputOleh, $akun)) {
-            Notification::route('mail', $email)->notify(new EmailPegawai(new self($u), $u->diinputOleh->nama_bergelar));
-        }
+        app(PenerimaNotifikasi::class)->kirimKeIrban($u->irban_id, $u->diinputOleh, fn () => new self($u));
     }
 
     /** "Geser jadwal · Reviu · 1–20 April 2026": the proposed dates for geser/tambah, the item's for hapus/lainnya. */

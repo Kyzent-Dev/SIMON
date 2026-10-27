@@ -7,7 +7,10 @@ use App\Models\Komentar;
 use App\Models\Pegawai;
 use App\Models\PkptPerubahan;
 use App\Models\User;
+use App\Notifications\EmailPegawai;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Notification;
 
 /** The only place that decides who receives a notification (Fase 6). */
 class PenerimaNotifikasi
@@ -71,6 +74,16 @@ class PenerimaNotifikasi
         $sudah = $akun->flatMap(fn (User $u) => $u->routeNotificationForMail() ?? [])->map(fn ($a) => mb_strtolower($a));
 
         return $sudah->contains(mb_strtolower($p->email)) ? null : $p->email;
+    }
+
+    /** Sends to the irban's accounts and, unless covered, the pegawai's own address. $buat makes a fresh notification per send. Call after commit. */
+    public function kirimKeIrban(int $irbanId, ?Pegawai $diinputOleh, Closure $buat): void
+    {
+        $akun = $this->irban($irbanId);
+        Notification::send($akun, $buat());
+        if ($email = $this->emailPegawai($diinputOleh, $akun)) {
+            Notification::route('mail', $email)->notify(new EmailPegawai($buat(), $diinputOleh->nama_bergelar));
+        }
     }
 
     /** @return Collection<int, User> */

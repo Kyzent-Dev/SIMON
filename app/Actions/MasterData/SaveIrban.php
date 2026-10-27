@@ -40,7 +40,7 @@ class SaveIrban
                 'nama' => $data['nama'], 'kode_nomor' => $data['kodeNomor'],
                 'email_notifikasi' => $data['emailNotifikasi'] ?: null,
                 // An empty list is stored as null.
-                'email_tembusan' => $data['tembusan'] ? array_values($data['tembusan']) : null,
+                'email_tembusan' => array_values(array_filter(array_map('trim', $data['tembusan'] ?? []), fn ($e) => $e !== '')) ?: null,
             ])->save();
         } catch (UniqueConstraintViolationException $e) {
             // The driver message names the violated column.

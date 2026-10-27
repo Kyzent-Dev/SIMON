@@ -31,13 +31,21 @@ class Daftar extends Component
         $this->normalisasi();
     }
 
-    public function updated(string $name): void
+    public function updated(): void
     {
         $this->pengguna();
         $this->normalisasi();
-        if ($name !== 'terpilih') {
-            $this->resetPage();
-        }
+    }
+
+    /** Only a new filter or page size restarts at page 1 (matching on the hook name, not a property-path string, stays correct for `terpilih.0`). */
+    public function updatedTab(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
     }
 
     /** Selection is "this page only": leaving the page drops it. */

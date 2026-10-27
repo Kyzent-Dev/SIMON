@@ -214,11 +214,16 @@ class NotifikasiPengajuanRevisiTest extends TestCase
         try {
             DB::transaction(function () use ($spt) {
                 $this->bu->notify(new PengajuanBaru($spt->load('irban')));
-                throw new \RuntimeException('rollback');
+                // afterCommit: nothing is written while the transaction is still open (fails if afterCommit is removed).
+                $this->assertSame(0, DB::table('notifications')->count());
+                throw new \DomainException('rollback'); // not RuntimeException: PHPUnit assertion failures extend it
             });
-        } catch (\RuntimeException) {
+        } catch (\DomainException) {
         }
-
         $this->assertSame(0, DB::table('notifications')->count());
+
+        // Control: the same notification does arrive once the transaction commits.
+        DB::transaction(fn () => $this->bu->notify(new PengajuanBaru($spt->load('irban'))));
+        $this->assertSame(1, DB::table('notifications')->count());
     }
 }

@@ -135,6 +135,26 @@ class NotifikasiHarianMingguanTest extends TestCase
         Notification::assertNotSentTo($this->user, PengingatSptFinal::class);
     }
 
+    public function test_scan_skips_rows_that_cannot_trigger(): void
+    {
+        $this->jam('2026-04-04 06:00');
+        $final = $this->spt(['terlambat_diberitahu_pada' => now()]);
+        $this->dokumen($final, 'final');
+        $tanpaMulai = $this->spt(['tanggal_mulai' => null, 'terlambat_diberitahu_pada' => now()]);
+        $dipindai = $this->spt(['tanggal_mulai' => '2026-04-01', 'terlambat_diberitahu_pada' => now()]); // positive control: still waiting for a reminder
+        $diambil = [];
+        Spt::retrieved(function (Spt $s) use (&$diambil) {
+            $diambil[] = $s->id;
+        });
+
+        $this->harian();
+
+        $this->assertContains($dipindai->id, $diambil);
+        $this->assertNotContains($final->id, $diambil);
+        $this->assertNotContains($tanpaMulai->id, $diambil);
+        Notification::assertSentToTimes($this->user, PengingatSptFinal::class, 1); // only the control; nobody new gets notified
+    }
+
     public function test_harian_output(): void
     {
         $this->spt(['tanggal_mulai' => '2026-03-01']);

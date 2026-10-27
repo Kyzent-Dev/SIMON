@@ -6,12 +6,10 @@ use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
-use App\Notifications\EmailPegawai;
 use App\Notifications\NomorDibatalkan;
 use App\Services\PenerimaNotifikasi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /** Cancels an issued number. Only the status changes: the number stays in the register and the counter never decrements (PRD §9.1). */
@@ -42,12 +40,7 @@ class BatalkanNomor
             return $spt;
         });
 
-        $penerima = app(PenerimaNotifikasi::class);
-        $akun = $penerima->irban($spt->irban_id);
-        Notification::send($akun, new NomorDibatalkan($spt, $alasan));
-        if ($email = $penerima->emailPegawai($spt->diinputOleh, $akun)) {
-            Notification::route('mail', $email)->notify(new EmailPegawai(new NomorDibatalkan($spt, $alasan), $spt->diinputOleh->nama_bergelar));
-        }
+        app(PenerimaNotifikasi::class)->kirimKeIrban($spt->irban_id, $spt->diinputOleh, fn () => new NomorDibatalkan($spt, $alasan));
 
         return $spt;
     }

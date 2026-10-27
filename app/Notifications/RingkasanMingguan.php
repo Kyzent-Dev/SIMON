@@ -2,14 +2,15 @@
 
 namespace App\Notifications;
 
+use Carbon\CarbonImmutable;
+
 class RingkasanMingguan extends NotifikasiSintas
 {
-    private string $konteks;
-
-    /** @param array $hasil App\Services\RingkasanMingguan::hitung() */
+    /** @param array $hasil App\Services\RingkasanMingguan::hitung(); awal/akhir are kept as Y-m-d strings so the queue payload holds scalars only */
     public function __construct(private array $hasil)
     {
-        $this->konteks = $hasil['awal']->translatedFormat('d F Y').' – '.$hasil['akhir']->translatedFormat('d F Y');
+        $this->hasil['awal'] = CarbonImmutable::parse($hasil['awal'])->toDateString();
+        $this->hasil['akhir'] = CarbonImmutable::parse($hasil['akhir'])->toDateString();
     }
 
     public function jenis(): string
@@ -24,7 +25,7 @@ class RingkasanMingguan extends NotifikasiSintas
 
     public function konteks(): ?string
     {
-        return $this->konteks;
+        return CarbonImmutable::parse($this->hasil['awal'])->translatedFormat('d F Y').' – '.CarbonImmutable::parse($this->hasil['akhir'])->translatedFormat('d F Y');
     }
 
     public function url(): string

@@ -29,7 +29,10 @@ class NotifikasiHarian extends Command
         $terlambat = $pengingat = 0;
 
         Spt::with('pkptItem')->where('status_pengajuan', StatusPengajuan::Diterima)->whereNull('ditandai_selesai_pada')
-            ->where(fn ($q) => $q->whereNull('terlambat_diberitahu_pada')->orWhereNull('pengingat_final_pada'))
+            // Only rows that can still trigger: a pengingat needs a tanggal_mulai and no final yet (the in-loop checks decide who is notified).
+            ->where(fn ($q) => $q->whereNull('terlambat_diberitahu_pada')
+                ->orWhere(fn ($q) => $q->whereNull('pengingat_final_pada')->whereNotNull('tanggal_mulai')
+                    ->whereDoesntHave('dokumen', fn ($d) => $d->where('jenis', 'final'))))
             ->chunkById(200, function ($semua) use (&$terlambat, &$pengingat, $penanda, $penerima, $batas, $hariIni) {
                 foreach ($semua as $spt) {
                     if ($spt->terlambat_diberitahu_pada === null && in_array('terlambat', $penanda->untuk($spt), true)) {

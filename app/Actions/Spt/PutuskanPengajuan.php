@@ -5,13 +5,11 @@ namespace App\Actions\Spt;
 use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
-use App\Notifications\EmailPegawai;
 use App\Notifications\PengajuanDiputuskan;
 use App\Services\PenerimaNotifikasi;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /** Shared core of the Bagian Umum decisions: lock the SPT, require menunggu_nomor (else the conflict message), authorize, apply, write riwayat. */
@@ -41,12 +39,7 @@ trait PutuskanPengajuan
             return [$spt, $alasan];
         }, attempts: 3);
 
-        $penerima = app(PenerimaNotifikasi::class);
-        $akun = $penerima->irban($spt->irban_id);
-        Notification::send($akun, new PengajuanDiputuskan($spt, $alasan));
-        if ($email = $penerima->emailPegawai($spt->diinputOleh, $akun)) {
-            Notification::route('mail', $email)->notify(new EmailPegawai(new PengajuanDiputuskan($spt, $alasan), $spt->diinputOleh->nama_bergelar));
-        }
+        app(PenerimaNotifikasi::class)->kirimKeIrban($spt->irban_id, $spt->diinputOleh, fn () => new PengajuanDiputuskan($spt, $alasan));
 
         return $spt;
     }

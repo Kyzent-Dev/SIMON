@@ -50,7 +50,7 @@
                     <td class="whitespace-nowrap">{{ $row->nip }}</td>
                     <td class="min-w-32">{{ collect([$row->pangkat, $row->golongan])->filter()->implode(' / ') ?: '—' }}</td>
                     <td class="min-w-32">{{ $row->jabatan ?: '—' }}</td>
-                    <td class="min-w-40 break-all">{{ $row->email ?: '–' }}</td>
+                    <td class="min-w-40 break-all">{{ $row->email ?: '—' }}</td>
                     <td>
                         @if ($row->aktif)
                             <span class="inline-flex items-center gap-1.5 text-success-700">{{ svg('heroicon-m-check-circle', 'size-5') }}Aktif</span>

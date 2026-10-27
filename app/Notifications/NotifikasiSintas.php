@@ -19,6 +19,9 @@ abstract class NotifikasiSintas extends Notification implements ShouldQueueAfter
         'komentar_baru', 'minta_penjelasan', 'balasan_penjelasan',
     ];
 
+    /** Markdown punctuation that aman() escapes and tanpaEscape() restores (one list, so the two cannot drift apart). */
+    private const KARAKTER_MD = '\\\\`*_{}\[\]()#+!|~:-';
+
     abstract public function jenis(): string;
 
     abstract public function judul(): string;
@@ -84,13 +87,13 @@ abstract class NotifikasiSintas extends Notification implements ShouldQueueAfter
     /** User text in a Markdown email: backslash-escape Markdown punctuation so it never becomes links or formatting (< > & are left to HTML escaping). */
     public static function aman(string $t): string
     {
-        return preg_replace('/[\\\\`*_{}\[\]()#+!|~:-]/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $t));
+        return preg_replace('/['.self::KARAKTER_MD.']/', '\\\\$0', str_replace(["\r\n", "\n", "\r"], ' ', $t));
     }
 
-    /** Inverse of aman(): for the plain-text part, where Markdown is not rendered. Keep the character class identical. */
+    /** Inverse of aman(): for the plain-text part, where Markdown is not rendered. */
     public static function tanpaEscape(string $t): string
     {
-        return preg_replace('/\\\\([\\\\`*_{}\[\]()#+!|~:-])/', '$1', $t);
+        return preg_replace('/\\\\(['.self::KARAKTER_MD.'])/', '$1', $t);
     }
 
     protected function labelTombol(): string

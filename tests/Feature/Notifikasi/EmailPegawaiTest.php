@@ -14,8 +14,12 @@ use App\Notifications\EmailPegawai;
 use App\Notifications\NomorDibatalkan;
 use App\Notifications\PengajuanDiputuskan;
 use App\Services\PenerimaNotifikasi;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Markdown;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Notifications\ChannelManager;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -109,6 +113,28 @@ class EmailPegawaiTest extends TestCase
         $this->assertSame('baru@example.test', $penerima->emailPegawai(Pegawai::factory()->create(['email' => 'baru@example.test']), $akun));
     }
 
+    public function test_email_pegawai_is_sent_only_after_commit(): void
+    {
+        Notification::swap(new ChannelManager($this->app)); // setUp faked it; this needs the real queue path
+        $spt = $this->spt(Pegawai::factory()->create(), 'diterima');
+        $kirim = fn () => Notification::route('mail', 'p@example.test')->notify(new EmailPegawai(new NomorDibatalkan($spt, 'Salah ketik perihal'), 'Budi'));
+        $terkirim = fn () => count(app('mailer')->getSymfonyTransport()->messages());
+
+        $this->assertInstanceOf(ShouldQueueAfterCommit::class, new EmailPegawai(new NomorDibatalkan($spt, 'x'), 'Budi'));
+        try {
+            DB::transaction(function () use ($kirim, $terkirim) {
+                $kirim();
+                $this->assertSame(0, $terkirim()); // not sent inside the open transaction
+                throw new \DomainException('rollback');
+            });
+        } catch (\DomainException) {
+        }
+        $this->assertSame(0, $terkirim()); // rolled back: never sent
+
+        DB::transaction($kirim);
+        $this->assertSame(1, $terkirim()); // control: sent once committed
+    }
+
     public function test_mail_has_greeting_closing_line_and_escapes(): void
     {
         $spt = $this->spt(Pegawai::factory()->create(), 'diterima');
@@ -118,6 +144,11 @@ class EmailPegawaiTest extends TestCase
 
         $this->assertStringContainsString('Yth. Dr. ', $html);
         $this->assertStringNotContainsString('<a href="http://x"', $html);
+        // Escaped, not dropped: the user's text survives as literal characters.
+        $this->assertStringContainsString('[Budi](http://x)', $html);
+        $this->assertStringContainsString('[x](http://jahat)', $html);
+        $this->assertStringContainsString('Catatan: Alasan [x](http://jahat)', strip_tags($html));
+        $this->assertStringContainsString('[Budi](http://x)', (string) app(Markdown::class)->renderText($mail->markdown, $mail->data()));
         $this->assertStringNotContainsString('<a href="http://jahat"', $html);
         $this->assertStringContainsString('Anda menerima email ini karena tercatat sebagai penginput data di SINTAS.', $html);
         $this->assertSame(['mail'], $n->via(new AnonymousNotifiable));

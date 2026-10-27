@@ -160,4 +160,73 @@ class DaftarNotifikasiTest extends TestCase
         $c->dispatch('lonceng-diperbarui')->assertSee($nBaru->data['judul']);
         $c->set('terpilih', [$nBaru->id])->call('tandaiTerpilih')->assertDispatched('notifikasi-diperbarui');
     }
+
+    public function test_second_page_holds_the_remainder_in_newest_first_order(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        foreach (range(1, 25) as $i) {
+            $this->buat($user, true, "Item nomor {$i}x")->forceFill(['created_at' => now()->subMinutes(30 - $i)])->save();
+        }
+
+        $c = Livewire::actingAs($user)->test(Daftar::class)->call('gotoPage', 2);
+
+        $this->assertSame(2, $c->viewData('notifikasi')->currentPage());
+        $this->assertSame(['Item nomor 5x', 'Item nomor 4x', 'Item nomor 3x', 'Item nomor 2x', 'Item nomor 1x'], collect($c->viewData('notifikasi')->items())->pluck('data.judul')->all());
+    }
+
+    public function test_changing_page_empties_the_selection_and_selecting_keeps_the_page(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        foreach (range(1, 25) as $i) {
+            $this->buat($user, true, "Item nomor {$i}x");
+        }
+        $id = $user->notifications()->latest()->latest('id')->first()->id;
+
+        $c = Livewire::actingAs($user)->test(Daftar::class)->set('terpilih', [$id])->assertSet('terpilih', [$id]);
+        $c->call('gotoPage', 2)->assertSet('terpilih', []);
+
+        // Selecting on page 2 (whole array, or a single index) must not throw the user back to page 1.
+        $c->set('terpilih', [$id])->assertSet('paginators.page', 2);
+        $c->set('terpilih.0', $id)->assertSet('paginators.page', 2);
+        // Control: a filter change does reset it.
+        $c->set('tab', 'belum')->assertSet('paginators.page', 1);
+    }
+
+    public function test_per_page_is_clamped_to_the_offered_sizes_and_resets_the_page(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        foreach (range(1, 60) as $i) {
+            $this->buat($user, true, "Item nomor {$i}x");
+        }
+
+        $c = Livewire::actingAs($user)->test(Daftar::class)->call('gotoPage', 2);
+        $c->set('perPage', 50)->assertSet('perPage', 50)->assertSet('paginators.page', 1);
+        $this->assertCount(50, $c->viewData('notifikasi')->items());
+        foreach ([7, 0, -5, 100000] as $nilai) {
+            $c->set('perPage', $nilai)->assertSet('perPage', 20);
+        }
+    }
+
+    public function test_item_link_lets_modified_clicks_fall_through_to_the_browser(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        $n = $this->buat($user, false, 'Judul', '/spt/9');
+
+        $html = Livewire::actingAs($user)->test(Daftar::class)->html();
+
+        $this->assertStringContainsString('href="/spt/9"', $html); // new tab / copy link works without JS
+        $this->assertStringContainsString(sprintf('x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.buka(%s%s%s)"', "'", $n->id, "'"), $html);
+    }
+
+    public function test_spt_number_in_konteks_wraps_only_after_slashes_and_stays_escaped(): void
+    {
+        $user = User::factory()->pimpinan()->create();
+        $n = $this->buat($user);
+        $n->forceFill(['data' => ['jenis' => 'nomor_dibatalkan', 'judul' => 'Judul', 'konteks' => 'SPT 700/1/INSPEKTORAT-I/SPT/2026 <i>x', 'url' => '/spt/1', 'catatan' => null]])->save();
+
+        $html = Livewire::actingAs($user)->test(Daftar::class)->html();
+
+        $this->assertStringContainsString('SPT <span class="whitespace-nowrap">700</span>/<wbr><span class="whitespace-nowrap">1</span>/<wbr><span class="whitespace-nowrap">INSPEKTORAT-I</span>/<wbr><span class="whitespace-nowrap">SPT</span>/<wbr><span class="whitespace-nowrap">2026</span> &lt;i&gt;x', $html);
+        $this->assertStringNotContainsString('<i>x', $html);
+    }
 }
