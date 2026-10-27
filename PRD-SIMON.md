@@ -7,7 +7,7 @@
 | Penyusun | Andhika Pratama |
 | Tanggal | 18 Oktober 2026 |
 | Pembaca | AI Agent pelaksana implementasi, pembimbing lapangan |
-| Nama kerja aplikasi | SIMON-SPT (boleh diganti) |
+| Nama aplikasi | SINTAS (Sistem Informasi Surat Tugas Pengawasan) |
 
 > **Instruksi untuk AI Agent.** Dokumen ini menjelaskan *apa* yang harus dibangun dan *aturan bisnisnya*. Keputusan teknis detail boleh kamu ambil sendiri selama mengikuti Bagian 11 (Tech Stack) dan Bagian 13 (Konvensi). Butir di Bagian 15 (Pertanyaan Terbuka) **belum pasti**: implementasikan sebagai pengaturan yang bisa diubah admin, jangan sebagai nilai yang ditanam di kode. Kerjakan per fase (Bagian 12). Setiap fase selesai saat semua kriteria penerimaannya lulus dan test-nya hijau.
 

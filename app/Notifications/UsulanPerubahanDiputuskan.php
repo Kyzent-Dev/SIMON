@@ -10,7 +10,7 @@ use App\Support\Tanggal;
 use Illuminate\Support\Facades\Notification;
 
 /** An usulan was applied (its package approved) or closed by Admin: the irban accounts + the pegawai who entered it (E5, Task 1 K9). */
-class UsulanPerubahanDiputuskan extends NotifikasiSimon
+class UsulanPerubahanDiputuskan extends NotifikasiSintas
 {
     protected bool $diterapkan;
 

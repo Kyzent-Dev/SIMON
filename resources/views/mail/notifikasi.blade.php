@@ -1,7 +1,7 @@
-{{-- Body of every NotifikasiSimon email: no greeting or sign-off (design/dashboard/_shared.md §2), except pegawai emails (EmailPegawai), which pass $salam and $penutup (spec K9). --}}
+{{-- Body of every NotifikasiSintas email: no greeting or sign-off (design/dashboard/_shared.md §2), except pegawai emails (EmailPegawai), which pass $salam and $penutup (spec K9). --}}
 @php
-    // User text: Markdown-escaped, see NotifikasiSimon::aman().
-    $esc = \App\Notifications\NotifikasiSimon::aman(...);
+    // User text: Markdown-escaped, see NotifikasiSintas::aman().
+    $esc = \App\Notifications\NotifikasiSintas::aman(...);
 @endphp
 <x-mail::message>
 @if (filled($salam ?? null))

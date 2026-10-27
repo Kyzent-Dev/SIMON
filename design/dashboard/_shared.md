@@ -5,7 +5,7 @@
 ## 1. Shell
 - **Sidebar** (`@persist('sidebar')`):
   - Sizing: 264px expanded / 72px collapsed (≥1024), white with border-r neutral-200.
-  - Top: logo + "SIMON-SPT".
+  - Top: logo + "SINTAS".
   - Nav items: 40px tall, `rounded-md`, icon 20 + label 14/500 neutral-700. Hover neutral-50. Active mint-50 bg + mint-700 text + 3px left mint-700 indicator + `aria-current="page"`.
   - Section labels use overline style.
   - Collapse toggle at the bottom ("Ciutkan menu"); its state is persisted with Alpine `$persist`. Collapsed items show tooltips.
@@ -30,12 +30,12 @@
   - Empty state: "Belum ada notifikasi".
 - **Email template:**
   - 600px single column, system font stack (Arial/Helvetica fallback).
-  - Header band mint-950 with logo + "SIMON-SPT" white and a 3px accent-400 bottom rule.
+  - Header band mint-950 with logo + "SINTAS" white and a 3px accent-400 bottom rule.
   - White body, 16px neutral-900 text.
   - CTA button as a bulletproof table: mint-700 bg, white text, 8px radius, "Buka SPT".
-  - Footer in neutral-600 12px: "Email otomatis dari SIMON-SPT Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini."
+  - Footer in neutral-600 12px: "Email otomatis dari SINTAS Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini."
   - Always include a plain-text part.
-  - Subject format: "[SIMON-SPT] Pengajuan nomor SPT perlu direvisi".
+  - Subject format: "[SINTAS] Pengajuan nomor SPT perlu direvisi".
 
 ## 3. Tables
 - `x-ui.table`. Default density is comfortable; Bagian Umum and Register use compact.

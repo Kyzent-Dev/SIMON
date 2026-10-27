@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-class RingkasanMingguan extends NotifikasiSimon
+class RingkasanMingguan extends NotifikasiSintas
 {
     private string $konteks;
 
@@ -19,7 +19,7 @@ class RingkasanMingguan extends NotifikasiSimon
 
     public function judul(): string
     {
-        return 'Ringkasan mingguan SIMON-SPT';
+        return 'Ringkasan mingguan SINTAS';
     }
 
     public function konteks(): ?string

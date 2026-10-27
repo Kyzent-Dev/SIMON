@@ -16,7 +16,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $judul }} · SIMON-SPT</title>
+    <title>{{ $judul }} · SINTAS</title>
     @vite(['resources/css/app.css'])
 </head>
 <body class="min-h-dvh bg-neutral-25">
@@ -31,8 +31,8 @@
                 @endforeach
             </svg>
             <div class="relative mx-auto w-full max-w-[420px] lg:mx-0 lg:max-w-md">
-                <p class="font-display text-[1.75rem]/9 font-bold text-white lg:text-4xl/11">SIMON-SPT</p>
-                <p class="mt-3 hidden text-base text-mint-200 lg:block">Sistem Monitoring Surat Perintah Tugas — Inspektorat Daerah Kabupaten Muara Enim</p>
+                <p class="font-display text-[1.75rem]/9 font-bold text-white lg:text-4xl/11">SINTAS</p>
+                <p class="mt-3 hidden text-base text-mint-200 lg:block">Sistem Informasi Surat Tugas Pengawasan — Inspektorat Daerah Kabupaten Muara Enim</p>
                 <div class="mt-6 hidden h-1 w-16 rounded-full bg-accent-400 lg:block" aria-hidden="true"></div>
             </div>
         </header>

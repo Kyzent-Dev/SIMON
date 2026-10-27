@@ -37,7 +37,7 @@ class PenandaSpt
         if ($spt->status($tanggal) === StatusSpt::PenyusunanLaporan && $spt->tanggal_selesai->startOfDay()->diffInDays($hariIni) > $batas) {
             $penanda[] = 'terlambat';
         }
-        // Imported legacy SPT have no final document in SIMON by nature.
+        // Imported legacy SPT have no final document in SINTAS by nature.
         if ($diterima && $spt->sumber !== SumberSpt::Impor && $spt->tanggal_mulai !== null && $tanggal > $spt->tanggal_mulai->toDateString()
             && ! $this->adaFinal($spt)) {
             $penanda[] = 'spt_final_belum_diupload';

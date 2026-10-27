@@ -2,7 +2,7 @@
     {{-- Header --}}
     <x-slot:header>
         <x-mail::header :url="config('app.url')">
-            SIMON-SPT
+            SINTAS
         </x-mail::header>
     </x-slot:header>
 
@@ -21,7 +21,7 @@
     {{-- Footer --}}
     <x-slot:footer>
         <x-mail::footer>
-            Email otomatis dari SIMON-SPT Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini.
+            Email otomatis dari SINTAS Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini.
         </x-mail::footer>
     </x-slot:footer>
 </x-mail::layout>

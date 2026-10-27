@@ -1,6 +1,6 @@
-# Panduan deploy SIMON-SPT
+# Panduan deploy SINTAS
 
-Panduan untuk operator server. Perintah di bawah ditulis untuk Linux (Ubuntu/Debian) dengan Nginx atau Apache dan PHP-FPM; jalur contoh `/var/www/simon`. Riwayat keputusan teknis ada di `decisions/catatan-deploy.md` dan `decisions/fase-11.md`.
+Panduan untuk operator server. Perintah di bawah ditulis untuk Linux (Ubuntu/Debian) dengan Nginx atau Apache dan PHP-FPM; jalur contoh `/var/www/sintas`. Riwayat keputusan teknis ada di `decisions/catatan-deploy.md` dan `decisions/fase-11.md`.
 
 ## Kebutuhan server
 
@@ -14,22 +14,22 @@ Panduan untuk operator server. Perintah di bawah ditulis untuk Linux (Ubuntu/Deb
 
 ## Instalasi pertama
 
-Jalankan sebagai pengguna aplikasi (bukan root) di folder aplikasi, mis. `/var/www/simon`.
+Jalankan sebagai pengguna aplikasi (bukan root) di folder aplikasi, mis. `/var/www/sintas`.
 
-1. Ambil kode: `git clone --branch main <url-repo> /var/www/simon && cd /var/www/simon`.
+1. Ambil kode: `git clone --branch main <url-repo> /var/www/sintas && cd /var/www/sintas`.
 2. Pasang dependensi PHP: `composer install --no-dev --optimize-autoloader`.
 3. Bangun aset (di mesin build bila server tanpa Node, lalu salin folder `public/build`): `npm ci && npm run build`.
 4. Buat basis data kosong dan pengguna khusus:
    ```sql
-   CREATE DATABASE simon CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'simon'@'localhost' IDENTIFIED BY '<kata-sandi-kuat>';
-   GRANT ALL PRIVILEGES ON simon.* TO 'simon'@'localhost';
+   CREATE DATABASE sintas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'sintas'@'localhost' IDENTIFIED BY '<kata-sandi-kuat>';
+   GRANT ALL PRIVILEGES ON sintas.* TO 'sintas'@'localhost';
    ```
 5. Buat `.env`: `cp .env.example .env`, lalu isi sesuai bagian "Konfigurasi .env" (minimal `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*`, `DB_DUMP_BINARY_PATH` bila perlu, `CACHE_STORE`, `QUEUE_CONNECTION`, `MAIL_*`).
 6. Kunci aplikasi: `php artisan key:generate --force`. Simpan `APP_KEY` di tempat aman di luar server; kehilangan kunci ini membuat sesi dan tautan bertanda tangan tidak valid.
 7. Migrasi: `php artisan migrate --force`.
 8. Data rujukan: `php artisan db:seed --force`. Di produksi seeder hanya menulis Irban, Objek, dan Jenis Penugasan (klasifikasi datang dari migrasi). **Nama Objek dan Jenis Penugasan bawaan adalah contoh**: ganti dengan data sebenarnya lewat menu Admin sebelum aplikasi dipakai. Tidak ada akun, PKPT, atau SPT yang dibuat. `APP_ENV=production` di `.env` wajib sudah terisi: di lingkungan lain seeder demo ikut berjalan dan gagal (`Call to undefined function fake()`) karena paket pengembangan tidak terpasang (`--no-dev`).
-9. Admin pertama: `php artisan simon:buat-admin <username> --nama="<Nama Lengkap>" --email=<email>`. Kata sandi (min. 8 karakter, huruf besar dan kecil, angka) ditanyakan dua kali tanpa ditampilkan dan tidak masuk riwayat shell maupun log; jalankan di terminal interaktif. Akun dibuat tanpa kewajiban ganti kata sandi karena operator memilihnya sendiri.
+9. Admin pertama: `php artisan sintas:buat-admin <username> --nama="<Nama Lengkap>" --email=<email>`. Kata sandi (min. 8 karakter, huruf besar dan kecil, angka) ditanyakan dua kali tanpa ditampilkan dan tidak masuk riwayat shell maupun log; jalankan di terminal interaktif. Akun dibuat tanpa kewajiban ganti kata sandi karena operator memilihnya sendiri.
 10. Tautan penyimpanan publik: `php artisan storage:link` (gambar slide dan foto profil dilayani lewat `public/storage`). Di shared hosting tanpa symlink, salin atau arahkan `public/storage` ke `storage/app/public`.
 11. Izin folder: `storage` dan `bootstrap/cache` harus dapat ditulis oleh pengguna web dan worker, mis. `chown -R www-data:www-data storage bootstrap/cache`. `storage/app/private` tidak boleh berada di bawah `public/`.
 12. Cache konfigurasi, rute, dan view: `php artisan optimize`.
@@ -43,7 +43,7 @@ Hanya kunci yang dibaca aplikasi dan berbeda dari bawaan Laravel atau `.env.exam
 
 | Kunci | Nilai produksi | Keterangan |
 |---|---|---|
-| `APP_NAME` | `SIMON-SPT` | Juga menjadi nama folder cadangan. |
+| `APP_NAME` | `SINTAS` | Juga menjadi nama folder cadangan. |
 | `APP_ENV` | `production` | Menentukan seeder produksi dan guard seeder demo. |
 | `APP_DEBUG` | `false` | Wajib `false`; `true` menampilkan jejak galat. |
 | `APP_URL` | `https://alamat-publik` | Harus alamat publik dengan https: tombol email dan tautan verifikasi memakai `url()` dan tanda tangannya bergantung pada nilai ini. |
@@ -71,7 +71,7 @@ Setelah mengubah `.env`: `php artisan optimize` lalu `php artisan queue:restart`
 Satu baris cron untuk pengguna aplikasi (`crontab -e`):
 
 ```
-* * * * * cd /var/www/simon && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/sintas && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 Server boleh memakai zona waktu apa pun; setiap jadwal dipasang dengan zona `Asia/Jakarta`. Daftar pekerjaan (cek dengan `php artisan schedule:list`):
@@ -93,12 +93,12 @@ Tanpa cron ini cadangan tidak berjalan, angka publik tidak berganti hari, dan no
 
 Tanpa worker, email tidak terkirim dan ekspor besar (PDF > 200 baris, xlsx > 1.000 baris) tetap `menunggu` tanpa notifikasi. Lonceng di aplikasi tetap tertulis.
 
-Supervisor (`/etc/supervisor/conf.d/simon-worker.conf`):
+Supervisor (`/etc/supervisor/conf.d/sintas-worker.conf`):
 
 ```
-[program:simon-worker]
-command=php /var/www/simon/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600 --memory=512
-directory=/var/www/simon
+[program:sintas-worker]
+command=php /var/www/sintas/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600 --memory=512
+directory=/var/www/sintas
 user=www-data
 autostart=true
 autorestart=true
@@ -106,16 +106,16 @@ stopasgroup=true
 killasgroup=true
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/www/simon/storage/logs/worker.log
+stdout_logfile=/var/www/sintas/storage/logs/worker.log
 stopwaitsecs=3660
 ```
 
-Lalu `sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start simon-worker:*`. `--timeout=600` mengikuti batas job ekspor; `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar. Setiap worker ekspor dapat memakai ±512 MB (job menaikkan `memory_limit` ke 512M lewat `ini_set` dan batas waktu ke 570 detik): pastikan `ini_set` tidak ada di `disable_functions` dan RAM cukup. `--memory=512` menyelaraskan batas restart worker dengan batas itu (bawaan 128 MB membuat worker berhenti setelah satu ekspor besar). PDF dompdf memakan ±0,26 MB per baris, karena itu PDF > 200 baris selalu lewat antrean.
+Lalu `sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start sintas-worker:*`. `--timeout=600` mengikuti batas job ekspor; `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar. Setiap worker ekspor dapat memakai ±512 MB (job menaikkan `memory_limit` ke 512M lewat `ini_set` dan batas waktu ke 570 detik): pastikan `ini_set` tidak ada di `disable_functions` dan RAM cukup. `--memory=512` menyelaraskan batas restart worker dengan batas itu (bawaan 128 MB membuat worker berhenti setelah satu ekspor besar). PDF dompdf memakan ±0,26 MB per baris, karena itu PDF > 200 baris selalu lewat antrean.
 
 Shared hosting tanpa supervisor: tambahkan cron setiap menit
 
 ```
-* * * * * cd /var/www/simon && flock -n storage/framework/queue.lock php artisan queue:work --stop-when-empty --max-time=55 --timeout=600 --memory=512 >> /dev/null 2>&1
+* * * * * cd /var/www/sintas && flock -n storage/framework/queue.lock php artisan queue:work --stop-when-empty --max-time=55 --timeout=600 --memory=512 >> /dev/null 2>&1
 ```
 
 `flock -n` mencegah worker bertumpuk: satu job ekspor dapat berjalan hingga 600 detik, melewati `--max-time=55`, dan tanpa kunci cron berikutnya menyalakan worker kedua setiap menit. Bila `flock` tidak tersedia, ekspor besar dapat menumpuk proses PHP; minta penyedia hosting mengaktifkan supervisor.
@@ -125,20 +125,20 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
 1. Isi `MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` (lihat tabel). `MAIL_MAILER=log` hanya menulis email ke `storage/logs` (cocok untuk gladi; butuh `LOG_LEVEL=debug`).
 2. Pastikan `APP_URL` adalah alamat publik: tombol di email dan tautan verifikasi email memakai `url()`; alamat salah membuat tanda tangan tidak cocok dan pengguna mendapat 403.
 3. `php artisan optimize` dan `php artisan queue:restart`.
-4. Uji: `php artisan tinker --execute="Mail::raw('uji', fn(\$m) => \$m->to('alamat@anda.id')->subject('Uji SIMON-SPT'));"`, lalu periksa kotak masuk (email aplikasi sendiri dikirim lewat antrean, jadi worker harus berjalan).
+4. Uji: `php artisan tinker --execute="Mail::raw('uji', fn(\$m) => \$m->to('alamat@anda.id')->subject('Uji SINTAS'));"`, lalu periksa kotak masuk (email aplikasi sendiri dikirim lewat antrean, jadi worker harus berjalan).
 5. Pegawai tanpa alamat email tidak menerima pemberitahuan: isi email pegawai (menu Pegawai atau impor).
 
 ## Cadangan dan pemulihan
 
 **Apa yang dicadangkan** (`spatie/laravel-backup`, `config/backup.php`): dump basis data (termasuk `activity_log`, satu-satunya jejak audit), `storage/app/private` (dokumen SPT, SK Perubahan PKPT; tanpa `ekspor/` dan `livewire-tmp/`), dan `storage/app/public` (slide, foto profil). `.env` dan kode tidak ikut: simpan `.env` (terutama `APP_KEY`) terpisah dan aman.
 
-**Di mana:** `storage/app/backup/<APP_NAME>/simon-<tanggal>.zip` (disk `backup`, tidak publik, tidak ter-commit). Jalur di dalam zip relatif terhadap folder aplikasi (`storage/app/private/...`, `db-dumps/*.sql`).
+**Di mana:** `storage/app/backup/<APP_NAME>/sintas-<tanggal>.zip` (disk `backup`, tidak publik, tidak ter-commit). Jalur di dalam zip relatif terhadap folder aplikasi (`storage/app/private/...`, `db-dumps/*.sql`).
 
 **Kapan:** `backup:run` 01.30 WIB, `backup:clean` 01.00, `backup:monitor` 08.00 (lihat "Cron dan scheduler"). Jalankan sekali manual setelah instalasi: `php artisan backup:run`; lihat hasilnya dengan `php artisan backup:list`.
 
 **Retensi:** semua cadangan 7 hari, satu per hari 30 hari, satu per pekan 8 pekan, satu per bulan 12 bulan; cadangan tertua dihapus bila total > 5000 MB. `activity_log` hanya bertambah (±230 B `properties` per baris), jadi pantau ukuran cadangan.
 
-**Salin ke luar server.** Cadangan di disk yang sama tidak melindungi dari kerusakan disk. Contoh cron harian 03.00 dari mesin lain: `rsync -a simon@server:/var/www/simon/storage/app/backup/ /cadangan/simon/`, atau unggah ke penyimpanan objek.
+**Salin ke luar server.** Cadangan di disk yang sama tidak melindungi dari kerusakan disk. Contoh cron harian 03.00 dari mesin lain: `rsync -a sintas@server:/var/www/sintas/storage/app/backup/ /cadangan/sintas/`, atau unggah ke penyimpanan objek.
 
 **Laporan:** isi `BACKUP_MAIL_TO` dengan alamat valid untuk mendapat email sukses/gagal/tidak sehat (butuh `MAIL_*` yang berfungsi). Kosong = kegagalan hanya terlihat di keluaran perintah dan `storage/logs`. Alamat tidak valid membuat perintah gagal.
 
@@ -148,9 +148,9 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
 
 **Pulihkan** (di server tujuan yang sudah terpasang sesuai "Instalasi pertama", atau di server yang rusak):
 
-1. Ekstrak zip ke folder sementara (zip dari server Linux; zip buatan Windows memakai tanda `\` pada nama entri dan perlu diekstrak dengan alat yang menormalkannya): `mkdir /tmp/pulih && unzip storage/app/backup/SIMON-SPT/simon-<tanggal>.zip -d /tmp/pulih`. Zip terenkripsi (`BACKUP_ARCHIVE_PASSWORD`) memakai AES-256 yang tidak dibuka `unzip`: pakai `7z x -o/tmp/pulih storage/app/backup/SIMON-SPT/simon-<tanggal>.zip` (paket `p7zip-full`) dan masukkan kata sandi saat diminta.
-2. Basis data: bila basis `simon` masih kosong, jalankan dulu `php artisan migrate --force` dengan kode versi yang sama dengan cadangan agar tabel yang tidak ikut dump (`cache`, `cache_locks`, `sessions`, `jobs`) ada; lalu `mysql -u simon -p simon < /tmp/pulih/db-dumps/<berkas>.sql` (dump mengganti tabel lain beserta isinya, termasuk `migrations`).
-3. Berkas: entri zip relatif terhadap folder aplikasi, jadi salin dari akar ekstraksi ke akar aplikasi: `cp -a /tmp/pulih/storage/app/. /var/www/simon/storage/app/` (ini hanya menambahkan `private/` dan `public/`; jangan timpa `storage/app/backup`).
+1. Ekstrak zip ke folder sementara (zip dari server Linux; zip buatan Windows memakai tanda `\` pada nama entri dan perlu diekstrak dengan alat yang menormalkannya): `mkdir /tmp/pulih && unzip storage/app/backup/SINTAS/sintas-<tanggal>.zip -d /tmp/pulih`. Zip terenkripsi (`BACKUP_ARCHIVE_PASSWORD`) memakai AES-256 yang tidak dibuka `unzip`: pakai `7z x -o/tmp/pulih storage/app/backup/SINTAS/sintas-<tanggal>.zip` (paket `p7zip-full`) dan masukkan kata sandi saat diminta.
+2. Basis data: bila basis `sintas` masih kosong, jalankan dulu `php artisan migrate --force` dengan kode versi yang sama dengan cadangan agar tabel yang tidak ikut dump (`cache`, `cache_locks`, `sessions`, `jobs`) ada; lalu `mysql -u sintas -p sintas < /tmp/pulih/db-dumps/<berkas>.sql` (dump mengganti tabel lain beserta isinya, termasuk `migrations`).
+3. Berkas: entri zip relatif terhadap folder aplikasi, jadi salin dari akar ekstraksi ke akar aplikasi: `cp -a /tmp/pulih/storage/app/. /var/www/sintas/storage/app/` (ini hanya menambahkan `private/` dan `public/`; jangan timpa `storage/app/backup`).
 4. Pulihkan `.env` dari simpanan Anda, lalu `chown -R www-data:www-data storage bootstrap/cache` (berkas hasil salin milik pengguna yang menyalin), `php artisan storage:link`, `php artisan optimize:clear`, `php artisan optimize`.
 5. Periksa: masuk, buka satu SPT dan unduh dokumennya, buka `/jadwal`.
 6. Hapus `/tmp/pulih` (berisi data pribadi).
@@ -173,7 +173,7 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
   server {
       listen 443 ssl;
       server_name alamat-publik;
-      root /var/www/simon/public;
+      root /var/www/sintas/public;
       index index.php;
       client_max_body_size 13m;
 
@@ -267,12 +267,12 @@ Skrip presentasi 10 langkah (±15 menit):
 ## Pemeriksaan setelah deploy
 
 - [ ] `curl -sI https://alamat-publik/` mengembalikan `200`, header `X-Frame-Options` dan `X-Content-Type-Options` ada, tidak ada jejak galat di halaman.
-- [ ] Halaman `/tidak-ada` menampilkan halaman 404 SIMON-SPT tanpa jejak tumpukan (`APP_DEBUG=false`).
+- [ ] Halaman `/tidak-ada` menampilkan halaman 404 SINTAS tanpa jejak tumpukan (`APP_DEBUG=false`).
 - [ ] `/`, `/jadwal`, `/realisasi` terbuka tanpa login dan gambar slide tampil (`storage:link` benar).
 - [ ] Login Admin berhasil; menu Profil terbuka dan menyimpan foto (GD/WebP/exif).
 - [ ] `php artisan about` menunjukkan `Environment production`, `Debug mode OFF`, `Cache database`/`redis`, `Queue database`, `Maintenance mode OFF`.
 - [ ] `php artisan schedule:list` menunjukkan delapan pekerjaan (tabel "Cron dan scheduler"); `php artisan schedule:run` tidak galat.
-- [ ] Worker berjalan: `sudo supervisorctl status simon-worker:*` RUNNING. Ekspor Register > 1.000 baris (atau PDF > 200 baris) selesai dan notifikasi `File ekspor siap` muncul.
+- [ ] Worker berjalan: `sudo supervisorctl status sintas-worker:*` RUNNING. Ekspor Register > 1.000 baris (atau PDF > 200 baris) selesai dan notifikasi `File ekspor siap` muncul.
 - [ ] Email uji sampai ke kotak masuk (bagian "Email (SMTP)").
 - [ ] `php artisan backup:run` sukses, `php artisan backup:list` menunjukkan `Healthy`, dan zip memuat `db-dumps/` serta `storage/app/private/`. Salinan ke luar server berjalan.
 - [ ] Pemulihan diuji sekali ke basis sementara.

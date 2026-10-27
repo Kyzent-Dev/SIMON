@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 /** Mail only, to the requested new address: signed link (60 minutes) that swaps the account email. */
-class VerifikasiEmailBaru extends NotifikasiSimon
+class VerifikasiEmailBaru extends NotifikasiSintas
 {
     protected string $username;
 
@@ -44,7 +44,7 @@ class VerifikasiEmailBaru extends NotifikasiSimon
     public function isi(): array
     {
         return [
-            'Alamat email ini diminta menjadi email akun SIMON-SPT '.self::aman($this->username).'. Klik tombol di bawah untuk mengonfirmasi. Tautan berlaku 60 menit dan Anda harus masuk dengan akun tersebut.',
+            'Alamat email ini diminta menjadi email akun SINTAS '.self::aman($this->username).'. Klik tombol di bawah untuk mengonfirmasi. Tautan berlaku 60 menit dan Anda harus masuk dengan akun tersebut.',
             'Jika Anda tidak meminta perubahan ini, abaikan email ini. Email akun tidak berubah.',
         ];
     }

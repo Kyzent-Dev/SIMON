@@ -5,7 +5,7 @@ namespace App\Notifications;
 use App\Models\PkptUsulan;
 
 /** A new Irban usulan for every Admin; opens the PKPT's "Perubahan" tab (E5). */
-class UsulanPerubahanBaru extends NotifikasiSimon
+class UsulanPerubahanBaru extends NotifikasiSintas
 {
     protected int $pkptId;
 

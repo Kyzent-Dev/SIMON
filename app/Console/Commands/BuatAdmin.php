@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 /** First Admin of a fresh install (E11): same rules as SimpanPengguna, hidden password prompts, the password is never printed or logged. */
 class BuatAdmin extends Command
 {
-    protected $signature = 'simon:buat-admin {username} {--nama=} {--email=}';
+    protected $signature = 'sintas:buat-admin {username} {--nama=} {--email=}';
 
     protected $description = 'Buat akun Admin (kata sandi ditanyakan tanpa ditampilkan).';
 

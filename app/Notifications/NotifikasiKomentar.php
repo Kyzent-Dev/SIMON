@@ -6,7 +6,7 @@ use App\Models\Komentar;
 use Illuminate\Support\Str;
 
 /** Shared payload of the comment notifications; values are snapshotted so the queued email never re-reads the thread. */
-abstract class NotifikasiKomentar extends NotifikasiSimon
+abstract class NotifikasiKomentar extends NotifikasiSintas
 {
     protected string $penulis;
 

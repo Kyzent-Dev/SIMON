@@ -4,7 +4,7 @@ namespace Tests\Feature\Notifikasi;
 
 use App\Models\Irban;
 use App\Models\User;
-use App\Notifications\NotifikasiSimon;
+use App\Notifications\NotifikasiSintas;
 use App\Services\PenerimaNotifikasi;
 use App\Support\JenisNotifikasi;
 use Illuminate\Bus\Queueable;
@@ -140,7 +140,7 @@ class FondasiNotifikasiTest extends TestCase
         $user = User::factory()->bagianUmum()->create();
         $mail = (new NotifikasiUji('pengajuan_perlu_revisi', 'Lengkapi lampiran.'))->toMail($user);
 
-        $this->assertSame('[SIMON-SPT] Judul uji', $mail->subject);
+        $this->assertSame('[SINTAS] Judul uji', $mail->subject);
         $this->assertSame('Buka SPT', $mail->actionText);
         $this->assertSame(url('/spt/7'), $mail->actionUrl);
 
@@ -148,11 +148,11 @@ class FondasiNotifikasiTest extends TestCase
         $this->assertStringContainsString('Baris isi pertama.', $html);
         $this->assertStringContainsString('Catatan: Lengkapi lampiran.', $html);
         $this->assertStringContainsString('<blockquote', $html);
-        $this->assertStringContainsString('Email otomatis dari SIMON-SPT Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini.', $html);
-        $this->assertStringContainsString('SIMON-SPT', $html);
+        $this->assertStringContainsString('Email otomatis dari SINTAS Inspektorat Daerah Kabupaten Muara Enim. Jangan membalas email ini.', $html);
+        $this->assertStringContainsString('SINTAS', $html);
         $this->assertStringNotContainsString('Hello!', $html);
         $this->assertStringNotContainsString('Regards', $html);
-        $this->assertStringContainsString('#082B23', $html); // header band mint-950 from the simon theme
+        $this->assertStringContainsString('#082B23', $html); // header band mint-950 from the sintas theme
 
         $text = (string) app(Markdown::class)->renderText($mail->markdown, $mail->data());
         $this->assertStringContainsString('Baris isi pertama.', $text);
@@ -164,7 +164,7 @@ class FondasiNotifikasiTest extends TestCase
     {
         $mail = (new NotifikasiUji('ringkasan_mingguan'))->toMail(User::factory()->pimpinan()->create());
 
-        $this->assertSame('Buka SIMON-SPT', $mail->actionText);
+        $this->assertSame('Buka SINTAS', $mail->actionText);
         $this->assertStringNotContainsString('Catatan:', (string) $mail->render());
     }
 
@@ -172,7 +172,7 @@ class FondasiNotifikasiTest extends TestCase
     {
         $mail = (new NotifikasiUjiSubjek)->toMail(User::factory()->pimpinan()->create());
 
-        $this->assertSame('[SIMON-SPT] Subjek khusus', $mail->subject);
+        $this->assertSame('[SINTAS] Subjek khusus', $mail->subject);
     }
 
     public static function ikonProvider(): array
@@ -208,7 +208,7 @@ class FondasiNotifikasiTest extends TestCase
     }
 }
 
-class NotifikasiUji extends NotifikasiSimon
+class NotifikasiUji extends NotifikasiSintas
 {
     public function __construct(private string $jenisUji = 'pengajuan_baru', private ?string $catatanUji = null) {}
 

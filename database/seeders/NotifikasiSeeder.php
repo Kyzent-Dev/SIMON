@@ -6,7 +6,7 @@ use App\Enums\StatusPengajuan;
 use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\NomorDibatalkan;
-use App\Notifications\NotifikasiSimon;
+use App\Notifications\NotifikasiSintas;
 use App\Notifications\PengajuanBaru;
 use App\Notifications\PengajuanDiputuskan;
 use App\Notifications\RingkasanMingguan;
@@ -56,7 +56,7 @@ class NotifikasiSeeder extends Seeder
         if (! $sumber) {
             return false;
         }
-        /** @var NotifikasiSimon $n */
+        /** @var NotifikasiSintas $n */
         $n = $buat($sumber);
         $n->id = (string) Str::uuid(); // the sender clones the notification, so fix the id here to find the row again
         Notification::sendNow($user, $n, ['database']);

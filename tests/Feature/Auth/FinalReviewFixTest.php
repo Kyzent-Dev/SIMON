@@ -63,9 +63,9 @@ class FinalReviewFixTest extends TestCase
     public function test_forgot_password_is_throttled(): void
     {
         for ($i = 0; $i < 6; $i++) {
-            $this->post('/lupa-kata-sandi', ['email' => 'a@simon-spt.test'])->assertStatus(302);
+            $this->post('/lupa-kata-sandi', ['email' => 'a@sintas.test'])->assertStatus(302);
         }
-        $this->post('/lupa-kata-sandi', ['email' => 'a@simon-spt.test'])->assertStatus(429);
+        $this->post('/lupa-kata-sandi', ['email' => 'a@sintas.test'])->assertStatus(429);
     }
 
     public function test_intended_url_of_other_role_is_ignored(): void

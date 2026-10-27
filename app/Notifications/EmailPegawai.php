@@ -7,14 +7,14 @@ use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-/** Mail-only copy of a NotifikasiSimon for the pegawai who entered the data (sent to an on-demand route, no bell). */
+/** Mail-only copy of a NotifikasiSintas for the pegawai who entered the data (sent to an on-demand route, no bell). */
 class EmailPegawai extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
 
-    public const PENUTUP = 'Anda menerima email ini karena tercatat sebagai penginput data di SIMON.';
+    public const PENUTUP = 'Anda menerima email ini karena tercatat sebagai penginput data di SINTAS.';
 
-    public function __construct(protected NotifikasiSimon $notifikasi, protected string $nama) {}
+    public function __construct(protected NotifikasiSintas $notifikasi, protected string $nama) {}
 
     /** @return list<string> */
     public function via(object $notifiable): array

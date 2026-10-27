@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
             // irban_id is not mass-assignable; null when IrbanSeeder has not run.
             User::firstOrNew(['username' => $username])->forceFill([
                 'name' => $name,
-                'email' => "{$username}@simon-spt.test",
+                'email' => "{$username}@sintas.test",
                 'password' => 'password',
                 'role' => $role,
                 'irban_id' => $role === Role::Irban ? Irban::where('nama', $name)->value('id') : null,

@@ -168,7 +168,7 @@ class NotifikasiPengajuanRevisiTest extends TestCase
             $this->assertSame([$jenis, $judul, '/spt/'.$spt->id, $catatan], [$data['jenis'], $data['judul'], $data['url'], $data['catatan']]);
             $this->assertStringStartsWith($konteks, $data['konteks']);
             $mail = $n->toMail($this->irbanUser);
-            $this->assertSame('[SIMON-SPT] '.$judul, $mail->subject);
+            $this->assertSame('[SINTAS] '.$judul, $mail->subject);
             if ($aksi === 'terima') {
                 $this->assertContains('Nomor SPT: '.$spt->fresh()->nomor_lengkap, $mail->introLines);
                 $this->assertSame('SPT '.$spt->fresh()->nomor_lengkap, $data['konteks']);

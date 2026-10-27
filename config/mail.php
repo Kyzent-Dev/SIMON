@@ -120,13 +120,13 @@ return [
     | Markdown Mail Settings
     |--------------------------------------------------------------------------
     |
-    | Notification emails use the "simon" theme and the customised components
+    | Notification emails use the "sintas" theme and the customised components
     | in resources/views/vendor/mail (DESIGN.md, design/dashboard/_shared.md §2).
     |
     */
 
     'markdown' => [
-        'theme' => 'simon',
+        'theme' => 'sintas',
 
         'paths' => [
             resource_path('views/vendor/mail'),

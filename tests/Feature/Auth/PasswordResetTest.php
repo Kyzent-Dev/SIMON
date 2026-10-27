@@ -35,7 +35,7 @@ class PasswordResetTest extends TestCase
 
         $this->from('/lupa-kata-sandi')->post('/lupa-kata-sandi', ['email' => $user->email])
             ->assertRedirect('/lupa-kata-sandi')->assertSessionHas('status', self::SENT);
-        $this->from('/lupa-kata-sandi')->post('/lupa-kata-sandi', ['email' => 'tidak-ada@simon-spt.test'])
+        $this->from('/lupa-kata-sandi')->post('/lupa-kata-sandi', ['email' => 'tidak-ada@sintas.test'])
             ->assertRedirect('/lupa-kata-sandi')->assertSessionHas('status', self::SENT)->assertSessionHasNoErrors();
 
         Notification::assertSentTo($user, ResetPassword::class);
@@ -99,7 +99,7 @@ class PasswordResetTest extends TestCase
             'password' => 'BaruSekali1', 'password_confirmation' => 'BaruSekali1',
         ];
 
-        $this->post('/atur-ulang-kata-sandi', $payload('tidak-ada@simon-spt.test'))->assertSessionHasErrors('email');
+        $this->post('/atur-ulang-kata-sandi', $payload('tidak-ada@sintas.test'))->assertSessionHasErrors('email');
         $unknownMessage = session('errors')->first('email');
         $this->post('/atur-ulang-kata-sandi', $payload($user->email))->assertSessionHasErrors('email');
         $knownMessage = session('errors')->first('email');

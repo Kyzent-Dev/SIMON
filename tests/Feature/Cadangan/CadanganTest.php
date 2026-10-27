@@ -56,7 +56,7 @@ class CadanganTest extends TestCase
         );
         $this->assertSame([config('database.default')], config('backup.backup.source.databases'));
         $this->assertSame(['backup'], config('backup.backup.destination.disks'));
-        $this->assertSame('simon-', config('backup.backup.destination.filename_prefix'));
+        $this->assertSame('sintas-', config('backup.backup.destination.filename_prefix'));
         $this->assertSame(config('app.name'), config('backup.backup.name'));
 
         $c = config('backup.cleanup.default_strategy');
@@ -90,7 +90,7 @@ class CadanganTest extends TestCase
 
         $zip = Storage::disk('backup')->allFiles();
         $this->assertCount(1, $zip);
-        $this->assertStringStartsWith(config('app.name').'/simon-', $zip[0]);
+        $this->assertStringStartsWith(config('app.name').'/sintas-', $zip[0]);
 
         $arsip = new ZipArchive;
         $this->assertTrue($arsip->open($this->dirUji.'/'.$zip[0]) === true);

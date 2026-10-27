@@ -67,7 +67,7 @@ class RoleAccessTest extends TestCase
         foreach ($expected as $username => $role) {
             $u = User::where('username', $username)->firstOrFail();
             $this->assertSame($role, $u->role);
-            $this->assertSame("{$username}@simon-spt.test", $u->email);
+            $this->assertSame("{$username}@sintas.test", $u->email);
             $this->assertNotSame('password', $u->password);
             $this->assertTrue(Hash::check('password', $u->password));
         }

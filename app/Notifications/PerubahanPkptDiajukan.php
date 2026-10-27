@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\PkptPerubahan;
 
-class PerubahanPkptDiajukan extends NotifikasiSimon
+class PerubahanPkptDiajukan extends NotifikasiSintas
 {
     protected int $perubahanId;
 

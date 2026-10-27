@@ -44,7 +44,7 @@ class HalamanGalatTest extends TestCase
         Route::middleware('web')->get('/_uji-galat', fn () => abort($kode));
 
         $r = $this->get('/_uji-galat')->assertStatus($kode)
-            ->assertSee($judul)->assertSee('<title>'.$judul.' · SIMON-SPT</title>', false)->assertSee('lang="id"', false);
+            ->assertSee($judul)->assertSee('<title>'.$judul.' · SINTAS</title>', false)->assertSee('lang="id"', false);
         $tombol ? $r->assertSee($tombol)->assertSee('href="'.url('/').'"', false) : $r->assertDontSee('Kembali ke beranda');
     }
 
@@ -66,7 +66,7 @@ class HalamanGalatTest extends TestCase
     {
         Route::middleware('web')->get('/_uji-galat', fn () => abort(429));
 
-        $this->get('/_uji-galat')->assertStatus(429)->assertSee('<title>Terlalu banyak permintaan · SIMON-SPT</title>', false)
+        $this->get('/_uji-galat')->assertStatus(429)->assertSee('<title>Terlalu banyak permintaan · SINTAS</title>', false)
             ->assertSee('Tunggu sebentar sebelum mencoba lagi.')->assertSee('onclick="location.reload()"', false)->assertSee('Muat ulang')
             ->assertDontSee('Kembali ke beranda');
     }

@@ -5,7 +5,7 @@ namespace App\Notifications;
 use App\Models\Spt;
 use Illuminate\Support\Str;
 
-class PengajuanBaru extends NotifikasiSimon
+class PengajuanBaru extends NotifikasiSintas
 {
     private string $irban;
 

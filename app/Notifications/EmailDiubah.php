@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 /** Mail only, to the old address after a verified email change. */
-class EmailDiubah extends NotifikasiSimon
+class EmailDiubah extends NotifikasiSintas
 {
     protected string $username;
 
@@ -43,7 +43,7 @@ class EmailDiubah extends NotifikasiSimon
     public function isi(): array
     {
         return [
-            'Email akun SIMON-SPT '.self::aman($this->username).' telah diubah menjadi '.self::aman($this->emailBaru).'. Email ini tidak lagi menerima pemberitahuan untuk akun tersebut.',
+            'Email akun SINTAS '.self::aman($this->username).' telah diubah menjadi '.self::aman($this->emailBaru).'. Email ini tidak lagi menerima pemberitahuan untuk akun tersebut.',
             'Jika Anda tidak melakukan perubahan ini, segera hubungi Admin.',
         ];
     }

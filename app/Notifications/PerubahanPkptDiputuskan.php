@@ -7,7 +7,7 @@ use App\Models\PkptPerubahan;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /** Approved: Admin opens the package, Pimpinan its detail, Irban its schedule (E5). Rejected: only the Admin creator. */
-class PerubahanPkptDiputuskan extends NotifikasiSimon
+class PerubahanPkptDiputuskan extends NotifikasiSintas
 {
     protected int $perubahanId;
 

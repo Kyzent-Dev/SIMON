@@ -121,7 +121,7 @@ class HalamanLogAktivitasTest extends TestCase
         $this->baris(['event' => 'created', 'properties' => ['attributes' => ['x' => 'y']]]);
 
         $html = Livewire::actingAs($admin)->test(LogAktivitas::class)->html();
-        foreach (['LAMA-XYZ', 'BARU-XYZ', '{&quot;k&quot;:1}', 'Sistem', 'Penginput Uji', $u->name, 'aria-expanded', 'aria-controls'] as $s) {
+        foreach (['LAMA-XYZ', 'BARU-XYZ', '{&quot;k&quot;:1}', 'Sistem', 'Penginput Uji', e($u->name), 'aria-expanded', 'aria-controls'] as $s) {
             $this->assertStringContainsString($s, $html);
         }
         $this->assertStringContainsString('—', $html);

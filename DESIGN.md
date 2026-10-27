@@ -1,4 +1,4 @@
-# SIMON-SPT Design System
+# SINTAS Design System
 
 Accessible mint brand, components and motion specs for Inspektorat Daerah Kabupaten Muara Enim.
 

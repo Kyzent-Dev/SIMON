@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\PkptPerubahan;
 
-class PengingatSkPerubahan extends NotifikasiSimon
+class PengingatSkPerubahan extends NotifikasiSintas
 {
     protected int $perubahanId;
 

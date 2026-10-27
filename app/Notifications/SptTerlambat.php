@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Spt;
 
-class SptTerlambat extends NotifikasiSimon
+class SptTerlambat extends NotifikasiSintas
 {
     private string $nomor;
 

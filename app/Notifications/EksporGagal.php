@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-class EksporGagal extends NotifikasiSimon
+class EksporGagal extends NotifikasiSintas
 {
     public function __construct(private string $namaFile, private string $halaman) {}
 

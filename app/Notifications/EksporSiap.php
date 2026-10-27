@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Ekspor;
 
-class EksporSiap extends NotifikasiSimon
+class EksporSiap extends NotifikasiSintas
 {
     private string $namaFile;
 

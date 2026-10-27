@@ -119,7 +119,7 @@ class EmailPegawaiTest extends TestCase
         $this->assertStringContainsString('Yth. Dr. ', $html);
         $this->assertStringNotContainsString('<a href="http://x"', $html);
         $this->assertStringNotContainsString('<a href="http://jahat"', $html);
-        $this->assertStringContainsString('Anda menerima email ini karena tercatat sebagai penginput data di SIMON.', $html);
+        $this->assertStringContainsString('Anda menerima email ini karena tercatat sebagai penginput data di SINTAS.', $html);
         $this->assertSame(['mail'], $n->via(new AnonymousNotifiable));
         // The ordinary email stays without greeting.
         $this->assertStringNotContainsString('Yth.', (string) (new NomorDibatalkan($spt, 'Alasan lain'))->toMail($this->irbanUser)->render());

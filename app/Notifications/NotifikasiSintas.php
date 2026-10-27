@@ -7,8 +7,8 @@ use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-/** Base of every SIMON-SPT notification: bell entry (database, written at once) + queued email, both only after commit. */
-abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterCommit
+/** Base of every SINTAS notification: bell entry (database, written at once) + queued email, both only after commit. */
+abstract class NotifikasiSintas extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
 
@@ -75,7 +75,7 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
     {
         // Lines must come before action(): MailMessage files later lines as outro.
         return (new MailMessage)
-            ->subject('[SIMON-SPT] '.$this->subjek())
+            ->subject('[SINTAS] '.$this->subjek())
             ->markdown('mail.notifikasi', ['catatan' => $this->catatan(), 'salam' => $salam, 'penutup' => $penutup])
             ->lines($this->isi())
             ->action($this->labelTombol(), url($this->url()));
@@ -95,6 +95,6 @@ abstract class NotifikasiSimon extends Notification implements ShouldQueueAfterC
 
     protected function labelTombol(): string
     {
-        return in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SIMON-SPT';
+        return in_array($this->jenis(), self::JENIS_SPT, true) ? 'Buka SPT' : 'Buka SINTAS';
     }
 }

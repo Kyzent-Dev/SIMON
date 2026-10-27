@@ -187,7 +187,7 @@ class KinerjaSeeder extends Seeder
     private function akun(string $username, string $nama, Role $role, ?int $irbanId): User
     {
         $u = User::firstOrNew(['username' => $username]);
-        $u->forceFill(['name' => $nama, 'email' => "{$username}@simon-spt.test", 'role' => $role, 'irban_id' => $irbanId,
+        $u->forceFill(['name' => $nama, 'email' => "{$username}@sintas.test", 'role' => $role, 'irban_id' => $irbanId,
             ...($u->exists ? [] : ['password' => 'password'])])->save();
 
         return $u;

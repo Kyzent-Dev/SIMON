@@ -4,7 +4,7 @@
 
 ## 1. Login
 - **Layout ≥1024:** split 5/7.
-  - **Left brand panel:** mint-950, Delapan Sungai motif in mint-200 at 15%, logo 64px, "SIMON-SPT" display-lg white, "Sistem Monitoring Surat Perintah Tugas — Inspektorat Daerah Kabupaten Muara Enim" in mint-200, accent-400 rule.
+  - **Left brand panel:** mint-950, Delapan Sungai motif in mint-200 at 15%, logo 64px, "SINTAS" display-lg white, "Sistem Informasi Surat Tugas Pengawasan — Inspektorat Daerah Kabupaten Muara Enim" in mint-200, accent-400 rule.
   - **Right:** neutral-25 bg with a centered white card, max-w 420, p-8, radius-lg, shadow-sm.
 - **<1024:** a single column with a mint-950 band 120px tall (logo + name) and the card beneath, overlapping by −24px.
 - **Fields:**

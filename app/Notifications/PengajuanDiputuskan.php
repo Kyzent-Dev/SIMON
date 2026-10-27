@@ -7,7 +7,7 @@ use App\Models\Spt;
 use Illuminate\Support\Str;
 
 /** One class for the three Bagian Umum decisions; jenis, judul and konteks follow the SPT status. */
-class PengajuanDiputuskan extends NotifikasiSimon
+class PengajuanDiputuskan extends NotifikasiSintas
 {
     private StatusPengajuan $status;
 

@@ -27,14 +27,14 @@ trait KonkurensiProses
             $this->markTestSkipped('proc_open tidak tersedia.');
         }
         $base = config('database.connections.'.config('database.default'));
-        $file = tempnam(sys_get_temp_dir(), 'simon-konkurensi-');
+        $file = tempnam(sys_get_temp_dir(), 'sintas-konkurensi-');
         $this->barrier = $file.'-barrier';
         mkdir($this->barrier);
         if (in_array($base['driver'], ['mysql', 'mariadb'], true)) {
             // Children are separate processes, so they cannot share the test transaction: give them their own database.
             @unlink($file);
             $this->mysql = $base;
-            $this->db = 'simon_konkurensi_'.bin2hex(random_bytes(4));
+            $this->db = 'sintas_konkurensi_'.bin2hex(random_bytes(4));
             $this->admin()->statement("CREATE DATABASE `{$this->db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         } else {
             $this->db = $file;

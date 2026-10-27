@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
-/** E11 `simon:buat-admin`: first Admin of a fresh install, same rules as SimpanPengguna, password never shown or logged. */
+/** E11 `sintas:buat-admin`: first Admin of a fresh install, same rules as SimpanPengguna, password never shown or logged. */
 class BuatAdminTest extends TestCase
 {
     use RefreshDatabase;
@@ -18,7 +18,7 @@ class BuatAdminTest extends TestCase
 
     private function jalankan(string $username, string $sandi, string $ulang)
     {
-        return $this->artisan('simon:buat-admin', ['username' => $username, '--nama' => 'Admin Utama', '--email' => "{$username}@muaraenimkab.go.id"])
+        return $this->artisan('sintas:buat-admin', ['username' => $username, '--nama' => 'Admin Utama', '--email' => "{$username}@muaraenimkab.go.id"])
             ->expectsQuestion('Kata sandi', $sandi)
             ->expectsQuestion('Ulangi kata sandi', $ulang)
             ->doesntExpectOutputToContain($sandi);

@@ -1,6 +1,6 @@
 {{-- admin.md "Pengguna": table + create/edit drawer, reset-password modal. No animation on the table (DESIGN §7.5). Status/last-login columns and bulk action not built (see decisions). --}}
 <div>
-    <x-ui.page-header title="Pengguna" description="Akun yang dapat masuk ke SIMON-SPT.">
+    <x-ui.page-header title="Pengguna" description="Akun yang dapat masuk ke SINTAS.">
         <x-slot:actions>
             <x-ui.button type="button" icon="plus" wire:click="create">Tambah pengguna</x-ui.button>
         </x-slot:actions>
