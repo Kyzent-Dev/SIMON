@@ -14,7 +14,7 @@ class TolakPengajuan
 
     public function handle(User $user, Spt $spt, string $catatan): Spt
     {
-        $catatan = $this->catatan($catatan);
+        $catatan = $this->catatan($user, $catatan);
 
         return $this->putuskan($user, $spt, fn () => [StatusPengajuan::Ditolak, KejadianSpt::DITOLAK, $catatan]);
     }

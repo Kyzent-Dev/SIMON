@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Every session is re-validated against the password hash, so a password change or reset logs out other devices.
         $middleware->authenticateSessions();
         $middleware->appendToGroup('web', EnsurePasswordIsChanged::class);
-        $middleware->appendToGroup('web', HeaderKeamanan::class);
+        // Global (not the web group): the forced-password redirect and the 404 of an unmatched URL happen before/outside that group.
+        $middleware->prepend(HeaderKeamanan::class);
         $middleware->alias(['role' => EnsureRole::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));

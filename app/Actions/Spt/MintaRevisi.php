@@ -14,7 +14,7 @@ class MintaRevisi
 
     public function handle(User $user, Spt $spt, string $catatan): Spt
     {
-        $catatan = $this->catatan($catatan);
+        $catatan = $this->catatan($user, $catatan);
 
         return $this->putuskan($user, $spt, fn () => [StatusPengajuan::PerluRevisi, KejadianSpt::PERLU_REVISI, $catatan]);
     }

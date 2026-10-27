@@ -28,6 +28,7 @@
 | `Spt\Detail` | `view` di mount, `sptDasar()`, render; action `izinkan()` → `laksanakan` | tanpa celah |
 | `Spt\Komentar` | `view` di setiap lookup; `TulisKomentar` (`komentari`), `BalasKomentar` (`balasKomentar`), `TutupPermintaan` (`tutupPermintaan`) | tanpa celah |
 | `Pimpinan\PerubahanPkptDetail`, `PerubahanPkpt` | `putuskan` di `paket()` tiap request; peran pimpinan di mount/render | tanpa celah |
+| Trait `Concerns\MenampilkanOperasi` (dipakai `Admin\PerubahanPkpt` dan `Pimpinan\PerubahanPkptDetail`) | hanya menyusun baris tampilan sebelum → sesudah dari operasi paket yang sudah dimuat; tanpa query, tanpa aksi, tanpa gate sendiri (dijaga komponen pemakai: `update` / `putuskan` di mount, tiap aksi, render) | tanpa celah |
 | `Pimpinan\Dasbor`, `Monitoring`, `Rekap` | `monitoring` / `rekap` di mount/updated/aksi/render; `PembangunRekap::filter` memaksa irban sendiri untuk Irban (layar dan ekspor, juga ekspor antrean lewat `Ekspor::tulis`) | tanpa celah |
 | `LogAktivitas` | `lihat-log` di mount/updated/aturUlang/render (route: admin/pimpinan) | tanpa celah |
 | `Notifikasi\Daftar`, `Lonceng` | `NotifikasiPengguna` selalu lewat relasi notifikasi milik pengguna | tanpa celah |

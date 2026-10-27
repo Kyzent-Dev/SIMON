@@ -119,3 +119,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/bagian-umum/pengajuan', BagianUmumPengajuan::class)->name('bagian-umum.pengajuan')->middleware('role:bagian_umum');
     Route::get('/bagian-umum/register', BagianUmumRegister::class)->name('bagian-umum.register')->middleware('role:bagian_umum');
 });
+
+// Unmatched URLs run inside the web group (session), so the 404 page can send a logged-in user to the dashboard. GET/HEAD only (Laravel's fallback).
+Route::fallback(fn () => abort(404));

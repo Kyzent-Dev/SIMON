@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -57,8 +59,40 @@ class HalamanGalatTest extends TestCase
 
     public function test_419_dan_muat_ulang(): void
     {
-        $this->assertStringContainsString('Sesi kedaluwarsa', view('errors.419')->render());
-        $this->assertStringContainsString('Muat ulang', view('errors.419')->render());
+        // Real response of a mismatched CSRF token: bootstrap/app.php sends HTML requests to the login page (Fase 1), the 419 page is not shown.
+        Route::middleware('web')->get('/_uji-galat', fn () => throw new TokenMismatchException);
+        $this->get('/_uji-galat')->assertRedirect(route('login'))->assertSessionHas('expired');
+
+        // The 419 page itself, as a real 419 response (it renders whenever that handler does not take the exception).
+        Route::middleware('web')->get('/_uji-419', fn () => response()->view('errors.419', [], 419));
+        $this->get('/_uji-419')->assertStatus(419)->assertSee('<title>Sesi kedaluwarsa · SINTAS</title>', false)
+            ->assertSee('Muat ulang')->assertSee('onclick="location.reload()"', false);
+    }
+
+    public function test_404_rute_tak_cocok_mengikuti_tombol_peran(): void
+    {
+        $this->get('/tidak-ada/halaman')->assertNotFound()->assertSee('Halaman tidak ditemukan')
+            ->assertSee('href="'.route('beranda').'"', false)->assertDontSee('href="'.route('dashboard').'"', false);
+
+        $this->actingAs(User::factory()->create())->get('/tidak-ada/halaman')->assertNotFound()->assertSee('href="'.route('dashboard').'"', false);
+    }
+
+    /** `actingAs` sets the guard user by hand, so it cannot show that an unmatched URL used to run without the session (no user, always the beranda button). */
+    public function test_404_rute_tak_cocok_berjalan_dengan_sesi(): void
+    {
+        $fallback = collect(Route::getRoutes()->getRoutes())->first(fn ($r) => $r->isFallback);
+
+        $this->assertNotNull($fallback, 'Tidak ada Route::fallback.');
+        $this->assertContains(StartSession::class, app('router')->gatherRouteMiddleware($fallback));
+    }
+
+    public function test_header_keamanan_pada_404_dan_redirect_ganti_sandi(): void
+    {
+        $this->get('/tidak-ada/halaman')->assertNotFound()->assertHeader('X-Frame-Options', 'SAMEORIGIN')->assertHeader('X-Content-Type-Options', 'nosniff');
+
+        $this->actingAs(User::factory()->create(['wajib_ganti_password' => true]))->get('/profil')
+            ->assertRedirect(route('password.force.edit'))->assertHeader('X-Frame-Options', 'SAMEORIGIN')->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
     /** The public pages and beranda share throttle:publik, so a link home would hit the same limit: reload after waiting instead. */

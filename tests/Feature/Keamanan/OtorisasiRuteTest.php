@@ -22,8 +22,13 @@ class OtorisasiRuteTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Route names reachable without login. Unnamed Livewire asset routes (uri `livewire-*`) and the unnamed POST /masuk are allowed by uri. */
-    private const PUBLIK = ['beranda', 'publik.jadwal', 'publik.realisasi', 'login', 'password.*', 'livewire.*', 'default-livewire.*', 'storage.*'];
+    /** Route names reachable without login, exact (a new route must be added here on purpose). Unnamed Livewire asset routes (uri `livewire-*`), POST /masuk, /up and the 404 fallback are allowed by uri. */
+    private const PUBLIK = [
+        'beranda', 'publik.jadwal', 'publik.realisasi', 'login',
+        'password.request', 'password.email', 'password.reset', 'password.update',
+        'livewire.preview-file', 'livewire.upload-file', 'default-livewire.update',
+        'storage.local', 'storage.local.upload',
+    ];
 
     private const PEMILIK = ['admin.' => Role::Admin, 'pimpinan.' => Role::Pimpinan, 'irban.' => Role::Irban, 'bagian-umum.' => Role::BagianUmum];
 
@@ -49,7 +54,7 @@ class OtorisasiRuteTest extends TestCase
     public function test_setiap_rute_internal_butuh_login(): void
     {
         $tanpaAuth = collect(Route::getRoutes()->getRoutes())
-            ->reject(fn (RouteDef $r) => $r->getName() ? Str::is(self::PUBLIK, $r->getName()) : (Str::startsWith($r->uri(), 'livewire-') || in_array($r->uri(), ['masuk', 'up'], true)))
+            ->reject(fn (RouteDef $r) => $r->getName() ? in_array($r->getName(), self::PUBLIK, true) : (Str::startsWith($r->uri(), 'livewire-') || in_array($r->uri(), ['masuk', 'up', '{fallbackPlaceholder}'], true)))
             ->reject(fn (RouteDef $r) => in_array('auth', $r->gatherMiddleware(), true))
             ->map(fn (RouteDef $r) => implode('|', $r->methods()).' '.$r->uri())->values()->all();
 

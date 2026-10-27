@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Keamanan;
 
+use App\Actions\Spt\MintaRevisi;
+use App\Actions\Spt\TolakPengajuan;
 use App\Livewire\Admin;
 use App\Livewire\BagianUmum\Pengajuan;
 use App\Livewire\BagianUmum\Register;
@@ -19,19 +21,23 @@ use App\Livewire\Pimpinan\PerubahanPkptDetail;
 use App\Livewire\Rekap;
 use App\Livewire\Spt\Detail;
 use App\Livewire\Spt\Komentar;
+use App\Models\Ekspor as EksporModel;
 use App\Models\Irban;
 use App\Models\Komentar as KomentarModel;
 use App\Models\Pkpt;
 use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Models\User;
+use App\Services\Ekspor;
 use App\Services\Ekspor\PembangunRekap;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
-use PHPUnit\Framework\ExpectationFailedException;
 use Tests\TestCase;
 
 /**
@@ -99,19 +105,13 @@ class OtorisasiAksiTest extends TestCase
                 [['simpanForm'], ['simpanOperasi'], ['simpanSk'], ['ajukan'], ['buang'], ['aturPengingat'], ['tampung', 1]]],
         ];
 
-        $lolos = [];
         foreach ($aksi as [$kelas, $param, $panggilan]) {
             Livewire::actingAs($this->pimpinan)->test($kelas, $param)->assertForbidden();
             // A bare re-render (no method call, e.g. a property update) must not return Admin data either.
             foreach ([['$refresh'], ...$panggilan] as $p) {
-                try {
-                    $this->putar($this->admin, $this->pimpinan, $kelas, $param)->call(...$p)->assertForbidden();
-                } catch (ExpectationFailedException) {
-                    $lolos[] = class_basename($kelas).'::'.$p[0];
-                }
+                $this->putar($this->admin, $this->pimpinan, $kelas, $param)->call(...$p)->assertForbidden();
             }
         }
-        $this->assertSame([], $lolos);
     }
 
     public function test_bagian_umum_terima_tolak_ditolak_untuk_irban(): void
@@ -127,6 +127,46 @@ class OtorisasiAksiTest extends TestCase
             $this->putar($this->bagianUmum, $this->irban, Register::class)->call(...$p)->assertForbidden();
         }
         $this->assertSame('menunggu_nomor', $spt->fresh()->status_pengajuan->value);
+    }
+
+    /** Revisi/Tolak called directly (not through the component): the role is checked before the catatan, so a wrong role gets 403 even with an empty one. */
+    public function test_revisi_dan_tolak_langsung_oleh_peran_salah_ditolak_sebelum_validasi_catatan(): void
+    {
+        $spt = Spt::factory()->menungguNomor()->create(['irban_id' => $this->irban->irban_id]);
+
+        foreach ([MintaRevisi::class, TolakPengajuan::class] as $aksi) {
+            foreach ([$this->irban, $this->pimpinan, $this->admin] as $salah) {
+                foreach (['', '   ', 'Catatan yang cukup panjang.'] as $catatan) {
+                    try {
+                        app($aksi)->handle($salah, $spt, $catatan);
+                        $this->fail("{$aksi} oleh {$salah->role->value} dengan catatan '{$catatan}' harus ditolak.");
+                    } catch (AuthorizationException) {
+                        $this->assertSame('menunggu_nomor', $spt->fresh()->status_pengajuan->value);
+                    }
+                }
+            }
+        }
+        // Control: the rightful role with an empty catatan still gets the validation error.
+        $this->expectException(ValidationException::class);
+        app(TolakPengajuan::class)->handle($this->bagianUmum, $spt, '');
+    }
+
+    public function test_ekspor_rekap_irban_lain_tidak_bisa_lewat_livewire(): void
+    {
+        Queue::fake();
+        // Force the queued path so the stored filter can be read back.
+        $this->partialMock(PembangunRekap::class, fn ($m) => $m->shouldReceive('jumlah')->andReturn(Ekspor::BATAS_LANGSUNG + 1));
+
+        $c = Livewire::actingAs($this->irban)->test(Rekap::class)->set('irban', (string) $this->irbanLain->irban_id)
+            ->call('bukaEkspor', 'xlsx')->call('unduhEkspor');
+        $c->assertSet('irban', (string) $this->irban->irban_id);
+        $this->assertSame($this->irban->irban_id, EksporModel::latest('id')->first()->filter['irban']);
+
+        // Control: Pimpinan may pick any irban, so the same call keeps the other irban.
+        Livewire::actingAs($this->pimpinan)->test(Rekap::class)->set('irban', (string) $this->irbanLain->irban_id)
+            ->call('bukaEkspor', 'xlsx')->call('unduhEkspor');
+        $this->assertSame($this->irbanLain->irban_id, EksporModel::latest('id')->first()->filter['irban']);
+        $this->assertSame(2, EksporModel::count());
     }
 
     public function test_spt_form_irban_lain_tidak_bisa_menyimpan_spt_milik_irban_lain(): void

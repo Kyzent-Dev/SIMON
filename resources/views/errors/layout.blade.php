@@ -1,5 +1,5 @@
 {{-- Shared shell of the error pages (design/auth/login.md §1: brand band + white card, no sidebar). Needs no database: the 500 page must render when the DB is down.
-     Props: $kode, $judul, $kalimat, $ikon, $tombol (label or null), $aksi ('beranda' | 'muat-ulang' | 'beranda-aman'). --}}
+     Props: $kode, $judul, $kalimat, $ikon, $tombol (label or null), $aksi ('beranda' | 'muat-ulang'). --}}
 @php
     $tujuan = url('/');
     if ($tombol && ($aksi ?? 'beranda') === 'beranda') {

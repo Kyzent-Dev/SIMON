@@ -35,13 +35,14 @@ class Ekspor
     public function minta(User $user, string $jenis, string $format, array $filter): ?Response
     {
         abort_unless(in_array($format, ['xlsx', 'pdf'], true), 422);
+        $p = $this->pembangun($jenis);
+        $p->otorisasi($user);
+        // Counted only after authorization, so a refused request neither spends the quota nor hides the 403 behind "too many requests".
         $kunci = 'ekspor:'.$user->id;
         if (RateLimiter::tooManyAttempts($kunci, 10)) {
             throw ValidationException::withMessages(['ekspor' => 'Terlalu banyak permintaan ekspor. Coba lagi dalam '.RateLimiter::availableIn($kunci).' detik.']);
         }
         RateLimiter::hit($kunci, 60);
-        $p = $this->pembangun($jenis);
-        $p->otorisasi($user);
         $filter = $p->filter($user, $filter);
         $nama = $p->namaFile($user, $filter).".{$format}";
 

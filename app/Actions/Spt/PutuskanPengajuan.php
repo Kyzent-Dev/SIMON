@@ -51,8 +51,10 @@ trait PutuskanPengajuan
         return $spt;
     }
 
-    private function catatan(string $catatan): string
+    /** Authorizes first, so a wrong role gets 403 whatever it sends as the catatan. */
+    private function catatan(User $user, string $catatan): string
     {
+        Gate::forUser($user)->authorize('kelolaNomor', Spt::class);
         $catatan = trim($catatan);
         if (mb_strlen($catatan) < 10) {
             throw ValidationException::withMessages(['catatan' => 'Catatan minimal 10 karakter.']);

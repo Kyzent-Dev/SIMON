@@ -82,7 +82,7 @@ class KlasifikasiTest extends TestCase
         $this->assertFalse(method_exists(Page::class, 'delete'));
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->post('/admin/klasifikasi')->assertStatus(405);
-        $this->actingAs($admin)->delete('/admin/klasifikasi/1')->assertStatus(404);
+        $this->actingAs($admin)->delete('/admin/klasifikasi/1')->assertStatus(405); // no such route: the GET-only 404 fallback makes it 405
         $this->assertCount(5, Klasifikasi::all());
     }
 
