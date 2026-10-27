@@ -134,7 +134,8 @@
             </div>
         </header>
 
-        <main id="konten" class="w-full max-w-[1600px] flex-1 px-4 py-6 md:px-6 lg:px-8">
+        {{-- One `fokus-ke` listener for every page: components dispatch it when an action removes the focused control (Spt\Komentar, Detail, notifikasi, PKPT). --}}
+        <main id="konten" x-data x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)" class="w-full max-w-[1600px] flex-1 px-4 py-6 md:px-6 lg:px-8">
             {{ $slot }}
         </main>
     </div>

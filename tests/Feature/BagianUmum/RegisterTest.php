@@ -166,6 +166,13 @@ class RegisterTest extends TestCase
         $this->assertSame(1, Spt::where('sumber', 'manual')->count());
     }
 
+    /** DESIGN 10: the number link is a 24px target on desktop, 44px below lg. */
+    public function test_number_link_has_a_touch_target(): void
+    {
+        $spt = $this->terbit('Contoh');
+        $this->register()->assertSeeHtml('<a href="'.route('spt.show', $spt).'" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline lg:min-h-6">');
+    }
+
     public function test_cancel_only_offered_for_diterima_and_tampered_ids_fail(): void
     {
         $spt = $this->terbit('Contoh');

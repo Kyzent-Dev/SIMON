@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\Komentar;
 use App\Models\Pegawai;
 use App\Models\PkptPerubahan;
+use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\EmailPegawai;
 use Closure;
@@ -52,13 +53,20 @@ class PenerimaNotifikasi
         return User::where('role', Role::Pimpinan)->get();
     }
 
-    /** Parties of a comment thread: the SPT's irban users and every author in the thread, minus the author of $komentar. */
+    /**
+     * Parties of a comment thread: the SPT's irban users and every author in the thread, minus the author of $komentar. One query.
+     *
+     * @return Collection<int, User>
+     */
     public function utasKomentar(Komentar $komentar): Collection
     {
-        $root = $komentar->parent ?? $komentar;
-        $penulis = User::whereIn('id', $root->balasan()->pluck('user_id')->push($root->user_id));
+        $root = $komentar->parent_id ?? $komentar->id;
+        $penulis = Komentar::select('user_id')->where(fn ($q) => $q->whereKey($root)->orWhere('parent_id', $root));
+        $irban = Spt::select('irban_id')->whereKey($komentar->spt_id);
 
-        return $this->irban($komentar->spt->irban_id)->merge($penulis->get())->unique('id')->reject(fn (User $u) => $u->id === $komentar->user_id)->values();
+        return User::whereKeyNot($komentar->user_id)
+            ->where(fn ($q) => $q->where(fn ($q) => $q->where('role', Role::Irban)->where('irban_id', $irban))->orWhereIn('id', $penulis))
+            ->get();
     }
 
     /** Only the requester of an export. @return Collection<int, User> */

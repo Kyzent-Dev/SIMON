@@ -7,10 +7,12 @@ use App\Actions\Pkpt\ImportPkptItems;
 use App\Actions\Spt\ImporSpt;
 use App\Enums\KejadianSpt;
 use App\Enums\PeranTim;
+use App\Enums\StatusItemPkpt;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusSpt;
 use App\Enums\SumberSpt;
 use App\Models\Aktivitas;
+use App\Models\Irban;
 use App\Models\IrbanTahunan;
 use App\Models\NomorCounter;
 use App\Models\Objek;
@@ -163,6 +165,29 @@ class ImporSptTest extends TestCase
         $this->assertSame(0, app(ImporSpt::class)->handle($this->admin, $ulang, 'spt-lama.xlsx'));
         $this->assertSame(2, Spt::count());
         $this->assertSame(1, Aktivitas::where('log_name', 'impor')->count()); // nothing imported: no summary
+    }
+
+    /** Item deleted or moved to another irban between preview and import: nothing is written; untouched item imports (control). */
+    public function test_item_pkpt_berubah_setelah_pratinjau(): void
+    {
+        $rows = $this->analisis([$this->baris()]);
+        $this->assertSame($this->item->id, $rows[0]['data']['pkpt_item_id']);
+
+        foreach ([['status' => StatusItemPkpt::Dihapus], ['irban_id' => Irban::factory()->create()->id]] as $ubah) {
+            $asli = $this->item->only(array_keys($ubah));
+            $this->item->update($ubah);
+            try {
+                app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx');
+                $this->fail('ValidationException expected');
+            } catch (ValidationException $e) {
+                $this->assertSame(['impor' => ['Item PKPT untuk SPT 700/751/I/SPT/2025 sudah berubah. Muat ulang pratinjau.']], $e->errors());
+            }
+            $this->assertSame(0, Spt::count());
+            $this->item->update($asli);
+        }
+
+        $this->assertSame(1, app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx'));
+        $this->assertSame($this->item->id, Spt::sole()->pkpt_item_id);
     }
 
     public function test_balapan_nomor(): void

@@ -10,7 +10,7 @@
     $full = fn ($a, $b) => $a->translatedFormat('j F Y').' – '.$b->translatedFormat('j F Y');
     $cols = $draf ? 6 : 5;
 @endphp
-<div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
+<div>
     <x-ui.page-header :title="'PKPT '.$pkpt->tahun" title-id="judul-pkpt">
         <x-slot:meta>
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">

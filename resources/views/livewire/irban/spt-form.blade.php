@@ -157,7 +157,7 @@
             </div>
             <x-ui.textarea label="Uraian penugasan" name="uraian_untuk" wire:model="uraian_untuk" rows="3" maxlength="1000" required
                 :helper="$saran ? 'Saran: '.$saran : 'Saran muncul setelah jenis penugasan dan objek dipilih.'" :error="$errors->first('uraian_untuk')" />
-            <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums" aria-live="polite" x-text="($wire.uraian_untuk ?? '').length + '/1000 karakter'">{{ mb_strlen($uraian_untuk) }}/1000 karakter</p>
+            <x-ui.penghitung-karakter model="uraian_untuk" :value="$uraian_untuk" />
         </section>
 
         {{-- 4. PPJ --}}

@@ -5,10 +5,10 @@ namespace App\Actions\Komentar\Concerns;
 /** Shared `isi` rule of the two write actions. */
 trait ValidasiKomentar
 {
-    /** Trimmed text; a message goes into $errors under `isi`. */
+    /** Text trimmed of any Unicode space (trim() keeps NBSP, ideographic and zero-width spaces); a message goes into $errors under `isi`. */
     private function isi(array $data, array &$errors): string
     {
-        $isi = trim((string) ($data['isi'] ?? ''));
+        $isi = (string) preg_replace('/^[\s\p{Z}\x{200B}\x{FEFF}]+|[\s\p{Z}\x{200B}\x{FEFF}]+$/u', '', (string) ($data['isi'] ?? ''));
         if ($isi === '') {
             $errors['isi'] = 'Tulis isi komentar.';
         } elseif (mb_strlen($isi) > 2000) {

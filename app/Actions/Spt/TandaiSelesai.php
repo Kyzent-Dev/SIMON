@@ -126,17 +126,15 @@ class TandaiSelesai
             if ($wajib) {
                 $e['tanggal_lhp'] = 'Isi tanggal LHP.';
             }
-        } elseif (! CarbonImmutable::canBeCreatedFromFormat($tanggal, 'Y-m-d')) {
+        } elseif (rescue(fn () => CarbonImmutable::createFromFormat('!Y-m-d', $tanggal), null, false)?->toDateString() !== $tanggal) {
+            // Parsed once; the round trip refuses non-canonical input and roll-overs (2026-02-31).
             $e['tanggal_lhp'] = 'Isi tanggal LHP.';
+        } elseif ($tanggal < $spt->tanggal_mulai->toDateString()) {
+            $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh sebelum tanggal mulai SPT.';
+        } elseif ($tanggal > now('Asia/Jakarta')->toDateString()) {
+            $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh di masa depan.';
         } else {
-            $tanggal = CarbonImmutable::createFromFormat('Y-m-d', $tanggal)->toDateString();
-            if ($tanggal < $spt->tanggal_mulai->toDateString()) {
-                $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh sebelum tanggal mulai SPT.';
-            } elseif ($tanggal > now('Asia/Jakarta')->toDateString()) {
-                $e['tanggal_lhp'] = 'Tanggal LHP tidak boleh di masa depan.';
-            } else {
-                $kolom['tanggal_lhp'] = $tanggal;
-            }
+            $kolom['tanggal_lhp'] = $tanggal;
         }
 
         return $kolom;

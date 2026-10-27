@@ -1,19 +1,28 @@
 {{-- DESIGN §8 x-ui.file-upload: dashed border-strong dropzone (mint-50 on drag-over), filename + size with "Ganti"/"Hapus", max size in helper.
      `accept` is the extension for the type (".pdf" for documents, ".xlsx" for imports). The native input covers the zone, so click, drop and keyboard all work.
-     Pass wire:model on the component; Livewire upload events drive the progress bar. `href` adds a "Lihat" link for an already stored file. --}}
-@props(['name', 'label', 'accept' => '.pdf', 'helper' => null, 'error' => null, 'filename' => null, 'size' => null, 'removeAction' => null, 'href' => null])
+     Pass wire:model on the component; Livewire upload events drive the progress bar. `href` adds a "Lihat" link for an already stored file.
+     The input is named by the visible label through aria-labelledby (the "Ganti" label also points at it and would otherwise join the name);
+     `required` adds "*" + sr-only "(wajib)" like x-ui.input. --}}
+@props(['name', 'label', 'accept' => '.pdf', 'helper' => null, 'error' => null, 'filename' => null, 'size' => null, 'removeAction' => null, 'href' => null, 'required' => false])
 
-@php $id = $name; @endphp
+@php
+    $id = $name;
+    $describedBy = trim(implode(' ', array_filter([$helper ? $id.'-helper' : null, $error ? $id.'-error' : null])));
+@endphp
 
 <div x-data="{ drag: false, busy: false, pct: 0 }"
     x-on:livewire-upload-start="busy = true; pct = 0" x-on:livewire-upload-progress="pct = $event.detail.progress"
     x-on:livewire-upload-finish="busy = false" x-on:livewire-upload-error="busy = false">
-    <span class="mb-1.5 block text-sm font-medium text-neutral-900">{{ $label }}</span>
+    <label id="{{ $id }}-label" for="{{ $id }}" class="mb-1.5 block text-sm font-medium text-neutral-900">
+        {{ $label }}@if ($required)<span class="text-danger-700" aria-hidden="true"> *</span><span class="sr-only"> (wajib)</span>@endif
+    </label>
 
     <div class="relative flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-strong bg-white p-4 text-center focus-within:ring-2 focus-within:ring-mint-600 focus-within:ring-offset-2"
         x-bind:class="drag && 'bg-mint-50'" x-on:dragover="drag = true" x-on:dragleave="drag = false" x-on:drop="drag = false">
-        <input id="{{ $id }}" name="{{ $name }}" type="file" accept="{{ $accept }}"
-            @if ($helper) aria-describedby="{{ $id }}-helper" @endif
+        <input id="{{ $id }}" name="{{ $name }}" type="file" accept="{{ $accept }}" aria-labelledby="{{ $id }}-label"
+            @required($required)
+            @if ($error) aria-invalid="true" @endif
+            @if ($describedBy) aria-describedby="{{ $describedBy }}" @endif
             {{ $attributes->class('absolute inset-0 size-full cursor-pointer opacity-0') }}>
         {{ svg('heroicon-o-arrow-up-tray', 'size-8 text-mint-600') }}
         <p class="text-sm text-neutral-900"><span class="font-medium text-mint-700">Pilih berkas</span> atau seret ke sini</p>

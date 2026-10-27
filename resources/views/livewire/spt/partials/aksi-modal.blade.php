@@ -27,7 +27,7 @@
             <div>
                 <x-ui.textarea label="Alasan perubahan" name="alasan" wire:model="alasan" rows="3" maxlength="1000" required
                     helper="Minimal 10 karakter." :error="$errors->first('alasan')" />
-                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums" aria-live="polite" x-text="($wire.alasan ?? '').length + '/1000 karakter'">{{ mb_strlen($alasan) }}/1000 karakter</p>
+                <x-ui.penghitung-karakter model="alasan" :value="$alasan" />
             </div>
         </form>
     @endif
@@ -45,7 +45,7 @@
         <form id="form-aksi-final" wire:submit="unggahFinal" novalidate class="space-y-5">
             @include('auth.partials.error-summary', ['class' => '', 'fields' => ['berkas' => 'SPT final', 'diinput_oleh' => 'Diinput oleh']])
             <p class="text-neutral-600">Unggah SPT final yang sudah ditandatangani. Dokumen sebelumnya tetap tersimpan.</p>
-            <x-ui.file-upload name="berkas" label="SPT final bertanda tangan" accept=".pdf,application/pdf" wire:model="berkas" :helper="$helperPdf"
+            <x-ui.file-upload name="berkas" label="SPT final bertanda tangan" accept=".pdf,application/pdf" wire:model="berkas" required :helper="$helperPdf"
                 :error="$errors->first('berkas')" :filename="$berkas?->getClientOriginalName()" :size="$ukuranBerkas" />
         </form>
     @endif
@@ -80,7 +80,7 @@
                     <x-ui.field-meta part="meta" id="konfirmasi" :error="$errors->first('konfirmasi')" />
                 </div>
             @else
-                <x-ui.file-upload name="berkas" :label="$lhp ? 'Cover LHP' : 'Laporan/dokumen penyelesaian (opsional)'" accept=".pdf,application/pdf" wire:model="berkas"
+                <x-ui.file-upload name="berkas" :label="$lhp ? 'Cover LHP' : 'Laporan/dokumen penyelesaian (opsional)'" accept=".pdf,application/pdf" wire:model="berkas" :required="$lhp"
                     :helper="$helperPdf" :error="$errors->first('berkas')" :filename="$berkas?->getClientOriginalName()" :size="$ukuranBerkas"
                     :remove-action="$opsional ? 'hapusBerkas' : null" />
                 <x-ui.input :label="$lhp ? 'Nomor LHP' : 'Nomor LHP (opsional)'" name="nomor_lhp" wire:model="nomor_lhp" maxlength="100" :required="$lhp"
@@ -109,7 +109,7 @@
             <div>
                 <x-ui.textarea label="Uraian" name="uraian" wire:model="uraian" rows="4" maxlength="2000" required
                     helper="Jelaskan penyebab kendala (minimal 10 karakter)." :error="$errors->first('uraian')" />
-                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums" aria-live="polite" x-text="($wire.uraian ?? '').length + '/2000 karakter'">{{ mb_strlen($uraian) }}/2000 karakter</p>
+                <x-ui.penghitung-karakter model="uraian" :value="$uraian" :max="2000" />
             </div>
         </form>
     @endif

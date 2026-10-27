@@ -77,7 +77,11 @@ class DetailAksiTest extends TestCase
         $this->detail($spt)->call('buka', 'tanggal')
             ->assertSet('modal', 'tanggal')->assertSet('tanggal_mulai', '2026-03-02')->assertSet('tanggal_selesai', '2026-03-20')
             ->assertSet('diinput_oleh', $this->penginput->id)->assertDispatched('open-modal', name: 'aksi-tanggal')
-            ->assertSee('Ubah Tanggal Realisasi')->assertSee('Simpan Perubahan')->assertSee('Ganti penginput, saat ini Budi Penginput');
+            ->assertSee('Ubah Tanggal Realisasi')->assertSee('Simpan Perubahan')->assertSee('Ganti penginput, saat ini Budi Penginput')
+            // x-ui.date-range is bound to the component's own properties (deferred), and each input to its side of the range.
+            ->assertSeeHtml("m: \$wire.\$entangle('tanggal_mulai', false), s: \$wire.\$entangle('tanggal_selesai', false)")
+            ->assertSeeHtml('name="tanggal_mulai" type="date"')->assertSeeHtml('name="tanggal_selesai" type="date"')
+            ->assertSeeHtml('x-model="m"')->assertSeeHtml('x-model="s"');
 
         $this->detail($spt)->call('buka', 'lain')->assertSet('modal', '')->assertNotDispatched('open-modal');
     }
@@ -123,7 +127,7 @@ class DetailAksiTest extends TestCase
     public function test_tandai_selesai_lhp_lengkap(): void
     {
         $spt = $this->spt('KHUSUS');
-        $this->detail($spt)->call('buka', 'selesai')->assertSee('Cover LHP')->assertSee('Nomor LHP')->assertSee('Tanggal LHP')
+        $this->detail($spt)->call('buka', 'selesai')->assertSeeHtml('Cover LHP<!--[if BLOCK]><![endif]--><span class="text-danger-700" aria-hidden="true"> *</span>')->assertSee('Nomor LHP')->assertSee('Tanggal LHP')
             ->assertDontSee('Saya menyatakan penugasan ini telah selesai.')
             ->set('diinput_oleh', $this->penginput->id)->set('tanggal_lhp', '2026-03-01')->call('tandaiSelesai')
             ->assertSee('Unggah cover LHP (PDF).')->assertSee('Isi nomor LHP.')->assertSee('Tanggal LHP tidak boleh sebelum tanggal mulai SPT.');
@@ -148,7 +152,7 @@ class DetailAksiTest extends TestCase
         $this->assertNotNull($diklat->fresh()->ditandai_selesai_pada);
 
         $luar = $this->spt('LUAR_DAERAH');
-        $this->detail($luar)->call('buka', 'selesai')->assertSee('Laporan/dokumen penyelesaian (opsional)')->assertSee('Nomor LHP (opsional)')
+        $this->detail($luar)->call('buka', 'selesai')->assertSee('Laporan/dokumen penyelesaian (opsional)')->assertDontSeeHtml('(opsional)<!--[if BLOCK]><![endif]--><span class="text-danger-700"')->assertSee('Nomor LHP (opsional)')
             ->assertDontSee('Saya menyatakan')->set('diinput_oleh', $this->penginput->id)->call('tandaiSelesai')->assertHasNoErrors();
         $this->assertNotNull($luar->fresh()->ditandai_selesai_pada);
     }

@@ -32,10 +32,8 @@ class TulisKomentar
         }
         $minta = filter_var($data['minta_penjelasan'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $komentar = $spt->komentar()->create([
-            'user_id' => $user->id, 'isi' => $isi, 'minta_penjelasan' => $minta,
-            'status_permintaan' => $minta ? StatusPermintaan::Terbuka : null,
-        ]);
+        $komentar = $spt->komentar()->make(['user_id' => $user->id, 'isi' => $isi, 'minta_penjelasan' => $minta]);
+        $komentar->forceFill(['status_permintaan' => $minta ? StatusPermintaan::Terbuka : null])->save();
         Notification::send(app(PenerimaNotifikasi::class)->utasKomentar($komentar), new KomentarBaru($komentar));
 
         return $komentar;

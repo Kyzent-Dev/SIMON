@@ -65,7 +65,7 @@
                         <td class="text-right font-medium">{{ $b[0] }}</td>
                         <td class="whitespace-nowrap">
                             <span class="inline-flex items-center gap-1">
-                                <a href="{{ route('spt.show', $s) }}" wire:navigate class="font-medium text-mint-700 underline-offset-2 hover:underline">{{ $b[1] }}</a>
+                                <a href="{{ route('spt.show', $s) }}" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline lg:min-h-6">{{ $b[1] }}</a>
                                 <button type="button" x-data x-on:click="navigator.clipboard?.writeText(@js($b[1])).then(() => $dispatch('toast', { type: 'success', message: 'Nomor disalin' }))"
                                     aria-label="Salin nomor {{ $b[1] }}" class="inline-flex size-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:size-8">
                                     {{ svg('heroicon-m-clipboard', 'size-4') }}
@@ -133,7 +133,7 @@
         <div class="mt-4">
             <x-ui.textarea label="Alasan pembatalan" name="alasan" id="alasan-batal" wire:model="alasan" rows="4" maxlength="1000" required autofocus
                 helper="Minimal 10 karakter." :error="$errors->first('alasan')" />
-            <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums" aria-live="polite" x-text="($wire.alasan ?? '').length + '/1000 karakter'">{{ mb_strlen($alasan) }}/1000 karakter</p>
+            <x-ui.penghitung-karakter model="alasan" :value="$alasan" />
         </div>
         <x-slot:footer>
             <x-ui.button type="button" variant="ghost" x-on:click="$wire.showBatal = false">Kembali</x-ui.button>

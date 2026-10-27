@@ -1,7 +1,7 @@
 {{-- Shared SPT detail page (_shared.md §7). Header (h1 nomor + copy, status + flags, type/klasifikasi/irban, actions), perlu-kendala alert,
      ≥1024 an 8/4 grid; below that the two columns dissolve (`contents`) and `order-*` gives the mobile order Ringkasan, Riwayat, Kendala, Personel, Dokumen, Komentar.
      Komentar is the child component livewire:spt.komentar (last in DOM and visually); Log Aktivitas (Admin/Pimpinan only) is a collapsed card. No animation (§7.5) apart from the modal/toast transitions.
-     Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` (also dispatched by the Komentar child) moves focus when a trigger is gone after an action. --}}
+     Action modals (Irban `laksanakan` only) are in the partial; `fokus-ke` (heard by the app layout's <main>) moves focus when a trigger is gone after an action. --}}
 @use('App\Support\Tanggal')
 @use('App\Enums\KejadianSpt')
 @php
@@ -15,7 +15,7 @@
     $judulKartu = 'font-display text-[22px] leading-[30px] font-bold text-neutral-900';
     $kendalaLabel = $spt->kendala ? 'Ubah Kendala' : 'Isi Kendala';
 @endphp
-<div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
+<div>
     <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div class="min-w-0">
             <div class="flex items-start gap-1">
@@ -103,8 +103,11 @@
                         <dd class="tabular-nums">
                             @if ($sesuai === true)
                                 Sesuai jadwal PKPT ({{ $rentangTeks }})
-                            @elseif ($sesuai === false)
+                            @elseif ($sesuai === false && in_array('tidak_sesuai_pkpt', $penanda, true))
                                 <span class="inline-flex flex-wrap items-center gap-2"><x-app.flag jenis="tidak_sesuai_pkpt" /><span>({{ $rentangTeks }})</span></span>
+                            @elseif ($sesuai === false)
+                                {{-- No flag before the number is issued (PenandaSpt, PRD 9.3); the irban form words the same warning. --}}
+                                Di luar jadwal PKPT ({{ $rentangTeks }})
                             @else
                                 <span class="text-neutral-600">Tidak dinilai</span>
                             @endif

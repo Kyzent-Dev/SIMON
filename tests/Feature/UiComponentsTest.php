@@ -60,6 +60,31 @@ class UiComponentsTest extends TestCase
             ->assertSee('aria-describedby="catatan-error"', false);
     }
 
+    /** The visible label names the input (not the "Ganti" label); required adds "*" + "(wajib)"; errors are linked. */
+    public function test_file_upload_label_required_and_error(): void
+    {
+        $html = (string) $this->blade('<x-ui.file-upload name="berkas" label="Cover LHP" required helper="PDF, maks. 10 MB." error="Unggah cover LHP (PDF)." filename="a.pdf" />');
+        $this->assertMatchesRegularExpression('#<label id="berkas-label" for="berkas"[^>]*>\s*Cover LHP<span class="text-danger-700" aria-hidden="true"> \*</span><span class="sr-only"> \(wajib\)</span>#', $html);
+        $this->assertMatchesRegularExpression('#<input id="berkas"[^>]*aria-labelledby="berkas-label"#', $html);
+        $this->assertMatchesRegularExpression('#<input id="berkas"[^>]*required#', $html);
+        $this->assertMatchesRegularExpression('#<input id="berkas"[^>]*aria-invalid="true"[^>]*aria-describedby="berkas-helper berkas-error"#', $html);
+
+        $opsional = (string) $this->blade('<x-ui.file-upload name="berkas" label="Lampiran" />'); // control
+        $this->assertStringNotContainsString('(wajib)', $opsional);
+        $this->assertDoesNotMatchRegularExpression('#<input id="berkas"[^>]*(required|aria-invalid|aria-describedby)#', $opsional);
+        $this->assertMatchesRegularExpression('#<input id="berkas"[^>]*aria-labelledby="berkas-label"#', $opsional);
+    }
+
+    /** The visible count is silent; only the sr-only status speaks, and only from the threshold (20 left by default). */
+    public function test_character_counter_speaks_only_near_the_limit(): void
+    {
+        $html = (string) $this->blade('<x-ui.penghitung-karakter model="catatan" value="Halo" />');
+        $this->assertStringContainsString("aria-hidden=\"true\" x-text=\"(\$wire.catatan ?? '').length + '/1000 karakter'\">4/1000 karakter</p>", $html);
+        $this->assertStringContainsString("<p class=\"sr-only\" role=\"status\" x-text=\"((n) => n <= 20 ? 'Sisa ' + n + ' karakter' : '')(1000 - (\$wire.catatan ?? '').length)\"></p>", $html);
+        $this->assertStringNotContainsString('aria-live', $html);
+        $this->assertStringContainsString('/2000 karakter', (string) $this->blade('<x-ui.penghitung-karakter model="uraian" :max="2000" />'));
+    }
+
     public function test_modal_and_drawer_dialog_semantics(): void
     {
         foreach (['modal', 'drawer'] as $c) {

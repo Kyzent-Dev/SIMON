@@ -131,7 +131,7 @@
     <x-ui.modal name="catatan" :title="$mode === 'tolak' ? 'Tolak pengajuan' : 'Minta revisi'" wire:model="showCatatan">
         <x-ui.textarea label="Catatan" name="catatan" id="catatan-keputusan" wire:model="catatan" rows="4" maxlength="1000" required autofocus
             :helper="'Catatan akan dikirim ke '.($detail?->irban->nama ?? 'Irban').'. Minimal 10 karakter.'" :error="$errors->first('catatan')" />
-        <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums" aria-live="polite" x-text="($wire.catatan ?? '').length + '/1000 karakter'">{{ mb_strlen($catatan) }}/1000 karakter</p>
+        <x-ui.penghitung-karakter model="catatan" :value="$catatan" />
         <x-slot:footer>
             <x-ui.button type="button" variant="ghost" x-on:click="$wire.showCatatan = false">Batal</x-ui.button>
             <x-ui.button type="button" :variant="$mode === 'tolak' ? 'danger' : 'primary'" :icon="$mode === 'tolak' ? 'x-circle' : 'arrow-uturn-left'"

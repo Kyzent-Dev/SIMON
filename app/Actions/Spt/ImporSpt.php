@@ -4,8 +4,11 @@ namespace App\Actions\Spt;
 
 use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
+use App\Enums\StatusPkpt;
 use App\Enums\SumberSpt;
 use App\Models\Aktivitas;
+use App\Models\Pkpt;
+use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
 use App\Support\CachePublik;
@@ -28,6 +31,7 @@ class ImporSpt
 
         try {
             $n = DB::transaction(function () use ($admin, $rows, $berkas, &$nomor) {
+                $this->kunciItem($rows);
                 foreach ($rows as $r) {
                     $d = $r['data'];
                     $nomor = $d['nomor_lengkap'];
@@ -45,6 +49,30 @@ class ImporSpt
         }
 
         return $n;
+    }
+
+    /**
+     * Locks the PKPT of every linked item (PKPT first, by id, like PutuskanPerubahan) and re-checks what the parser saw at preview:
+     * an approved Perubahan committed since then may have deleted or moved the item.
+     */
+    private function kunciItem(array $rows): void
+    {
+        $data = array_column($rows, 'data');
+        $ids = array_values(array_unique(array_filter(array_column($data, 'pkpt_item_id'))));
+        if (! $ids) {
+            return;
+        }
+        $pkptIds = Pkpt::whereIn('id', PkptItem::whereIn('id', $ids)->select('pkpt_id'))->orderBy('id')->lockForUpdate()->pluck('id');
+        $item = PkptItem::aktif()->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')->where('pkpt.status', StatusPkpt::Disahkan)
+            ->whereIn('pkpt_item.id', $ids)->whereIn('pkpt_item.pkpt_id', $pkptIds)
+            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt.tahun'])->keyBy('id');
+        foreach ($data as $d) {
+            $i = $d['pkpt_item_id'] === null ? null : $item->get($d['pkpt_item_id']);
+            if ($d['pkpt_item_id'] !== null && ($i === null || $i->irban_id !== $d['irban_id'] || $i->jenis_penugasan_id !== $d['jenis_penugasan_id']
+                || (int) $i->tahun !== (int) substr($d['tanggal_mulai'], 0, 4))) {
+                throw ValidationException::withMessages(['impor' => "Item PKPT untuk SPT {$d['nomor_lengkap']} sudah berubah. Muat ulang pratinjau."]);
+            }
+        }
     }
 
     private function simpan(User $admin, array $d, string $berkas): void

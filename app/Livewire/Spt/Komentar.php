@@ -17,7 +17,7 @@ use Livewire\Component;
 /**
  * Komentar section of the SPT detail page (_shared.md §7, Fase 7). Child of Detail; reloads only its own data.
  * Collects input and calls TulisKomentar / BalasKomentar / TutupPermintaan, which authorize and hold every rule
- * (the UI reads TutupPermintaan::bisa()). Focus moves through Detail's window `fokus-ke` listener.
+ * (the UI reads TutupPermintaan::bisa()). Focus moves through the app layout's window `fokus-ke` listener, not the host page's.
  */
 class Komentar extends Component
 {
@@ -74,6 +74,7 @@ class Komentar extends Component
 
     public function kirimKomentar(TulisKomentar $aksi): void
     {
+        Gate::authorize('komentari', $this->spt());
         $baru = $this->jalankan(fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, $this->only('isi', 'minta_penjelasan')), ['isi' => 'isi']);
         if ($baru) {
             $this->reset('isi', 'minta_penjelasan');
@@ -84,6 +85,7 @@ class Komentar extends Component
 
     public function kirimBalasan(BalasKomentar $aksi): void
     {
+        Gate::authorize('balasKomentar', $this->spt());
         $data = ['parent_id' => $this->balasUntuk, 'isi' => $this->balasan, 'diinput_oleh' => $this->diinput_oleh];
         if ($this->jalankan(fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, $data), ['isi' => 'balasan', 'diinput_oleh' => 'diinput_oleh'])) {
             $this->dispatch('toast', type: 'success', message: 'Balasan dikirim');
@@ -93,6 +95,7 @@ class Komentar extends Component
 
     public function tutup(TutupPermintaan $aksi, int $id): void
     {
+        Gate::authorize('tutupPermintaan', $this->spt());
         if ($this->jalankan(fn (Spt $spt) => $aksi->handle(auth()->user(), $spt, ['komentar_id' => $id]), [])) {
             $this->dispatch('toast', type: 'success', message: 'Permintaan penjelasan ditutup');
             $this->dispatch('fokus-ke', id: "label-permintaan-{$id}"); // the button is gone, the label stays

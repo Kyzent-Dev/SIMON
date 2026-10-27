@@ -4,7 +4,7 @@
     $ids = $notifikasi->pluck('id')->all();
     $semuaKosong = $notifikasi->isEmpty();
 @endphp
-<div x-on:fokus-ke.window="setTimeout(() => document.getElementById($event.detail.id)?.focus(), 50)">
+<div>
     <x-ui.page-header title="Notifikasi" description="Semua pemberitahuan untuk akun Anda." title-id="judul-notifikasi">
         <x-slot:actions>
             @if ($belumDibaca > 0)

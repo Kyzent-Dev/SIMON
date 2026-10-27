@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Komentar;
 
+use App\Actions\Komentar\BalasKomentar;
 use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\CatatNomorManual;
 use App\Actions\Spt\MintaRevisi;
@@ -21,6 +22,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\PdfUji;
@@ -66,6 +68,20 @@ class PimpinanPolicyTest extends TestCase
         foreach (['view', 'komentari', 'balasKomentar', 'tutupPermintaan', 'update', 'laksanakan', 'decide'] as $a) {
             $this->assertFalse($g->allows($a, $spt), $a);
         }
+
+        // Current behaviour: the owning Irban passes balasKomentar on its own draft (it may view it), but a draft never has a
+        // thread (only pimpinan opens one, and pimpinan cannot see drafts), so a reply finds no root.
+        $irban = User::factory()->irban()->create();
+        $irban->forceFill(['irban_id' => $spt->irban_id])->save();
+        $this->assertTrue(Gate::forUser($irban)->allows('balasKomentar', $spt));
+        $this->assertFalse(Gate::forUser($irban)->allows('komentari', $spt));
+        try {
+            app(BalasKomentar::class)->handle($irban, $spt, ['parent_id' => 1, 'isi' => 'Balasan.', 'diinput_oleh' => null]);
+            $this->fail('ValidationException expected');
+        } catch (ValidationException $e) {
+            $this->assertSame('Komentar yang dibalas tidak ditemukan.', $e->errors()['komentar'][0]);
+        }
+        $this->assertSame(0, $spt->komentar()->count());
     }
 
     public function test_ability_matrix_of_other_roles(): void
@@ -159,6 +175,16 @@ class PimpinanPolicyTest extends TestCase
         foreach (['Ubah Tanggal', 'Unggah SPT Final', 'Tandai Selesai', 'Isi Kendala', 'Ubah Kendala'] as $teks) {
             $this->assertStringNotContainsString($teks, $html);
         }
+        // Control: the owning Irban gets these labels on the same SPT (Ubah Kendala once a kendala exists).
+        $irban = User::factory()->irban()->create();
+        $irban->forceFill(['irban_id' => $spt->irban_id])->save();
+        $milik = Livewire::actingAs($irban)->test(Detail::class, ['spt' => $spt])->html();
+        foreach (['Ubah Tanggal', 'Unggah SPT Final', 'Tandai Selesai', 'Isi Kendala'] as $teks) {
+            $this->assertStringContainsString($teks, $milik);
+        }
+        $spt->kendala()->create(['kategori' => 'Lainnya', 'uraian' => 'Objek belum siap diperiksa.', 'dibuat_oleh' => $irban->id]);
+        $this->assertStringContainsString('Ubah Kendala', Livewire::actingAs($irban)->test(Detail::class, ['spt' => $spt])->html());
+        $this->assertStringNotContainsString('Ubah Kendala', Livewire::actingAs($this->pimpinan)->test(Detail::class, ['spt' => $spt])->html());
         foreach (['tanggal', 'final', 'kendala', 'selesai'] as $modal) {
             Livewire::actingAs($this->pimpinan)->test(Detail::class, ['spt' => $spt])->call('buka', $modal)->assertForbidden();
         }

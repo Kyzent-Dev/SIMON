@@ -85,16 +85,26 @@ class DetailSptTest extends TestCase
 
     public function test_ringkasan_values_and_kesesuaian_variants(): void
     {
+        $alert = 'SPT ini Tidak Sesuai PKPT. Isi kendala untuk menjelaskan penyebabnya.';
         $item = PkptItem::factory()->create(['irban_id' => $this->irban->id, 'tanggal_mulai' => '2026-03-01', 'tanggal_selesai' => '2026-03-31']);
         $sesuai = $this->spt(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-03', 'tanggal_selesai' => '2026-03-21', 'periode_diperiksa' => 'TA 2025']);
         $this->lihat($sesuai)->assertSee('3–21 Maret 2026 · 19 hari')->assertSee('Sesuai jadwal PKPT (1–31 Maret 2026)')
-            ->assertSee('TA 2025')->assertSee('PKPT '.$item->pkpt->tahun)->assertDontSee('Tidak Sesuai PKPT');
+            ->assertSee('TA 2025')->assertSee('PKPT '.$item->pkpt->tahun)->assertDontSee('Tidak Sesuai PKPT')
+            ->assertDontSee($alert);
 
+        // The Ringkasan flag itself (the label alone also appears in the header flags and in the kendala alert).
+        $flag = '#<dd class="tabular-nums">\s*(?:<!--\[if BLOCK\]><!\[endif\]-->)?\s*<span class="inline-flex flex-wrap items-center gap-2"><span class="[^"]*bg-flag-tidak_sesuai_pkpt-bg[^"]*">.*?Tidak Sesuai PKPT\s*</span>\s*<span>\(1–31 Maret 2026\)</span></span>#su';
         $tidak = $this->spt(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-20', 'tanggal_selesai' => '2026-04-10']);
-        $this->lihat($tidak)->assertSee('Tidak Sesuai PKPT')->assertSee('(1–31 Maret 2026)')
-            ->assertSee('SPT ini Tidak Sesuai PKPT. Isi kendala untuk menjelaskan penyebabnya.');
+        $this->assertMatchesRegularExpression($flag, $this->lihat($tidak)->assertSee($alert)->getContent());
+        $this->assertDoesNotMatchRegularExpression($flag, $this->lihat($sesuai)->getContent()); // control
 
-        $this->lihat($this->spt())->assertSee('Tidak dinilai')->assertSee('Non-PKPT');
+        $this->lihat($this->spt())->assertSee('Tidak dinilai')->assertSee('Non-PKPT')->assertDontSee($alert);
+
+        // Before the number is issued the flag is not raised (PRD 9.3, PenandaSpt), so the summary states the range without it.
+        foreach (['menungguNomor', 'perluRevisi'] as $state) {
+            $belum = $this->spt(['pkpt_item_id' => $item->id, 'tanggal_mulai' => '2026-03-20', 'tanggal_selesai' => '2026-04-10'], $state);
+            $this->lihat($belum)->assertSee('Di luar jadwal PKPT (1–31 Maret 2026)')->assertDontSee('Tidak Sesuai PKPT');
+        }
     }
 
     public function test_personel_in_order_and_documents_with_links(): void

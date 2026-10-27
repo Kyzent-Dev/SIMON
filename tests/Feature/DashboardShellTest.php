@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\Irban;
+use App\Models\Spt;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +51,41 @@ class DashboardShellTest extends TestCase
         $this->assertSame(1, substr_count($html, 'aria-current="page"'));
         $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('admin.dashboard'), '#').'"[^>]*aria-current="page"#', $html);
         $this->assertStringContainsString('href="'.route('admin.log').'"', $html);
+    }
+
+    /** The edit form marks "SPT Saya" (server render and the client pattern used after wire:navigate); the new-SPT form keeps its own item. */
+    public function test_ubah_spt_marks_spt_saya_in_the_sidebar(): void
+    {
+        $irban = Irban::factory()->create();
+        $user = User::factory()->irban()->create(['irban_id' => $irban->id]);
+        $spt = Spt::factory()->create(['irban_id' => $irban->id, 'dibuat_oleh' => $user->id]);
+        // (?:(?!</a>).)*? instead of [^>]*: the x-init of items with `aktif` routes contains `=>`.
+        $sptSaya = '#<a href="'.preg_quote(route('irban.spt'), '#').'"(?:(?!</a>).)*?aria-current="page"#s';
+
+        $html = $this->actingAs($user)->get(route('irban.spt.ubah', $spt))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression($sptSaya, $html);
+        $this->assertSame(1, preg_match_all('#data-nav-link(?:(?!</a>).)*?aria-current="page"#s', $html));
+
+        $item = collect(Navigation::links(Role::Irban))->firstWhere('route', 'irban.spt');
+        $path = parse_url(route('irban.spt.ubah', $spt), PHP_URL_PATH);
+        $this->assertTrue(collect(Navigation::pola($item, true))->contains(fn ($r) => preg_match('#'.$r.'#', $path)));
+
+        $baru = $this->get(route('irban.spt.ajukan'))->assertOk()->getContent(); // control
+        $this->assertDoesNotMatchRegularExpression($sptSaya, $baru);
+        $this->assertMatchesRegularExpression('#<a[^>]+href="'.preg_quote(route('irban.spt.ajukan'), '#').'"[^>]*aria-current="page"#', $baru);
+    }
+
+    /** `fokus-ke` is heard once, by the layout, so the Komentar child no longer depends on the Detail page's own listener. */
+    public function test_layout_owns_the_single_fokus_ke_listener(): void
+    {
+        $irban = Irban::factory()->create();
+        $user = User::factory()->irban()->create(['irban_id' => $irban->id]);
+        $spt = Spt::factory()->diterima()->create(['irban_id' => $irban->id]);
+
+        $html = $this->actingAs($user)->get(route('spt.show', $spt))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, 'x-on:fokus-ke.window='));
+        $this->assertMatchesRegularExpression('#<main id="konten" x-data x-on:fokus-ke\.window=#', $html);
+        $this->assertStringContainsString('wire:name="spt.komentar"', $html); // control: the Komentar child is on the page
     }
 
     public function test_empty_groups_are_dropped(): void

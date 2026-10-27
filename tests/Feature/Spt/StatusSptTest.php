@@ -107,6 +107,8 @@ class StatusSptTest extends TestCase
             foreach (['2026-03-09', '2026-03-15', '2026-03-25'] as $hari) {
                 $cases["{$p->value} {$hari}"] = [$p, '2026-03-10', '2026-03-20', false, $jkt("$hari 12:00"), StatusSpt::from($p->value)];
             }
+            // A stale ditandai_selesai_pada (e.g. left on a row moved out of Diterima) never makes a non-Diterima SPT Selesai (control: 'selesai dalam rentang').
+            $cases["{$p->value} dengan ditandai_selesai_pada lama"] = [$p, '2026-03-10', '2026-03-20', true, $jkt('2026-03-25 12:00'), StatusSpt::from($p->value)];
         }
 
         return $cases;

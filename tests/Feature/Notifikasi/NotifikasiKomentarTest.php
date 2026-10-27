@@ -113,6 +113,12 @@ class NotifikasiKomentarTest extends TestCase
         $this->assertStringStartsWith($spt->jenisPenugasan->nama.' · xxx', $konteks);
         $this->assertStringEndsWith('...', $konteks);
         $this->assertSame(["{$this->pimpinan->name} menulis di SPT tanpa nomor:"], $n->isi());
+
+        // Neither number, jenis nor uraian: konteks is null (as the NotifikasiSintas contract says), not ''.
+        $kosong = Spt::factory()->menungguNomor()->create(['irban_id' => $this->spt->irban_id, 'jenis_penugasan_id' => null, 'uraian_untuk' => '']);
+        app(TulisKomentar::class)->handle($this->pimpinan, $kosong, ['isi' => 'Halo', 'minta_penjelasan' => false]);
+        $n = Notification::sent($this->irban, KomentarBaru::class)->last();
+        $this->assertNull($n->toArray($this->irban)['konteks']);
     }
 
     public function test_irban_reply_on_minta_penjelasan_notifies_peminta_with_balasan_only(): void

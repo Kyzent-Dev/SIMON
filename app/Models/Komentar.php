@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-// Comments are immutable (no edit, no delete); status/closing columns are set by TutupPermintaan.
-#[Fillable(['spt_id', 'parent_id', 'user_id', 'diinput_oleh', 'isi', 'minta_penjelasan', 'status_permintaan', 'ditutup_oleh', 'ditutup_pada'])]
+// Comments are immutable (no edit, no delete); status/closing columns are not fillable: TulisKomentar and TutupPermintaan forceFill them.
+#[Fillable(['spt_id', 'parent_id', 'user_id', 'diinput_oleh', 'isi', 'minta_penjelasan'])]
 class Komentar extends Model
 {
     /** @use HasFactory<KomentarFactory> */

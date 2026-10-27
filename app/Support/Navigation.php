@@ -16,7 +16,7 @@ class Navigation
 
         $groups = match ($role) {
             Role::Irban => [...$dasbor, ['label' => null, 'items' => [
-                $item('SPT Saya', 'irban.spt', 'document-text', ['spt.show']),
+                $item('SPT Saya', 'irban.spt', 'document-text', ['spt.show', 'irban.spt.ubah']),
                 $item('Ajukan Nomor SPT', 'irban.spt.ajukan', 'plus-circle'),
                 $item('Jadwal PKPT', 'irban.pkpt', 'calendar-days'),
                 $item('Rekap Saya', 'irban.rekap', 'chart-bar'),

@@ -276,6 +276,11 @@ class PelaksanaanSptTest extends TestCase
         $spt = $this->spt('LAIN_LAIN');
         $this->gagal(fn () => $this->selesai($spt, ['tanggal_lhp' => '2026-3-1']), 'tanggal_lhp');
         $this->gagal(fn () => $this->selesai($spt, ['tanggal_lhp' => '2026-3-5']), 'tanggal_lhp', 'Isi tanggal LHP.');
+        // Non-canonical input is refused, never rolled over or trimmed into another date (2026-02-31 would become 3 March).
+        foreach (['2026-02-31', ' 2026-03-05', '2026-03-05 ', '2026-03-05T00:00', '05-03-2026'] as $v) {
+            $this->gagal(fn () => $this->selesai($spt, ['tanggal_lhp' => $v]), 'tanggal_lhp', 'Isi tanggal LHP.');
+        }
+        $this->assertNull($spt->fresh()->ditandai_selesai_pada);
         $this->selesai($spt, ['tanggal_lhp' => '2026-03-05']);
         $this->assertSame('2026-03-05', $spt->fresh()->tanggal_lhp->toDateString());
     }

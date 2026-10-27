@@ -12,9 +12,14 @@ use App\Models\Komentar;
 use App\Models\Pegawai;
 use App\Models\Spt;
 use App\Models\User;
+use App\Notifications\BalasanPenjelasan;
+use App\Notifications\KomentarBaru;
+use App\Services\PenerimaNotifikasi;
 use App\Support\DiinputOleh;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -94,6 +99,12 @@ class KomentarActionTest extends TestCase
         $root = $this->tulis(['isi' => "  rapi \n"]);
         $this->assertSame('rapi', $root->isi);
 
+        // Unicode-only whitespace (NBSP, narrow NBSP, ideographic space, zero-width space, BOM) is empty too; inner NBSP stays.
+        foreach (["\u{00A0}", "\u{00A0}\u{202F} \u{3000}", "\u{200B}\u{FEFF}\n"] as $kosong) {
+            $this->gagal(fn () => $this->tulis(['isi' => $kosong]), 'isi', 'Tulis isi komentar.');
+            $this->gagal(fn () => $this->balas($root, ['isi' => $kosong]), 'isi', 'Tulis isi komentar.');
+        }
+        $this->assertSame("a\u{00A0}b", $this->tulis(['isi' => "\u{00A0} a\u{00A0}b\u{3000}"])->isi);
         $this->gagal(fn () => $this->balas($root, ['isi' => ' ']), 'isi', 'Tulis isi komentar.');
         $this->gagal(fn () => $this->balas($root, ['isi' => str_repeat('a', 2001)]), 'isi', 'Komentar maksimal 2000 karakter.');
         $this->assertSame(0, Komentar::whereNotNull('parent_id')->count());
@@ -205,8 +216,46 @@ class KomentarActionTest extends TestCase
         $this->balas($minta, ['isi' => 'Tambahan.']);
         $this->assertSame(2, $minta->balasan()->count());
 
+        // Current behaviour: a reply after closing still sends BalasanPenjelasan (not KomentarBaru) to the requester.
+        Notification::fake();
+        $this->balas($minta, ['isi' => 'Tambahan kedua.']);
+        Notification::assertSentTo($this->pimpinan, BalasanPenjelasan::class);
+        Notification::assertNotSentTo($this->pimpinan, KomentarBaru::class);
+
         $selesai = Spt::factory()->selesai()->create();
         $this->assertTrue($this->tulis(['minta_penjelasan' => true], null, $selesai)->exists);
+    }
+
+    /** Thread parties in one query: the SPT's irban accounts and every author of the thread, minus the writer; other irbans and threads excluded. */
+    public function test_utas_komentar_recipients_in_one_query(): void
+    {
+        $bu = User::factory()->bagianUmum()->create();
+        $lain = User::factory()->pimpinan()->create();
+        $root = $this->tulis();
+        $this->balas($root, [], $bu);
+        $this->tulis([], $lain); // another thread on the same SPT
+        $luar = User::factory()->irban()->create();
+        $luar->forceFill(['irban_id' => Irban::factory()->create()->id])->save();
+        $balasan = $this->balas($root);
+        $balasan = Komentar::find($balasan->id); // no relations loaded
+
+        DB::enableQueryLog();
+        $penerima = app(PenerimaNotifikasi::class)->utasKomentar($balasan);
+        $this->assertCount(1, DB::getQueryLog());
+        $this->assertEqualsCanonicalizing([$this->pimpinan->id, $bu->id], $penerima->pluck('id')->all());
+
+        $this->assertEqualsCanonicalizing([$this->irban->id, $bu->id], app(PenerimaNotifikasi::class)->utasKomentar($root)->pluck('id')->all()); // root writer excluded
+    }
+
+    /** Status and closing columns are written only by the actions (forceFill), never mass-assigned from input. */
+    public function test_status_and_closing_columns_are_not_mass_assignable(): void
+    {
+        $k = (new Komentar)->fill(['isi' => 'Isi', 'status_permintaan' => StatusPermintaan::Selesai, 'ditutup_oleh' => 1, 'ditutup_pada' => now()]);
+        $this->assertSame(['isi' => 'Isi'], $k->getAttributes());
+
+        $minta = $this->tulis(['minta_penjelasan' => true, 'status_permintaan' => 'selesai', 'ditutup_oleh' => $this->pimpinan->id])->fresh();
+        $this->assertSame([StatusPermintaan::Terbuka, null], [$minta->status_permintaan, $minta->ditutup_oleh]);
+        $this->assertNull($this->tulis()->fresh()->status_permintaan);
     }
 
     public function test_scope_counts_only_open_roots(): void

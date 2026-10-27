@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Spt;
 
-use App\Actions\Spt\Concerns\MelaksanakanSpt;
+use App\Actions\Spt\Concerns\IzinPelaksanaan;
 use App\Actions\Spt\SimpanKendala;
 use App\Actions\Spt\TandaiSelesai;
 use App\Actions\Spt\UbahTanggalRealisasi;
@@ -27,7 +27,7 @@ use Livewire\WithFileUploads;
  */
 class Detail extends Component
 {
-    use MelaksanakanSpt;
+    use IzinPelaksanaan;
     use WithFileUploads;
 
     /** modal => fields that can show an inline error in it; any other error key becomes a toast. */

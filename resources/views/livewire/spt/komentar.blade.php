@@ -72,7 +72,7 @@
                                     <p class="{{ $hitung }}" x-data x-text="`${$wire.balasan.length}/2000`">{{ mb_strlen($balasan) }}/2000</p>
                                     <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                                         @if ($irban)
-                                            <x-app.diinput-oleh :pegawai="$penginput" :value="$diinput_oleh" :ganti="$ganti" :error="$errors->first('diinput_oleh')"
+                                            <x-app.diinput-oleh id="balasan-diinput-oleh" :pegawai="$penginput" :value="$diinput_oleh" :ganti="$ganti" :error="$errors->first('diinput_oleh')"
                                                 wire:model.live="diinput_oleh" class="min-w-0 sm:max-w-sm sm:flex-1" />
                                         @endif
                                         <div class="flex flex-col gap-2 sm:ml-auto sm:shrink-0 sm:flex-row">

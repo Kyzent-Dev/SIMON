@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Komentar;
 
+use App\Actions\Komentar\BalasKomentar;
+use App\Actions\Komentar\TulisKomentar;
+use App\Actions\Komentar\TutupPermintaan;
 use App\Enums\StatusPermintaan;
 use App\Livewire\Spt\Komentar as KomentarComponent;
 use App\Models\IrbanTahunan;
@@ -99,12 +102,33 @@ class KomentarDetailTest extends TestCase
             ->assertSet('balasUntuk', $root->id)->assertSet('diinput_oleh', $this->penginput->id)
             ->assertSee('Kirim balasan')->assertSee('Diinput oleh')->assertSee('Ganti penginput, saat ini Budi Penginput')
             ->assertSee('aria-expanded="true"', false)
-            ->assertDispatched('fokus-ke', id: 'balasan');
+            ->assertDispatched('fokus-ke', id: 'balasan')
+            // Own ids: the Detail action modal footer renders another "Diinput oleh" with the default ids on the same page.
+            ->assertSeeHtml('aria-describedby="balasan-diinput-oleh-helper"')->assertSeeHtml('id="balasan-diinput-oleh-helper"')
+            ->assertDontSeeHtml('id="diinput_oleh-helper"');
+        $this->lw($this->irban)->call('bukaBalas', $root->id)->call('gantiPenginput')
+            ->assertSeeHtml('id="balasan-diinput-oleh"')->assertDontSeeHtml('id="diinput_oleh"');
 
-        $this->lw($this->bu)->call('bukaBalas', $root->id)->assertSee('Kirim balasan')->assertDontSee('Diinput oleh');
+        // BU: no field; the caption of an Irban reply in the thread still reads "Diinput oleh" (control that the text can appear).
+        $this->balasIrban($root);
+        $this->lw($this->bu)->call('bukaBalas', $root->id)->assertSee('Kirim balasan')->assertSee('Diinput oleh Budi Penginput')
+            ->assertDontSee('Cari nama penginput')->assertDontSeeHtml('balasan-diinput-oleh')->assertDontSee('Ganti penginput');
 
         $this->lw($this->bu)->call('bukaBalas', $root->id)->call('batalBalas')
             ->assertSet('balasUntuk', null)->assertDontSee('Kirim balasan')->assertDispatched('fokus-ke', id: "balas-{$root->id}");
+    }
+
+    /** Each component action authorizes before the action class runs (the action's own Gate is the second line). */
+    public function test_component_actions_authorize_before_calling_the_action(): void
+    {
+        $root = $this->root([], true);
+        $this->mock(TulisKomentar::class)->shouldNotReceive('handle');
+        $this->mock(BalasKomentar::class)->shouldNotReceive('handle');
+        $this->mock(TutupPermintaan::class, fn ($m) => $m->shouldReceive('bisa')->andReturn(null)->shouldNotReceive('handle'));
+
+        $this->lw($this->irban)->set('isi', 'Komentar Irban.')->call('kirimKomentar')->assertForbidden();
+        $this->lw($this->irban)->call('tutup', $root->id)->assertForbidden();
+        $this->lw($this->admin)->set('balasUntuk', $root->id)->set('balasan', 'Balasan admin.')->call('kirimBalasan')->assertForbidden();
     }
 
     public function test_kirim_komentar_calls_the_action(): void
