@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\KejadianSpt;
 use App\Enums\StatusPengajuan;
 use App\Models\Irban;
+use App\Models\IrbanTahunan;
 use App\Models\Klasifikasi;
 use App\Models\Pegawai;
 use App\Models\PkptItem;
@@ -74,7 +75,7 @@ class SptSeeder extends Seeder
                 ->forceFill(['created_at' => $waktu, 'updated_at' => $waktu])->save();
         };
         $pdf = function (Spt $spt, string $jenis, string $nama, CarbonImmutable $waktu) use ($user, $penginput, $riwayat) {
-            $isi = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
+            $isi = PdfDemo::isi();
             $path = "spt/{$spt->id}/".Str::uuid().'.pdf';
             Storage::disk('local')->put($path, $isi);
             $spt->dokumen()->create(['jenis' => $jenis, 'path' => $path, 'nama_asli' => $nama, 'ukuran' => strlen($isi), 'sha256' => hash('sha256', $isi),
@@ -92,18 +93,21 @@ class SptSeeder extends Seeder
             ['Pemeriksaan khusus yang sudah selesai.', -60, -50, true, false, 47, false],
             ['Pemeriksaan khusus di luar jadwal PKPT.', -2, 8, true, true, null, true],
         ];
-        $tim = Pegawai::orderBy('id')->limit(2)->pluck('id')->all();
+        // Personel come from this irban's komposisi (PPJ + anggota): Ketua and one Anggota, so ValidatePersonel and the PPJ rule hold.
+        $komposisi = IrbanTahunan::where(['irban_id' => $irban->id, 'tahun' => $hari->year])->first();
+        $ppj = $komposisi?->ppj_pegawai_id;
+        $tim = $komposisi ? $komposisi->anggota()->orderBy('pegawai.id')->limit(2)->pluck('pegawai.id')->all() : Pegawai::orderBy('id')->limit(2)->pluck('id')->all();
         foreach ($daftar as [$uraian, $m, $s, $final, $denganItem, $selesaiHari, $kendala]) {
             if ($denganItem && ! $item) {
                 continue;
             }
             $mulai = $hari->addDays($m);
             $dibuat = $mulai->subDays(12)->setTime(9, 15);
-            DB::transaction(function () use ($uraian, $mulai, $hari, $s, $final, $denganItem, $selesaiHari, $kendala, $item, $irban, $user, $khusus, $penginput, $penomoran, $riwayat, $pdf, $dibuat, $tim) {
+            DB::transaction(function () use ($uraian, $mulai, $hari, $s, $final, $denganItem, $selesaiHari, $kendala, $item, $irban, $user, $khusus, $penginput, $penomoran, $riwayat, $pdf, $dibuat, $tim, $ppj) {
                 $n = $penomoran->ambil($irban, $mulai, $khusus);
                 $spt = (new Spt)->forceFill([
                     'irban_id' => $irban->id, 'klasifikasi_id' => $khusus->id, 'pkpt_item_id' => $denganItem ? $item->id : null,
-                    'jenis_penugasan_id' => $denganItem ? $item->jenis_penugasan_id : null, 'uraian_untuk' => $uraian,
+                    'jenis_penugasan_id' => $denganItem ? $item->jenis_penugasan_id : null, 'ppj_pegawai_id' => $ppj, 'uraian_untuk' => $uraian,
                     'periode_diperiksa' => 'Tahun Anggaran '.($mulai->year - 1), 'tanggal_mulai' => $mulai, 'tanggal_selesai' => $hari->addDays($s),
                     'status_pengajuan' => StatusPengajuan::Diterima, 'dibuat_oleh' => $user->id, 'diinput_oleh' => $penginput, 'diajukan_pada' => $dibuat->addHour(),
                     'nomor_urut' => $n['nomor_urut'], 'nomor_lengkap' => $n['nomor_lengkap'], 'nomor_counter_id' => $n['counter']->id,

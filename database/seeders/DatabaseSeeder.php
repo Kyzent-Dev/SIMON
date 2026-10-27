@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\SptDokumen;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class DatabaseSeeder extends Seeder
 {
@@ -39,5 +41,18 @@ class DatabaseSeeder extends Seeder
         } finally {
             Carbon::setTestNow($jam);
         }
+
+        $this->hapusPdfYatim();
+    }
+
+    /** migrate:fresh empties spt_dokumen but not the disk: drop spt/ files no dokumen row points at (non-production only, after seeding). */
+    private function hapusPdfYatim(): void
+    {
+        if (app()->isProduction()) {
+            return;
+        }
+        $disk = Storage::disk('local');
+        $dirujuk = SptDokumen::pluck('path')->flip();
+        $disk->delete(collect($disk->allFiles('spt'))->reject(fn ($f) => isset($dirujuk[$f]))->all());
     }
 }

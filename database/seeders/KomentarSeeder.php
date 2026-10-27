@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\Role;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusPermintaan;
 use App\Models\Komentar;
@@ -30,7 +31,7 @@ class KomentarSeeder extends Seeder
 
         $tulis = function (Spt $s, User $u, string $isi, string $waktu, array $lain = []) use ($penginput): Komentar {
             $k = (new Komentar)->forceFill(['spt_id' => $s->id, 'user_id' => $u->id, 'isi' => $isi,
-                'diinput_oleh' => $u->role->value === 'irban' ? $penginput->id : null] + $lain);
+                'diinput_oleh' => $u->role === Role::Irban ? $penginput->id : null] + $lain);
             $k->created_at = $k->updated_at = now()->modify($waktu);
             $k->save();
 

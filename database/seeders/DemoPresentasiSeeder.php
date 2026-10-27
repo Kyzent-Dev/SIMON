@@ -92,8 +92,7 @@ class DemoPresentasiSeeder extends Seeder
         $this->reguler = Klasifikasi::where('kode', 'REGULER')->firstOrFail();
         $this->khusus = Klasifikasi::where('kode', 'KHUSUS')->firstOrFail();
         $this->pdf = tempnam(sys_get_temp_dir(), 'demo');
-        file_put_contents($this->pdf, "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-            ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+        file_put_contents($this->pdf, PdfDemo::isi());
 
         try {
             $tim = $this->siapkanIrban();

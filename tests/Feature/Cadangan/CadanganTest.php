@@ -14,19 +14,22 @@ class CadanganTest extends TestCase
 {
     private string $dirUji;
 
-    private string $berkasPrivat;
+    private string $dirSumber;
+
+    private string $berkasSumber;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->dirUji = storage_path('framework/testing/cadangan-'.uniqid());
-        $this->berkasPrivat = storage_path('app/private/uji-cadangan-'.uniqid().'.txt');
+        $this->dirSumber = storage_path('framework/testing/cadangan-sumber-'.uniqid());
+        $this->berkasSumber = $this->dirSumber.'/uji-cadangan.txt';
     }
 
     protected function tearDown(): void
     {
         File::deleteDirectory($this->dirUji);
-        File::delete($this->berkasPrivat);
+        File::deleteDirectory($this->dirSumber);
         parent::tearDown();
     }
 
@@ -83,8 +86,10 @@ class CadanganTest extends TestCase
 
         config(['filesystems.disks.backup.root' => $this->dirUji]);
         Storage::forgetDisk('backup');
-        File::ensureDirectoryExists(dirname($this->berkasPrivat));
-        File::put($this->berkasPrivat, 'isi uji cadangan');
+        // The real storage/app/private is not touched: the include list points at a throwaway folder.
+        config(['backup.backup.source.files.include' => [$this->dirSumber]]);
+        File::ensureDirectoryExists($this->dirSumber);
+        File::put($this->berkasSumber, 'isi uji cadangan');
 
         $this->artisan('backup:run', ['--only-files' => true, '--disable-notifications' => false])->assertExitCode(0);
 
@@ -99,8 +104,8 @@ class CadanganTest extends TestCase
             $nama[] = str_replace('\\', '/', $arsip->getNameIndex($i)); // Windows writes backslashes
         }
         $arsip->close();
-        $this->assertNotEmpty(array_filter($nama, fn ($n) => str_ends_with($n, basename($this->berkasPrivat))));
-        // Relative entries (storage/app/private/...), not the server's absolute path.
-        $this->assertNotEmpty(array_filter($nama, fn ($n) => str_starts_with($n, 'storage/app/private/') && str_ends_with($n, basename($this->berkasPrivat))));
+        $this->assertNotEmpty(array_filter($nama, fn ($n) => str_ends_with($n, basename($this->berkasSumber))));
+        // Relative entries (storage/framework/testing/...), not the server's absolute path.
+        $this->assertNotEmpty(array_filter($nama, fn ($n) => str_starts_with($n, 'storage/framework/testing/') && str_ends_with($n, basename($this->berkasSumber))));
     }
 }

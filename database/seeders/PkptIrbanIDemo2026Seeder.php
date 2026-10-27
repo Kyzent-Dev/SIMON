@@ -82,7 +82,8 @@ class PkptIrbanIDemo2026Seeder extends Seeder
 
     private function buatJenis(string $nama): JenisPenugasan
     {
-        $s = ColorRules::SWATCHES[JenisPenugasan::count() % count(ColorRules::SWATCHES)];
+        // Stable per name (position in ROWS), not the table size, so a rerun or extra rows do not shift colors.
+        $s = ColorRules::SWATCHES[array_search($nama, array_values(array_unique(array_column(self::ROWS, 2)))) % count(ColorRules::SWATCHES)];
 
         return JenisPenugasan::create(['nama' => $nama, 'warna' => $s['hex'], 'warna_teks' => $s['label']]);
     }

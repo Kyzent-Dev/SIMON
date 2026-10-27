@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Demo;
 
+use App\Actions\Spt\ValidatePersonel;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusPerubahan;
 use App\Enums\StatusPkpt;
 use App\Enums\StatusSpt;
 use App\Models\Irban;
+use App\Models\IrbanTahunan;
 use App\Models\IrbanWilayah;
 use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
@@ -16,15 +18,19 @@ use App\Models\Pegawai;
 use App\Models\Pkpt;
 use App\Models\PkptPerubahan;
 use App\Models\Spt;
+use App\Models\SptDokumen;
 use App\Models\Tim;
 use App\Models\User;
+use App\Services\ColorRules;
 use App\Services\PenandaSpt;
 use App\Services\Publik\RealisasiPublik;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\KinerjaSeeder;
+use Database\Seeders\PkptIrbanIDemo2026Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -156,6 +162,70 @@ class DataDemoTest extends TestCase
         foreach ($rahasia as $r) {
             $this->assertStringNotContainsString(e($r), $html);
         }
+    }
+
+    public function test_pdf_yatim_dihapus_setelah_seeding_dan_yang_dirujuk_tetap(): void
+    {
+        $disk = Storage::disk('local');
+        $disk->put('spt/9999/yatim.pdf', 'x');
+        $disk->put('lain/aman.txt', 'x');
+        $this->seedDemo();
+
+        $this->assertFalse($disk->exists('spt/9999/yatim.pdf'));
+        $this->assertTrue($disk->exists('lain/aman.txt'));
+        $this->assertGreaterThan(0, SptDokumen::count());
+        foreach (SptDokumen::all() as $d) {
+            $this->assertTrue($disk->exists($d->path), $d->path);
+        }
+        $this->assertCount(SptDokumen::count(), $disk->allFiles('spt'));
+    }
+
+    public function test_produksi_tidak_menghapus_berkas(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        Storage::disk('local')->put('spt/9999/yatim.pdf', 'x');
+        $this->artisan('db:seed', ['--force' => true])->assertExitCode(0);
+
+        $this->assertTrue(Storage::disk('local')->exists('spt/9999/yatim.pdf'));
+    }
+
+    public function test_pdf_demo_valid_dengan_xref(): void
+    {
+        $this->seedDemo();
+
+        $isi = Storage::disk('local')->get(SptDokumen::firstOrFail()->path);
+        $this->assertStringStartsWith('%PDF-', $isi);
+        $this->assertStringContainsString('xref', $isi);
+        $this->assertStringContainsString('startxref', $isi);
+    }
+
+    public function test_personel_spt_irban_i_dari_komposisi_dan_lolos_aturan(): void
+    {
+        $this->seedDemo();
+
+        $irban = Irban::where('nama', 'Irban I')->firstOrFail();
+        $komposisi = IrbanTahunan::where(['irban_id' => $irban->id, 'tahun' => 2026])->firstOrFail();
+        $anggota = $komposisi->anggota()->pluck('pegawai.id')->all();
+        $spt = Spt::where('irban_id', $irban->id)->has('personel')->with('personel')->get();
+        $this->assertNotEmpty($spt);
+        foreach ($spt as $s) {
+            $this->assertSame($komposisi->ppj_pegawai_id, $s->ppj_pegawai_id, $s->uraian_untuk);
+            $baris = $s->personel->map(fn ($p) => ['pegawai_id' => $p->pegawai_id, 'peran' => $p->peran->value])->all();
+            $this->assertGreaterThanOrEqual(2, count($baris));
+            $hasil = app(ValidatePersonel::class)->cek($baris);
+            $this->assertTrue($hasil['ketua'] && $hasil['supervisor'] && $hasil['duplikat']);
+            $this->assertEmpty(array_diff(array_column($baris, 'pegawai_id'), $anggota));
+        }
+    }
+
+    public function test_warna_jenis_demo_stabil_per_nama_bukan_jumlah_baris(): void
+    {
+        JenisPenugasan::factory()->count(2)->create(); // shifts count(); the swatch must not move
+        $this->seedDemo();
+
+        $nama = array_values(array_unique(array_column((new \ReflectionClassConstant(PkptIrbanIDemo2026Seeder::class, 'ROWS'))->getValue(), 2)));
+        $i = array_search('Reviu DBH', $nama);
+        $this->assertSame(ColorRules::SWATCHES[$i % count(ColorRules::SWATCHES)]['hex'], JenisPenugasan::where('nama', 'Reviu DBH')->value('warna'));
     }
 
     public function test_produksi_tanpa_demo(): void
