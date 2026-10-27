@@ -2,22 +2,38 @@
 
 namespace App\Support\Concerns;
 
+use App\Support\GambarTidakTerbaca;
 use Illuminate\Http\UploadedFile;
-use RuntimeException;
 
 /** Shared GD helpers for uploaded images (slides, profile pictures): decode with enough memory, EXIF orientation, WebP encoding. */
 trait OlahGambar
 {
-    /** Decode an upload (already checked: readable header, at most 6000 x 6000 px) and turn it upright. Throws RuntimeException when GD cannot decode it. */
+    /** Decode an upload (already checked: readable header, at most 6000 x 6000 px) and turn it upright. Throws GambarTidakTerbaca when GD cannot decode it. Transparency is flattened onto white (WebP would otherwise turn it black). */
     protected static function dekode(UploadedFile $file): \GdImage
     {
         // A 6000 x 6000 image decodes to ~144 MB in GD; the default 128M is too tight.
         if (self::byte(ini_get('memory_limit')) < 512 * 1024 * 1024) {
             @ini_set('memory_limit', '512M');
         }
-        $src = @imagecreatefromstring($file->get()) ?: throw new RuntimeException('Gambar tidak dapat dibaca.');
+        $bytes = $file->get();
+        $src = @imagecreatefromstring($bytes) ?: throw new GambarTidakTerbaca('Gambar tidak dapat dibaca.');
+        // Only non-JPEG formats (PNG, WebP) can carry alpha.
+        if (! str_starts_with($bytes, "\xFF\xD8")) {
+            $src = self::ratakan($src);
+        }
 
         return self::tegakkan($src, $file);
+    }
+
+    /** Copy onto an opaque white canvas and free the original. */
+    private static function ratakan(\GdImage $src): \GdImage
+    {
+        $out = imagecreatetruecolor(imagesx($src), imagesy($src));
+        imagefill($out, 0, 0, (int) imagecolorallocate($out, 255, 255, 255));
+        imagecopy($out, $src, 0, 0, 0, 0, imagesx($src), imagesy($src));
+        imagedestroy($src);
+
+        return $out;
     }
 
     /**

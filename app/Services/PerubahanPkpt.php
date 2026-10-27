@@ -37,7 +37,7 @@ class PerubahanPkpt
 
     public const KOSONG = 'Tambahkan minimal satu operasi.';
 
-    private const KOLOM = ['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
+    public const KOLOM = ['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
 
     public function __construct(private KesesuaianPkpt $kesesuaian) {}
 

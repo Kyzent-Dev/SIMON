@@ -2,10 +2,10 @@
      Compact tables with a bold Total row (neutral-300 top border), numbers right-aligned tabular. Sections come from PembangunRekap::bagian(), shared with the exports.
      Tab "Detail Realisasi" (spec Tugas A): RealisasiItemPkpt rows per irban; SPT cells shared with Monitoring. No animation (DESIGN §7.5). --}}
 @php use App\Support\Tanggal; @endphp
-<div>
+<div x-data="{ buka: false }" x-effect="const v = $wire.pilihEkspor; if (buka && ! v) $nextTick(() => $refs.ekspor?.querySelector('[data-ekspor]')?.focus()); buka = v">
     <x-ui.page-header :title="$judul" description="Rencana dan realisasi SPT per triwulan.">
         <x-slot:actions>
-            <x-app.export-buttons aksi="bukaEkspor" />
+            <x-app.export-buttons aksi="bukaEkspor" x-ref="ekspor" />
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -154,7 +154,7 @@
     </div>
 
     {{-- Export section picker (spec Task 2 §2.1). Focus: first checkbox on open (autofocus, honoured by x-trap), the export button on close/Esc (the menu item that opened it is gone). --}}
-    <div x-data="{ buka: false }" x-effect="const v = $wire.pilihEkspor; if (buka && ! v) setTimeout(() => document.querySelector('[data-ekspor]')?.focus(), 80); buka = v">
+    <div>
         <x-ui.modal name="rekap-ekspor" title="Pilih isi ekspor" wire:model="pilihEkspor">
             <div x-ref="bagian" class="space-y-4">
                 <fieldset>

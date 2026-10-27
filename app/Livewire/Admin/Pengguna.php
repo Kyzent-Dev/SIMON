@@ -87,8 +87,8 @@ class Pengguna extends Component
         $u = $this->editingId ? User::findOrFail($this->editingId) : null;
         $u ? Gate::authorize('update', $u) : Gate::authorize('create', User::class);
         $this->username = trim($this->username);
-        $this->email = trim($this->email);
-        $data = $this->validate(SimpanPengguna::rules($u, $this->role), SimpanPengguna::messages(), ['name' => 'Nama', 'email' => 'Email']);
+        $this->email = mb_strtolower(trim($this->email));
+        $data = $this->validate(SimpanPengguna::rules($u, $this->role, $this->username), SimpanPengguna::messages(), ['name' => 'Nama', 'email' => 'Email']);
         $u = $action->handle(auth()->user(), $u, $data);
 
         $this->reset('password');
@@ -101,6 +101,11 @@ class Pengguna extends Component
         Gate::authorize('viewAny', User::class);
         $u = User::findOrFail($id);
         Gate::authorize('update', $u);
+        if ($u->is(auth()->user())) {
+            $this->dispatch('toast', type: 'error', message: 'Ubah kata sandi Anda sendiri lewat halaman Profil.');
+
+            return;
+        }
         $this->resetValidation();
         $this->resetId = $u->id;
         $this->sementara = '';

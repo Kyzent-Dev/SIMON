@@ -4,6 +4,7 @@ namespace App\Actions\Pengguna;
 
 use App\Enums\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -11,11 +12,23 @@ use Illuminate\Validation\ValidationException;
 
 class SimpanPengguna
 {
-    public static function rules(?User $user, string $role): array
+    /** @var string the one username format; also used by Profil "Data akun" (UbahDataAkun). */
+    public const USERNAME_REGEX = '/^[a-z0-9._]{3,30}$/';
+
+    /** The format is enforced only when the username changes, so a legacy username can still be edited around. */
+    public static function aturanUsername(?User $user, ?string $username): array
+    {
+        $diubah = ! $user || $user->username !== $username;
+
+        return array_values(array_filter(['required', $diubah ? 'regex:'.self::USERNAME_REGEX : null, Rule::unique('users', 'username')->ignore($user?->id)]));
+    }
+
+    /** $username is the submitted value (null on create). */
+    public static function rules(?User $user, string $role, ?string $username = null): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'regex:/^[a-z0-9._]{3,30}$/', Rule::unique('users', 'username')->ignore($user?->id)],
+            'username' => self::aturanUsername($user, $username),
             'email' => ['required', 'string', 'max:255', 'email:rfc', Rule::unique('users', 'email')->ignore($user?->id)],
             'role' => ['required', Rule::enum(Role::class)],
             'irban_id' => [Rule::requiredIf($role === Role::Irban->value), 'nullable', 'exists:irban,id'],
@@ -41,28 +54,29 @@ class SimpanPengguna
         $user ? Gate::forUser($admin)->authorize('update', $user) : Gate::forUser($admin)->authorize('create', User::class);
 
         $role = Role::from($data['role']);
-        if ($user && $user->role === Role::Admin && $role !== Role::Admin) {
-            if ($user->is($admin)) {
-                throw ValidationException::withMessages(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
-            }
-            if (User::where('role', Role::Admin)->whereKeyNot($user->id)->doesntExist()) {
-                throw ValidationException::withMessages(['role' => 'Harus ada setidaknya satu Admin.']);
-            }
-        }
-        if ($user && $user->is($admin) && $role !== $user->role) {
-            throw ValidationException::withMessages(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
-        }
 
-        $user ??= new User;
-        $user->forceFill([
-            'name' => trim($data['name']), 'username' => $data['username'], 'email' => mb_strtolower(trim($data['email'])),
-            'role' => $role, 'irban_id' => $role === Role::Irban ? $data['irban_id'] : null,
-        ]);
-        if (! $user->exists) {
-            $user->forceFill(['password' => $data['password'], 'wajib_ganti_password' => true]);
-        }
-        $user->save();
+        // The last-admin check locks the other admin rows, so two concurrent demotions cannot both pass.
+        return DB::transaction(function () use ($admin, $user, $role, $data) {
+            if ($user && $role !== $user->role) {
+                if ($user->is($admin)) {
+                    throw ValidationException::withMessages(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
+                }
+                if ($user->role === Role::Admin && User::where('role', Role::Admin)->whereKeyNot($user->id)->lockForUpdate()->pluck('id')->isEmpty()) {
+                    throw ValidationException::withMessages(['role' => 'Harus ada setidaknya satu Admin.']);
+                }
+            }
 
-        return $user;
+            $user ??= new User;
+            $user->forceFill([
+                'name' => trim($data['name']), 'username' => $data['username'], 'email' => mb_strtolower(trim($data['email'])),
+                'role' => $role, 'irban_id' => $role === Role::Irban ? $data['irban_id'] : null,
+            ]);
+            if (! $user->exists) {
+                $user->forceFill(['password' => $data['password'], 'wajib_ganti_password' => true]);
+            }
+            $user->save();
+
+            return $user;
+        });
     }
 }

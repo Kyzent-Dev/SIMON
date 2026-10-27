@@ -44,7 +44,7 @@ class KataSandiDiubah extends NotifikasiSintas
     {
         return array_values(array_filter([
             'Kata sandi akun SINTAS '.self::aman($this->username).' baru saja diubah. Semua sesi lain dengan akun ini telah dikeluarkan.',
-            $this->penginput ? 'Diinput oleh '.self::aman($this->penginput).'.' : null,
+            $this->penginput ? 'Diinput oleh '.rtrim(self::aman($this->penginput), '.').'.' : null,
             'Jika Anda tidak melakukan perubahan ini, segera hubungi Admin.',
         ]));
     }

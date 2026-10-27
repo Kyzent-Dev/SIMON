@@ -2,11 +2,12 @@
 
 namespace App\Actions\Profil;
 
+use App\Actions\Pengguna\SimpanPengguna;
 use App\Enums\Role;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 /** Profil "Data akun" of a personal account: name and username at once; a new email only after verification (MintaGantiEmail). Irban accounts: Admin only (403). */
 class UbahDataAkun
@@ -20,14 +21,9 @@ class UbahDataAkun
         $data = array_map(fn ($v) => is_string($v) ? trim($v) : $v, $data);
         $valid = Validator::make($data, [
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'regex:/^[a-z0-9._]{3,30}$/', Rule::unique('users', 'username')->ignore($user->id)],
+            'username' => SimpanPengguna::aturanUsername($user, $data['username'] ?? null),
             'email' => ['required', 'string', 'max:255', 'email:rfc'],
-        ], [
-            'username.regex' => 'Username 3–30 karakter: huruf kecil, angka, titik, atau garis bawah.',
-            'username.required' => 'Username 3–30 karakter: huruf kecil, angka, titik, atau garis bawah.',
-            'username.unique' => 'Username sudah dipakai.',
-            'email.email' => 'Format email tidak valid.',
-        ], ['name' => 'Nama tampilan', 'username' => 'Username', 'email' => 'Email'])->validate();
+        ], Arr::only(SimpanPengguna::messages(), ['username.regex', 'username.required', 'username.unique', 'email.email']), ['name' => 'Nama tampilan', 'username' => 'Username', 'email' => 'Email'])->validate();
 
         // One transaction: a rejected new email leaves name and username unchanged too.
         return DB::transaction(function () use ($user, $valid) {

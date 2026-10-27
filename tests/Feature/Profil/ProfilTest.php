@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Profil;
 
+use App\Actions\Profil\SimpanGambarProfil;
 use App\Livewire\Admin\Pengguna;
 use App\Livewire\Profil;
 use App\Models\Aktivitas;
@@ -18,6 +19,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -170,10 +172,85 @@ class ProfilTest extends TestCase
             return true;
         });
 
-        $this->actingAs($user)->get(str_replace(sha1('baru@example.test'), sha1('lain@example.test'), $tautan))->assertForbidden();
+        $palsu = preg_replace('#/[0-9a-f]{40}\?#', '/'.str_repeat('0', 40).'?', $tautan);
+        $this->assertNotSame($tautan, $palsu);
+        $pesan = ['type' => 'error', 'message' => 'Tautan verifikasi sudah kedaluwarsa atau tidak sah. Ajukan penggantian email lagi dari Profil.'];
+        $this->actingAs($user)->get($palsu)->assertRedirect(route('profil'))->assertSessionHas('toast', $pesan);
         $this->travel(61)->minutes();
-        $this->actingAs($user)->get($tautan)->assertForbidden();
+        $this->actingAs($user)->get($tautan)->assertRedirect(route('profil'))->assertSessionHas('toast', $pesan);
         $this->assertSame('lama@example.test', $user->fresh()->email);
+    }
+
+    public function test_an_older_link_is_void_after_a_newer_request_for_the_same_address(): void
+    {
+        $user = User::factory()->pimpinan()->create(['email' => 'lama@example.test']);
+        $tautan = [];
+        $c = Livewire::actingAs($user)->test(Profil::class);
+        foreach (['x@example.test', 'y@example.test', 'x@example.test'] as $email) {
+            $c->set('email', $email)->call('simpanAkun')->assertHasNoErrors();
+        }
+        Notification::assertSentOnDemand(VerifikasiEmailBaru::class, function ($n, $c, $to) use (&$tautan) {
+            $tautan[$to->routes['mail']][] = $n->toMail($to)->actionUrl;
+
+            return true;
+        });
+        $this->assertCount(2, $tautan['x@example.test']);
+
+        $this->actingAs($user)->get($tautan['x@example.test'][0])->assertSessionHas('toast.message', 'Tautan tidak berlaku atau sudah dipakai.');
+        $this->assertSame('lama@example.test', $user->fresh()->email);
+        $this->actingAs($user)->get($tautan['x@example.test'][1])->assertSessionHas('toast.type', 'success');
+        $this->assertSame('x@example.test', $user->fresh()->email);
+    }
+
+    public function test_changing_the_name_reloads_the_page_so_the_header_follows(): void
+    {
+        $user = User::factory()->pimpinan()->create(['name' => 'Nama Lama']);
+        Livewire::actingAs($user)->test(Profil::class)->set('name', 'Nama Baru')->call('simpanAkun')->assertHasNoErrors()->assertRedirect(route('profil'));
+        $this->assertSame('Nama Baru', $user->fresh()->name);
+        $this->actingAs($user->fresh())->get('/profil')->assertSee('Menu pengguna Nama Baru');
+
+        // Control: no name change, no reload.
+        Livewire::actingAs($user->fresh())->test(Profil::class)->set('username', 'ganti.saja')->call('simpanAkun')->assertNoRedirect();
+    }
+
+    public function test_transparent_png_is_flattened_onto_white(): void
+    {
+        $im = imagecreatetruecolor(300, 300);
+        imagealphablending($im, false);
+        imagesavealpha($im, true);
+        imagefill($im, 0, 0, (int) imagecolorallocatealpha($im, 0, 0, 0, 127));
+        ob_start();
+        imagepng($im);
+        $png = (string) ob_get_clean();
+
+        $admin = User::factory()->admin()->create();
+        Livewire::actingAs($admin)->test(Profil::class)
+            ->set('foto', UploadedFile::fake()->createWithContent('t.png', $png))->call('simpanGambar')->assertHasNoErrors();
+        $out = imagecreatefromwebp(Storage::disk('public')->path($admin->fresh()->foto_profil));
+        $this->assertGreaterThan(0xF8F8F8, imagecolorat($out, 128, 128) & 0xFFFFFF);
+    }
+
+    public function test_storage_failure_is_labelled_as_saving_not_reading(): void
+    {
+        $disk = \Mockery::mock();
+        $disk->shouldReceive('put')->andReturn(false);
+        $disk->shouldReceive('delete');
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
+        $admin = User::factory()->admin()->create();
+
+        try {
+            app(SimpanGambarProfil::class)->handle($admin, 'foto', $this->gambar(300, 300));
+            $this->fail('ValidationException expected');
+        } catch (ValidationException $e) {
+            $this->assertSame(['foto' => ['Gambar gagal disimpan. Coba lagi.']], $e->errors());
+        }
+    }
+
+    public function test_irban_notice_ends_with_exactly_one_period(): void
+    {
+        foreach (['Budi' => 'Diinput oleh Budi.', 'Budi Santoso, S.E.' => 'Diinput oleh Budi Santoso, S.E.'] as $nama => $baris) {
+            $this->assertContains($baris, (new KataSandiDiubah('irban1', $nama))->toMail($this->irban)->introLines);
+        }
     }
 
     public function test_email_must_be_unique_against_emails_and_pending_changes(): void
@@ -239,10 +316,12 @@ class ProfilTest extends TestCase
     {
         $user = User::factory()->admin()->create(['name' => 'Rina Wati']);
         $this->actingAs($user)->get('/admin')->assertSee('Menu pengguna Rina Wati')->assertSee('RW')
-            ->assertSee('Ubah kata sandi')->assertDontSeeHtml('data-avatar src');
+            ->assertSee('Ubah kata sandi');
+        $this->assertDoesNotMatchRegularExpression('/<img[^>]*data-avatar/', $this->actingAs($user)->get('/admin')->getContent());
 
         $user->forceFill(['foto_profil' => 'profil/x.webp'])->save();
-        $this->actingAs($user)->get('/admin')->assertSeeHtml('src="'.Storage::disk('public')->url('profil/x.webp').'"');
+        $html = $this->actingAs($user)->get('/admin')->getContent();
+        $this->assertMatchesRegularExpression('/<img[^>]*src="'.preg_quote(Storage::disk('public')->url('profil/x.webp'), '/').'"[^>]*data-avatar/', $html);
     }
 
     public function test_admin_reset_logs_out_the_users_other_sessions(): void

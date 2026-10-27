@@ -82,11 +82,17 @@ class Profil extends Component
     {
         $user = $this->pengguna();
         $this->resetValidation();
+        $namaLama = $user->name;
         $dikirim = $action->handle($user, ['name' => $this->name, 'username' => $this->username, 'email' => $this->email]);
         $this->email = $user->email;
-        $this->dispatch('toast', type: 'success', message: $dikirim
-            ? "Data akun disimpan. Tautan verifikasi dikirim ke {$user->email_baru}."
-            : 'Data akun disimpan.');
+        $pesan = $dikirim ? "Data akun disimpan. Tautan verifikasi dikirim ke {$user->email_baru}." : 'Data akun disimpan.';
+        // The header (outside this component) shows the name: reload when it changed.
+        if ($user->name !== $namaLama) {
+            $this->muatUlang($pesan);
+
+            return;
+        }
+        $this->dispatch('toast', type: 'success', message: $pesan);
     }
 
     public function simpanGambar(SimpanGambarProfil $action): void
@@ -102,11 +108,11 @@ class Profil extends Component
                 $this->reset($jenis);
             }
         }
-        $this->selesaiGambar('Gambar profil disimpan.');
+        $this->muatUlang('Gambar profil disimpan.');
     }
 
     /** Reload the page (wire:navigate) so the header avatar, outside this component, shows the change too. */
-    private function selesaiGambar(string $pesan): void
+    private function muatUlang(string $pesan): void
     {
         session()->flash('toast', ['type' => 'success', 'message' => $pesan]);
         $this->redirectRoute('profil', navigate: true);
@@ -118,7 +124,7 @@ class Profil extends Component
         $this->resetValidation();
         abort_unless(in_array($jenis, ['foto', 'latar'], true), 404);
         $action->handle($user, $jenis, $this->diinput_oleh);
-        $this->selesaiGambar($jenis === 'foto' ? 'Foto profil dihapus.' : 'Latar profil dihapus.');
+        $this->muatUlang($jenis === 'foto' ? 'Foto profil dihapus.' : 'Latar profil dihapus.');
     }
 
     /** Irban: open the confirm modal ("Semua anggota … akan keluar."); others change at once. */

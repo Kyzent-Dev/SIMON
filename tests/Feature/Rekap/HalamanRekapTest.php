@@ -216,6 +216,12 @@ class HalamanRekapTest extends TestCase
         $this->halaman($this->pimpinan)->call('bukaEkspor', 'csv')->assertSet('pilihEkspor', false)->assertSet('formatEkspor', '');
     }
 
+    public function test_export_modal_default_for_irban_is_the_irban_sections(): void
+    {
+        $this->halaman($this->irbanA)->call('bukaEkspor', 'pdf')
+            ->assertSet('bagianEkspor', ['rr', 'klasifikasi', 'jenis'])->assertSet('formatEkspor', 'pdf')->assertSet('pilihEkspor', true);
+    }
+
     public function test_export_modal_requires_rekap_access(): void
     {
         $this->halaman($this->irbanA)->call('bukaEkspor', 'xlsx')->assertSet('pilihEkspor', true);

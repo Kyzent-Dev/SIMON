@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Actions\Pengguna\AturUlangKataSandi;
 use App\Actions\Pengguna\SimpanPengguna;
 use App\Enums\Role;
 use App\Livewire\Admin\Pengguna;
@@ -125,6 +126,60 @@ class PenggunaTest extends TestCase
         $this->get('/pimpinan')->assertRedirect('/perbarui-kata-sandi');
         $this->put('/perbarui-kata-sandi', ['password' => 'Baru12345', 'password_confirmation' => 'Baru12345'])->assertRedirect();
         $this->get('/pimpinan')->assertOk();
+    }
+
+    public function test_email_is_lowercased_before_the_uniqueness_check(): void
+    {
+        User::factory()->create(['email' => 'dipakai@example.test']);
+        $c = Livewire::actingAs($this->admin)->test(Pengguna::class)->call('create');
+        $this->isi($c, ['email' => 'DIPAKAI@Example.TEST'])->call('save')->assertHasErrors('email');
+
+        $c = Livewire::actingAs($this->admin)->test(Pengguna::class)->call('create');
+        $this->isi($c, ['email' => ' Baru@Example.TEST '])->call('save')->assertHasNoErrors();
+        $this->assertSame('baru@example.test', User::where('username', 'budi.s')->value('email'));
+    }
+
+    public function test_legacy_username_is_only_validated_when_it_changes(): void
+    {
+        $u = User::factory()->pimpinan()->create(['username' => 'Legacy-Name']);
+        $c = Livewire::actingAs($this->admin)->test(Pengguna::class)->call('edit', $u->id)->set('name', 'Nama Baru');
+        $c->call('save')->assertHasNoErrors();
+        $this->assertSame(['Nama Baru', 'Legacy-Name'], [$u->fresh()->name, $u->fresh()->username]);
+
+        $c = Livewire::actingAs($this->admin)->test(Pengguna::class)->call('edit', $u->id)->set('username', 'Masih-Salah');
+        $c->call('save')->assertHasErrors('username');
+        $c->set('username', 'sudah.benar')->call('save')->assertHasNoErrors();
+        $this->assertSame('sudah.benar', $u->fresh()->username);
+    }
+
+    public function test_tampered_role_is_rejected_and_another_admin_can_be_demoted(): void
+    {
+        $u = User::factory()->pimpinan()->create();
+        Livewire::actingAs($this->admin)->test(Pengguna::class)->call('edit', $u->id)->set('role', 'superuser')->call('save')->assertHasErrors('role');
+        $this->assertSame(Role::Pimpinan, $u->fresh()->role);
+
+        // Positive control for the guards: demoting a different admin is allowed while the actor remains an admin.
+        $lain = User::factory()->admin()->create();
+        Livewire::actingAs($this->admin)->test(Pengguna::class)->call('edit', $lain->id)->set('role', 'pimpinan')->call('save')->assertHasNoErrors();
+        $this->assertSame(Role::Pimpinan, $lain->fresh()->role);
+        // The last admin (the actor) cannot demote itself.
+        Livewire::actingAs($this->admin)->test(Pengguna::class)->call('edit', $this->admin->id)->set('role', 'pimpinan')->call('save')->assertHasErrors('role');
+        $this->assertSame(Role::Admin, $this->admin->fresh()->role);
+    }
+
+    public function test_reset_rotates_remember_token_and_admin_cannot_reset_self(): void
+    {
+        $u = User::factory()->pimpinan()->create(['remember_token' => 'lama-lama']);
+        Livewire::actingAs($this->admin)->test(Pengguna::class)->call('confirmReset', $u->id)
+            ->set('sementara', 'Sementara1')->call('aturUlang')->assertHasNoErrors()->assertSet('sementara', '');
+        $this->assertNotSame('lama-lama', $u->fresh()->remember_token);
+
+        $hash = $this->admin->password;
+        Livewire::actingAs($this->admin)->test(Pengguna::class)->call('confirmReset', $this->admin->id)
+            ->assertSet('resetOpen', false)->assertDispatched('toast', type: 'error', message: 'Ubah kata sandi Anda sendiri lewat halaman Profil.');
+        $this->assertSame($hash, $this->admin->fresh()->password);
+        $this->expectException(ValidationException::class);
+        app(AturUlangKataSandi::class)->handle($this->admin, $this->admin, 'Sementara1');
     }
 
     public function test_non_admin_forbidden(): void

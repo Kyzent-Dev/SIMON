@@ -30,7 +30,12 @@
                     <div class="flex items-center justify-end gap-2">
                         <x-ui.button type="button" size="sm" variant="secondary" wire:click="edit({{ $row->id }})" aria-label="Ubah {{ $row->name }}" class="max-lg:h-11">Ubah</x-ui.button>
                         <x-ui.dropdown label="Aksi untuk {{ $row->name }}">
-                            <button type="button" role="menuitem" wire:click="confirmReset({{ $row->id }})">{{ svg('heroicon-m-key', 'size-5 text-neutral-600') }}Atur ulang kata sandi</button>
+                            @if ($row->is(auth()->user()))
+                                {{-- Resetting yourself would log you out (every session is re-validated against the hash): use Profil. --}}
+                                <a role="menuitem" href="{{ route('profil') }}#kata-sandi" wire:navigate>{{ svg('heroicon-m-key', 'size-5 text-neutral-600') }}Ubah kata sandi di Profil</a>
+                            @else
+                                <button type="button" role="menuitem" wire:click="confirmReset({{ $row->id }})">{{ svg('heroicon-m-key', 'size-5 text-neutral-600') }}Atur ulang kata sandi</button>
+                            @endif
                         </x-ui.dropdown>
                     </div>
                 </td>

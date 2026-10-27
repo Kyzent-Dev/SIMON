@@ -42,6 +42,14 @@ class BuatAdminTest extends TestCase
         }
     }
 
+    public function test_email_huruf_besar_dicek_unik_setelah_lowercase(): void
+    {
+        User::factory()->create(['email' => 'kepala.ti@muaraenimkab.go.id']);
+        $this->artisan('sintas:buat-admin', ['username' => 'admin.baru', '--nama' => 'A', '--email' => 'KEPALA.TI@muaraenimkab.go.id'])
+            ->expectsQuestion('Kata sandi', self::SANDI)->expectsQuestion('Ulangi kata sandi', self::SANDI)
+            ->expectsOutput('Email sudah dipakai pengguna lain.')->assertExitCode(1);
+    }
+
     public function test_sandi_tidak_sama(): void
     {
         $this->jalankan('kepala.ti', self::SANDI, self::SANDI.'x')->expectsOutput('Kata sandi tidak sama.')->assertExitCode(1);

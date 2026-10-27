@@ -23,8 +23,6 @@ class SimpanOperasi
 {
     use MengelolaPerubahan;
 
-    private const KOLOM = ['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
-
     public function __construct(private PerubahanPkpt $perubahan) {}
 
     public function handle(User $user, PkptPerubahan $p, ?PkptPerubahanItem $op, array $data): PkptPerubahanItem
@@ -49,7 +47,7 @@ class SimpanOperasi
                     throw ValidationException::withMessages(['pkpt_item_id' => PerubahanPkpt::ITEM_GANDA]);
                 }
             }
-            $isi = array_intersect_key($data, array_flip(self::KOLOM));
+            $isi = array_intersect_key($data, array_flip(PerubahanPkpt::KOLOM));
             if ($aksi === AksiPerubahan::Ubah) {
                 $isi += PerubahanPkpt::data($item);
             }

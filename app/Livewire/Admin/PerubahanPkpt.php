@@ -46,8 +46,6 @@ class PerubahanPkpt extends Component
 
     private const OPERASI = ['aksi', 'pkpt_item_id', 'irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
 
-    private const KOLOM = ['irban_id', 'jenis_penugasan_id', 'tanggal_mulai', 'tanggal_selesai', 'keterangan', 'target_spt'];
-
     #[Locked]
     public int $pkptId;
 
@@ -154,7 +152,7 @@ class PerubahanPkpt extends Component
             $op = $this->opId ? $p->operasi()->findOrFail($this->opId) : null;
             $data = ['aksi' => $this->aksi, 'pkpt_item_id' => $this->pkpt_item_id];
             if ($this->aksi !== AksiPerubahan::Hapus->value) {
-                $data += $this->only(self::KOLOM);
+                $data += $this->only(AturanPerubahan::KOLOM);
             }
 
             return $simpan->handle(auth()->user(), $p, $op, $data);
@@ -335,7 +333,7 @@ class PerubahanPkpt extends Component
 
     private function isiOperasi(array $d): void
     {
-        foreach (self::KOLOM as $k) {
+        foreach (AturanPerubahan::KOLOM as $k) {
             $this->{$k} = (string) ($d[$k] ?? '');
         }
     }

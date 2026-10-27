@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -29,6 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // Expired or tampered email-verification link: a clear message on Profil instead of a bare 403.
+        $exceptions->render(function (InvalidSignatureException $e, Request $request) {
+            if ($request->routeIs('profil.email.verifikasi') && ! $request->expectsJson()) {
+                return redirect()->route('profil')->with('toast', ['type' => 'error', 'message' => 'Tautan verifikasi sudah kedaluwarsa atau tidak sah. Ajukan penggantian email lagi dari Profil.']);
+            }
+        });
         // 419: expired session or CSRF token.
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($e->getStatusCode() === 419 && ! $request->expectsJson()) {

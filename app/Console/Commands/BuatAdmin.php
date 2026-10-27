@@ -26,10 +26,10 @@ class BuatAdmin extends Command
 
         $data = [
             'name' => $this->option('nama') ?? 'Administrator', 'username' => $this->argument('username'),
-            'email' => $this->option('email'), 'role' => Role::Admin->value, 'password' => $sandi,
+            'email' => mb_strtolower(trim((string) $this->option('email'))), 'role' => Role::Admin->value, 'password' => $sandi,
         ];
         unset($sandi);
-        $v = Validator::make($data, SimpanPengguna::rules(null, Role::Admin->value), SimpanPengguna::messages());
+        $v = Validator::make($data, SimpanPengguna::rules(null, Role::Admin->value, $data['username']), SimpanPengguna::messages());
         if ($v->fails()) {
             foreach ($v->errors()->all() as $pesan) {
                 $this->error($pesan);
