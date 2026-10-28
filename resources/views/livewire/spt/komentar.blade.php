@@ -69,7 +69,7 @@
                             @if ($terbuka)
                                 <form id="form-balas" wire:submit="kirimBalasan" class="mt-2 pl-3 sm:pl-4" novalidate>
                                     <x-ui.textarea label="Balasan" name="balasan" wire:model="balasan" rows="3" maxlength="2000" required :error="$errors->first('balasan')" />
-                                    <p class="{{ $hitung }}" x-data x-text="`${$wire.balasan.length}/2000`">{{ mb_strlen($balasan) }}/2000</p>
+                                    <p class="{{ $hitung }}" x-data x-text="`${[...$wire.balasan].length}/2000`">{{ mb_strlen($balasan) }}/2000</p>
                                     <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                                         @if ($irban)
                                             <x-app.diinput-oleh id="balasan-diinput-oleh" :pegawai="$penginput" :value="$diinput_oleh" :ganti="$ganti" :error="$errors->first('diinput_oleh')"
@@ -91,7 +91,7 @@
         @if ($bisaKomentari)
             <form wire:submit="kirimKomentar" class="mt-6 border-t border-neutral-200 pt-5" novalidate>
                 <x-ui.textarea label="Tulis komentar" name="isi" wire:model="isi" rows="3" maxlength="2000" required :error="$errors->first('isi')" />
-                <p class="{{ $hitung }}" x-data x-text="`${$wire.isi.length}/2000`">{{ mb_strlen($isi) }}/2000</p>
+                <p class="{{ $hitung }}" x-data x-text="`${[...$wire.isi].length}/2000`">{{ mb_strlen($isi) }}/2000</p>
                 <div class="mt-2">
                     <x-ui.switch name="minta_penjelasan" label="Tandai sebagai Minta Penjelasan" wire:model="minta_penjelasan"
                         description="Irban wajib membalas. Permintaan tetap terbuka sampai ditutup pimpinan." />

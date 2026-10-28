@@ -75,12 +75,17 @@ class UiComponentsTest extends TestCase
         $this->assertMatchesRegularExpression('#<input id="berkas"[^>]*aria-labelledby="berkas-label"#', $opsional);
     }
 
-    /** The visible count is silent; only the sr-only status speaks, and only from the threshold (20 left by default). */
+    /**
+     * The visible count is silent and counts code points like mb_strlen (server count of an emoji value is 1 per emoji); the sr-only
+     * status speaks only when the remainder crosses 20/10/0 (behavior checked in the browser, Fase 11.3 Task 5).
+     */
     public function test_character_counter_speaks_only_near_the_limit(): void
     {
-        $html = (string) $this->blade('<x-ui.penghitung-karakter model="catatan" value="Halo" />');
-        $this->assertStringContainsString("aria-hidden=\"true\" x-text=\"(\$wire.catatan ?? '').length + '/1000 karakter'\">4/1000 karakter</p>", $html);
-        $this->assertStringContainsString("<p class=\"sr-only\" role=\"status\" x-text=\"((n) => n <= 20 ? 'Sisa ' + n + ' karakter' : '')(1000 - (\$wire.catatan ?? '').length)\"></p>", $html);
+        $html = (string) $this->blade('<x-ui.penghitung-karakter model="catatan" value="Halo 😀" />');
+        $this->assertStringContainsString("jumlah() { return [...(\$wire.catatan ?? '')].length }", $html);
+        $this->assertStringContainsString("aria-hidden=\"true\" x-text=\"jumlah() + '/1000 karakter'\">6/1000 karakter</p>", $html);
+        $this->assertStringContainsString('tahapDari(s) { return s > 20 ? null : s <= 0 ? 0 : s <= 10 ? 10 : 20 }', $html);
+        $this->assertStringContainsString('<p class="sr-only" role="status" x-text="pesan"></p>', $html);
         $this->assertStringNotContainsString('aria-live', $html);
         $this->assertStringContainsString('/2000 karakter', (string) $this->blade('<x-ui.penghitung-karakter model="uraian" :max="2000" />'));
     }

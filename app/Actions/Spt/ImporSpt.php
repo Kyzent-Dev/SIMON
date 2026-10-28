@@ -11,6 +11,7 @@ use App\Models\Pkpt;
 use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
+use App\Services\Import\SptImportParser;
 use App\Support\CachePublik;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -52,24 +53,26 @@ class ImporSpt
     }
 
     /**
-     * Locks the PKPT of every linked item (PKPT first, by id, like PutuskanPerubahan) and re-checks what the parser saw at preview:
-     * an approved Perubahan committed since then may have deleted or moved the item.
+     * Locks the PKPT of every linked item and every PKPT disahkan in those years (PKPT first, by id, like PutuskanPerubahan), then
+     * re-runs the parser's matching rule (SptImportParser::itemCocok): an approved Perubahan committed since the preview may have
+     * deleted or moved the item, moved its period off the SPT dates, or added a second overlapping item.
      */
     private function kunciItem(array $rows): void
     {
-        $data = array_column($rows, 'data');
-        $ids = array_values(array_unique(array_filter(array_column($data, 'pkpt_item_id'))));
-        if (! $ids) {
+        $data = array_values(array_filter(array_column($rows, 'data'), fn ($d) => $d['pkpt_item_id'] !== null));
+        if (! $data) {
             return;
         }
-        $pkptIds = Pkpt::whereIn('id', PkptItem::whereIn('id', $ids)->select('pkpt_id'))->orderBy('id')->lockForUpdate()->pluck('id');
-        $item = PkptItem::aktif()->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')->where('pkpt.status', StatusPkpt::Disahkan)
-            ->whereIn('pkpt_item.id', $ids)->whereIn('pkpt_item.pkpt_id', $pkptIds)
-            ->get(['pkpt_item.id', 'pkpt_item.irban_id', 'pkpt_item.jenis_penugasan_id', 'pkpt.tahun'])->keyBy('id');
+        $ids = array_values(array_unique(array_column($data, 'pkpt_item_id')));
+        $tahun = array_values(array_unique(array_map(fn ($d) => (int) substr($d['tanggal_mulai'], 0, 4), $data)));
+        $pkptIds = Pkpt::where(fn ($q) => $q->whereIn('id', PkptItem::whereIn('id', $ids)->select('pkpt_id'))
+            ->orWhere(fn ($q) => $q->where('status', StatusPkpt::Disahkan)->whereIn('tahun', $tahun)))
+            ->orderBy('id')->lockForUpdate()->pluck('id');
+        $parser = app(SptImportParser::class);
+        $item = $parser->itemPkpt($tahun, $pkptIds);
         foreach ($data as $d) {
-            $i = $d['pkpt_item_id'] === null ? null : $item->get($d['pkpt_item_id']);
-            if ($d['pkpt_item_id'] !== null && ($i === null || (int) $i->irban_id !== (int) $d['irban_id'] || (int) $i->jenis_penugasan_id !== (int) $d['jenis_penugasan_id']
-                || (int) $i->tahun !== (int) substr($d['tanggal_mulai'], 0, 4))) {
+            $cocok = $parser->itemCocok($item, (int) $d['irban_id'], (int) $d['jenis_penugasan_id'], $d['tanggal_mulai'], $d['tanggal_selesai']);
+            if ($cocok->count() !== 1 || (int) $cocok->first()->id !== (int) $d['pkpt_item_id']) {
                 throw ValidationException::withMessages(['impor' => "Item PKPT untuk SPT {$d['nomor_lengkap']} sudah berubah. Muat ulang pratinjau."]);
             }
         }

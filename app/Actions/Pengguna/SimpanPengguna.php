@@ -4,6 +4,7 @@ namespace App\Actions\Pengguna;
 
 use App\Enums\Role;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -51,17 +52,23 @@ class SimpanPengguna
 
     public function handle(User $admin, ?User $user, array $data): User
     {
-        $user ? Gate::forUser($admin)->authorize('update', $user) : Gate::forUser($admin)->authorize('create', User::class);
+        $izin = fn (?User $aktor) => $user ? Gate::forUser($aktor)->authorize('update', $user) : Gate::forUser($aktor)->authorize('create', User::class);
+        $izin($admin);
 
         $role = Role::from($data['role']);
 
-        // The last-admin check locks every admin row (target included), so two concurrent demotions serialize instead of deadlocking.
-        return DB::transaction(function () use ($admin, $user, $role, $data) {
+        // One lock, by id, on every admin row (target included) and the actor's row: two concurrent demotions serialize instead of
+        // deadlocking, and the actor is re-authorized from its current row (an admin demoted or deleted meanwhile is refused).
+        return DB::transaction(function () use ($admin, $user, $role, $data, $izin) {
+            $terkunci = User::where('role', Role::Admin)->orWhereKey($admin->id)->orderBy('id')->lockForUpdate()->get(['id', 'role']);
+            $aktor = $terkunci->firstWhere('id', $admin->id);
+            $aktor ? $izin($aktor) : throw new AuthorizationException;
+
             if ($user && $role !== $user->role) {
                 if ($user->is($admin)) {
                     throw ValidationException::withMessages(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
                 }
-                if ($user->role === Role::Admin && User::where('role', Role::Admin)->lockForUpdate()->pluck('id')->reject($user->id)->isEmpty()) {
+                if ($user->role === Role::Admin && $terkunci->where('role', Role::Admin)->pluck('id')->reject($user->id)->isEmpty()) {
                     throw ValidationException::withMessages(['role' => 'Harus ada setidaknya satu Admin.']);
                 }
             }

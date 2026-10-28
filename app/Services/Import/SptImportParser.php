@@ -19,6 +19,7 @@ use App\Services\KesesuaianPkpt;
 use App\Services\Penomoran;
 use App\Services\Settings;
 use App\Support\Tanggal;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -159,15 +160,32 @@ class SptImportParser
             // Compared lower-cased on every driver (MySQL's unique index is case-insensitive, SQLite's `=` is not).
             'nomor' => Spt::whereIn(DB::raw('lower(nomor_lengkap)'), array_values(array_unique(array_map($kunci, array_filter(array_column($raw, 'nomor_spt'))))))->pluck('nomor_lengkap')
                 ->mapWithKeys(fn ($n) => [$kunci($n) => true])->all(),
-            'item' => PkptItem::aktif()->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')
-                ->where('pkpt.status', StatusPkpt::Disahkan)->whereIn('pkpt.tahun', $tahunMulai)
-                ->get(['pkpt_item.*', 'pkpt.tahun as pkpt_tahun'])->groupBy(fn ($i) => "{$i->irban_id}|{$i->jenis_penugasan_id}|{$i->pkpt_tahun}"),
+            'item' => $this->itemPkpt($tahunMulai),
             'counter' => NomorCounter::all(['tahun', 'scope', 'nomor_terakhir'])->mapWithKeys(fn ($c) => ["{$c->tahun}|{$c->scope}" => $c->nomor_terakhir])->all(),
             'ppj' => IrbanTahunan::whereIn('tahun', $tahunMulai)->get(['irban_id', 'tahun', 'ppj_pegawai_id'])
                 ->mapWithKeys(fn ($t) => ["{$t->irban_id}|{$t->tahun}" => $t->ppj_pegawai_id])->all(),
             'kendala' => collect((array) app(Settings::class)->get('kendala.kategori'))->keyBy(fn ($k) => $kunci($k))->all(),
             'tahunIni' => now('Asia/Jakarta')->year,
         ];
+    }
+
+    /** Active items of the PKPT disahkan in $tahun, grouped by irban|jenis|tahun: what an SPT can be linked to. Also re-read by ImporSpt at import. */
+    public function itemPkpt(array $tahun, ?Collection $pkptIds = null): Collection
+    {
+        return PkptItem::aktif()->join('pkpt', 'pkpt.id', '=', 'pkpt_item.pkpt_id')
+            ->where('pkpt.status', StatusPkpt::Disahkan)->whereIn('pkpt.tahun', $tahun)
+            ->when($pkptIds, fn ($q) => $q->whereIn('pkpt_item.pkpt_id', $pkptIds))
+            ->get(['pkpt_item.*', 'pkpt.tahun as pkpt_tahun'])->groupBy(fn ($i) => "{$i->irban_id}|{$i->jenis_penugasan_id}|{$i->pkpt_tahun}");
+    }
+
+    /** Items of itemPkpt() whose period overlaps the SPT dates (Y-m-d); the SPT is linked only when exactly one remains. */
+    public function itemCocok(Collection $item, int $irbanId, int $jenisId, string $mulai, string $selesai): Collection
+    {
+        return ($item[$irbanId.'|'.$jenisId.'|'.substr($mulai, 0, 4)] ?? collect())->filter(function ($i) use ($mulai, $selesai) {
+            [$m, $s] = $this->kesesuaian->rentang($i);
+
+            return $m->toDateString() <= $selesai && $s->toDateString() >= $mulai;
+        })->values();
     }
 
     /** @return list<string> the `;`-separated parts of a cell, trimmed, empty parts dropped */
@@ -323,13 +341,8 @@ class SptImportParser
             $segmen = explode('/', $nomor)[1] ?? '';
             $nomorUrut = preg_match('/^\d{1,9}$/', $segmen) ? (int) $segmen : null;
             $tahun = (int) substr($tgl['tanggal_spt'], 0, 4);
-            $tahunMulai = (int) substr($tgl['tanggal_mulai'], 0, 4);
 
-            $kandidat = $jenis ? ($l['item']["{$irban->id}|{$jenis->id}|{$tahunMulai}"] ?? collect())->filter(function ($item) use ($tgl) {
-                [$m, $s] = $this->kesesuaian->rentang($item);
-
-                return $m->toDateString() <= $tgl['tanggal_selesai'] && $s->toDateString() >= $tgl['tanggal_mulai'];
-            }) : collect();
+            $kandidat = $jenis ? $this->itemCocok($l['item'], $irban->id, $jenis->id, $tgl['tanggal_mulai'], $tgl['tanggal_selesai']) : collect();
             if ($kandidat->count() === 1) {
                 $pkptItemId = $kandidat->first()->id;
             } elseif ($kandidat->count() > 1) {

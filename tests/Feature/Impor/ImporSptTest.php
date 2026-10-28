@@ -190,6 +190,27 @@ class ImporSptTest extends TestCase
         $this->assertSame($this->item->id, Spt::sole()->pkpt_item_id);
     }
 
+    /** The parser's matching rule is re-run at import: an item period moved off the SPT dates, or a second overlapping item, rejects the file. */
+    public function test_item_pkpt_tidak_lagi_tunggal_atau_tumpang_tindih(): void
+    {
+        $rows = $this->analisis([$this->baris()]);
+        $this->assertSame($this->item->id, $rows[0]['data']['pkpt_item_id']);
+        $pesan = 'Item PKPT untuk SPT 700/751/I/SPT/2025 sudah berubah. Muat ulang pratinjau.';
+
+        $this->item->update(['tanggal_mulai' => '2025-05-01', 'tanggal_selesai' => '2025-05-31']);
+        $this->assertThrows(fn () => app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx'), ValidationException::class, $pesan);
+        $this->item->update(['tanggal_mulai' => '2025-03-01', 'tanggal_selesai' => '2025-03-31']);
+
+        $kedua = $this->item->replicate();
+        $kedua->save();
+        $this->assertThrows(fn () => app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx'), ValidationException::class, $pesan);
+        $this->assertSame(0, Spt::count());
+
+        $kedua->update(['tanggal_mulai' => '2025-08-01', 'tanggal_selesai' => '2025-08-31']); // control: no longer overlaps
+        $this->assertSame(1, app(ImporSpt::class)->handle($this->admin, $rows, 'a.xlsx'));
+        $this->assertSame($this->item->id, Spt::sole()->pkpt_item_id);
+    }
+
     public function test_balapan_nomor(): void
     {
         $rows = $this->berkasContoh();

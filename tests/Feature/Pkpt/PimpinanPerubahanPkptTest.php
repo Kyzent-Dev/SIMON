@@ -208,4 +208,18 @@ class PimpinanPerubahanPkptTest extends TestCase
         $this->get($url)->assertRedirect(route('pimpinan.perubahan-pkpt'))
             ->assertSessionHas('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
     }
+
+    /** Fase 11.3: a draf open in this tab and discarded by Admin turns the next request (re-render or action) into the list with a toast. */
+    public function test_paket_dibuang_saat_halaman_terbuka_memberi_toast_bukan_404(): void
+    {
+        foreach (['$refresh', 'setujui'] as $aksi) {
+            $p = app(BuatPerubahan::class)->handle($this->admin, $this->pkpt, ['jenis' => 'perubahan', 'alasan' => 'Akan dibuang.']);
+            $c = Livewire::actingAs($this->pimpinan)->test(Detail::class, ['perubahan' => $p]);
+            $c->call('$refresh')->assertOk(); // control: still there
+            app(BuangPerubahan::class)->handle($this->admin, $p);
+            $c->call($aksi)->assertRedirect(route('pimpinan.perubahan-pkpt'));
+            $this->assertSame(['type' => 'error', 'message' => BuangPerubahan::DIBUANG], session('toast'));
+            session()->forget('toast');
+        }
+    }
 }

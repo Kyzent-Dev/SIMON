@@ -103,11 +103,11 @@
 
             <div x-data>
                 <x-ui.input label="Judul" name="judul" wire:model="judul" required maxlength="80" autocomplete="off" :error="$errors->first('judul')" />
-                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums"><span x-text="($wire.judul || '').length">{{ mb_strlen($judul) }}</span>/80</p>
+                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums"><span x-text="[...($wire.judul || '')].length">{{ mb_strlen($judul) }}</span>/80</p>
             </div>
             <div>
                 <x-ui.textarea label="Kutipan atau penjelasan" name="kutipan" rows="3" maxlength="200" wire:model="kutipan" :error="$errors->first('kutipan')" />
-                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums"><span x-text="($wire.kutipan || '').length">{{ mb_strlen($kutipan) }}</span>/200</p>
+                <p class="mt-1 text-right text-xs text-neutral-500 tabular-nums"><span x-text="[...($wire.kutipan || '')].length">{{ mb_strlen($kutipan) }}</span>/200</p>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-ui.input label="Nama pemilik kutipan" name="pemilik_nama" maxlength="100" autocomplete="off" wire:model="pemilik_nama" :error="$errors->first('pemilik_nama')" />

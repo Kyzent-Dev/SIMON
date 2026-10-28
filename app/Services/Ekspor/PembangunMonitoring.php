@@ -23,6 +23,9 @@ class PembangunMonitoring implements Pembangun
 
     public const TW = [1 => 'TW I', 2 => 'TW II', 3 => 'TW III', 4 => 'TW IV'];
 
+    /** MonitoringSpt::baris() per filter: a direct download asks jumlah() and then export()/html() of the same rows. */
+    private array $grup = [];
+
     public function __construct(private MonitoringSpt $monitoring) {}
 
     public function otorisasi(User $user): void
@@ -37,7 +40,7 @@ class PembangunMonitoring implements Pembangun
 
     public function jumlah(User $user, array $filter): int
     {
-        return array_sum(array_map(fn ($g) => count($g['spt']), $this->monitoring->baris($filter)));
+        return array_sum(array_map(fn ($g) => count($g['spt']), $this->grup($filter)));
     }
 
     public function namaFile(User $user, array $filter): string
@@ -75,7 +78,7 @@ class PembangunMonitoring implements Pembangun
     private function baris(array $filter): array
     {
         $out = [];
-        foreach ($this->monitoring->baris($filter) as $g) {
+        foreach ($this->grup($filter) as $g) {
             $pkpt = $g['mulai'] ? Tanggal::rentang($g['mulai'], $g['selesai']) : '–';
             foreach ($g['spt'] as $r) {
                 $out[] = [
@@ -88,6 +91,11 @@ class PembangunMonitoring implements Pembangun
         }
 
         return $out;
+    }
+
+    private function grup(array $filter): array
+    {
+        return $this->grup[serialize($filter)] ??= $this->monitoring->baris($filter);
     }
 
     /** @return list<string> */

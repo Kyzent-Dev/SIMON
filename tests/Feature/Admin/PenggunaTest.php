@@ -8,7 +8,9 @@ use App\Enums\Role;
 use App\Livewire\Admin\Pengguna;
 use App\Models\Irban;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -104,13 +106,33 @@ class PenggunaTest extends TestCase
 
     public function test_cannot_remove_last_admin(): void
     {
-        // The actor is another admin, so the self-rule does not apply; only the last-admin rule can refuse.
+        // An authorized actor is itself an admin, so the rule is reached here only with the gate forced open for a non-admin actor
+        // (the self-rule does not apply); it stays as a guard behind the re-authorization.
         $this->admin->delete();
         $solo = User::factory()->admin()->create();
+        $aktor = User::factory()->pimpinan()->create();
+        Gate::before(fn () => true);
         $this->expectException(ValidationException::class);
-        app(SimpanPengguna::class)->handle(User::factory()->admin()->make(['id' => 99999]), $solo, [
+        app(SimpanPengguna::class)->handle($aktor, $solo, [
             'name' => 'x', 'username' => 'abc', 'email' => 'a@b.test', 'role' => 'pimpinan', 'irban_id' => null,
         ]);
+    }
+
+    /** Final review 11.2: the actor is re-authorized from its locked row inside the transaction, so an admin demoted meanwhile is refused. */
+    public function test_stale_actor_is_reauthorized_inside_the_transaction(): void
+    {
+        $u = User::factory()->pimpinan()->create(['name' => 'Asli']);
+        User::factory()->admin()->create(); // another admin, so the demotion below is legal
+        $data = ['name' => 'Diubah', 'username' => $u->username, 'email' => $u->email, 'role' => 'pimpinan', 'irban_id' => null];
+
+        User::whereKey($this->admin->id)->update(['role' => Role::Pimpinan->value]); // demoted in another request; $this->admin is stale
+        $this->assertThrows(fn () => app(SimpanPengguna::class)->handle($this->admin, $u, $data), AuthorizationException::class);
+        $this->assertSame('Asli', $u->fresh()->name);
+        $this->assertThrows(fn () => app(SimpanPengguna::class)->handle(User::factory()->admin()->make(['id' => 99999]), $u, $data), AuthorizationException::class); // deleted actor
+
+        User::whereKey($this->admin->id)->update(['role' => Role::Admin->value]); // control: a current admin saves
+        app(SimpanPengguna::class)->handle($this->admin, $u, $data);
+        $this->assertSame('Diubah', $u->fresh()->name);
     }
 
     public function test_reset_password_forces_change_on_login(): void

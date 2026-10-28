@@ -16,7 +16,10 @@ use App\Models\SptKendala;
 use App\Models\User;
 use App\Services\Ekspor;
 use App\Services\Ekspor\PembangunMonitoring;
+use App\Services\KesesuaianPkpt;
 use App\Services\MonitoringSpt;
+use App\Services\PenandaSpt;
+use App\Services\Triwulan;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -199,6 +202,43 @@ class HalamanMonitoringTest extends TestCase
         $this->assertStringContainsString('monitoring-spt-2026.xlsx', $semua->headers->get('content-disposition'));
         $rows = IOFactory::load($semua->getFile()->getPathname())->getActiveSheet()->toArray();
         $this->assertSame([$this->m[5]->nomor_lengkap, 'Irban B', 'Di luar PKPT', '–', '10–20 Desember 2026', 'Non-PKPT', 'Pelaksanaan', null], $rows[3]);
+    }
+
+    public function test_direct_export_reads_the_rows_once(): void
+    {
+        $hitung = new \ArrayObject;
+        $this->app->bind(MonitoringSpt::class, fn ($app) => new class($app->make(Triwulan::class), $app->make(PenandaSpt::class), $app->make(KesesuaianPkpt::class), $hitung) extends MonitoringSpt
+        {
+            public function __construct($t, $p, $k, private \ArrayObject $hitung)
+            {
+                parent::__construct($t, $p, $k);
+            }
+
+            public function baris(array $filter): array
+            {
+                $this->hitung->append($filter);
+
+                return parent::baris($filter);
+            }
+        });
+
+        foreach (['xlsx', 'pdf'] as $format) {
+            $hitung->exchangeArray([]);
+            $r = app(Ekspor::class)->minta($this->pimpinan, 'monitoring', $format, ['irban' => (string) $this->a->id]);
+            if ($format === 'pdf') {
+                TestResponse::fromBaseResponse($r)->streamedContent();
+            } else {
+                $this->assertCount(3, IOFactory::load($r->getFile()->getPathname())->getActiveSheet()->toArray());
+            }
+            $this->assertCount(1, $hitung, $format);
+        }
+
+        // A different filter on the same builder is not served from the memo.
+        $p = app(PembangunMonitoring::class);
+        $hitung->exchangeArray([]);
+        $p->jumlah($this->pimpinan, $p->filter($this->pimpinan, []));
+        $this->assertSame(1, $p->jumlah($this->pimpinan, $p->filter($this->pimpinan, ['jenis' => (string) $this->j2->id])));
+        $this->assertCount(2, $hitung);
     }
 
     public function test_export_pdf(): void

@@ -10,6 +10,7 @@ use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\EmailPegawai;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Notification;
 
@@ -62,10 +63,10 @@ class PenerimaNotifikasi
     {
         $root = $komentar->parent_id ?? $komentar->id;
         $penulis = Komentar::select('user_id')->where(fn ($q) => $q->whereKey($root)->orWhere('parent_id', $root));
-        $irban = Spt::select('irban_id')->whereKey($komentar->spt_id);
+        $irban = $this->akunIrban(Spt::select('irban_id')->whereKey($komentar->spt_id))->select('id');
 
         return User::whereKeyNot($komentar->user_id)
-            ->where(fn ($q) => $q->where(fn ($q) => $q->where('role', Role::Irban)->where('irban_id', $irban))->orWhereIn('id', $penulis))
+            ->where(fn ($q) => $q->whereIn('id', $irban)->orWhereIn('id', $penulis))
             ->get();
     }
 
@@ -99,6 +100,12 @@ class PenerimaNotifikasi
     /** @return Collection<int, User> */
     public function irban(int $irbanId): Collection
     {
-        return User::where('role', Role::Irban)->where('irban_id', $irbanId)->get();
+        return $this->akunIrban($irbanId)->get();
+    }
+
+    /** The accounts of an irban, the one rule irban() and utasKomentar() share; $irbanId may be a subquery. */
+    private function akunIrban(int|Builder $irbanId): Builder
+    {
+        return User::where('role', Role::Irban)->where('irban_id', $irbanId);
     }
 }
