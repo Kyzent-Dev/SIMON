@@ -98,7 +98,8 @@ class LatarMasukTest extends TestCase
     public function test_bad_files_are_field_errors_and_change_nothing(): void
     {
         $this->page()->call('save')->assertHasErrors(['foto_latar'])->assertSee('Foto wajib dipilih.');
-        $this->page()->set('foto_latar', UploadedFile::fake()->image('a.jpg', 959, 600))->assertHasErrors(['foto_latar'])->assertSee('Lebar gambar minimal 960 piksel.');
+        $this->page()->set('foto_latar', UploadedFile::fake()->image('a.jpg', 959, 600))->assertHasErrors(['foto_latar'])->assertSee('Lebar gambar minimal 960 piksel.')->assertDontSee('Simpan foto');
+        $this->page()->set('foto_latar', $this->foto())->assertSee('Simpan foto'); // control
         $this->page()->set('foto_latar', UploadedFile::fake()->create('a.pdf', 100, 'application/pdf'))->assertHasErrors(['foto_latar'])->assertSee('Foto harus JPG, PNG, atau WebP.');
         // Passes the header checks, then GD cannot decode it.
         $rusak = UploadedFile::fake()->createWithContent('rusak.jpg', "\xFF\xD8\xFF\xE0".str_repeat("\x00\x13garbage", 400));

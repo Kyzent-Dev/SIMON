@@ -365,4 +365,14 @@ class AdminPerubahanPkptTest extends TestCase
         $this->get($url)->assertRedirect(route('admin.pkpt.show', ['pkpt' => $this->pkpt, 'tab' => 'perubahan']))
             ->assertSessionHas('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
     }
+
+    public function test_render_only_request_after_discard_redirects_with_toast(): void
+    {
+        Notification::fake();
+        $p = PkptPerubahan::factory()->create(['pkpt_id' => $this->pkpt->id, 'dibuat_oleh' => $this->admin->id]);
+        $h = Livewire::actingAs($this->admin)->test(Halaman::class, ['pkpt' => $this->pkpt, 'perubahan' => $p]);
+        $h->call('$refresh')->assertNoRedirect(); // control: the package still exists
+        app(BuangPerubahan::class)->handle($this->admin, $p);
+        $h->call('$refresh')->assertRedirect(route('admin.pkpt.show', ['pkpt' => $this->pkpt, 'tab' => 'perubahan']));
+    }
 }

@@ -67,7 +67,7 @@ class Settings
     public function set(string $key, mixed $value): void
     {
         $this->assertKnown($key);
-        $lama = $this->get($key); // inside an outer transaction the cache still holds the committed value, so a retry logs the change again
+        $lama = $this->segar($key); // read from the DB, not the cache: inside an outer transaction get() could refill a cold cache with uncommitted values
         DB::transaction(function () use ($key, $value, $lama) { // the value and its log row commit or roll back together
             DB::table('settings')->upsert(
                 [['key' => $key, 'value' => json_encode($value, JSON_UNESCAPED_UNICODE), 'created_at' => now(), 'updated_at' => now()]],

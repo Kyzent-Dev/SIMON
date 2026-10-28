@@ -296,9 +296,16 @@ class PerubahanPkpt extends Component
     {
         if ($e instanceof ModelNotFoundException && $e->getModel() === PkptPerubahan::class) {
             session()->flash('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
-            $this->redirectRoute('admin.pkpt.show', ['pkpt' => $this->pkptId, 'tab' => 'perubahan'], navigate: true);
+            $this->keDaftar();
+            $this->skipRender();
             $stopPropagation();
         }
+    }
+
+    private function keDaftar(): void
+    {
+        session()->flash('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]);
+        $this->redirectRoute('admin.pkpt.show', ['pkpt' => $this->pkptId, 'tab' => 'perubahan'], navigate: true);
     }
 
     /** The package of this page, re-read and re-authorized on every request (the update endpoint skips route middleware). */
@@ -340,7 +347,14 @@ class PerubahanPkpt extends Component
 
     public function render(AturanPerubahan $aturan)
     {
-        $p = $this->paket();
+        try {
+            $p = $this->paket();
+        } catch (ModelNotFoundException) {
+            // Caught here, not in exception(): a render stopped by that hook leaves Livewire without a view.
+            $this->keDaftar();
+
+            return '<div></div>';
+        }
         $p->load(['pkpt', 'pemutus:id,name', 'operasi.item', 'riwayat' => fn ($q) => $q->with('pengguna:id,name')->orderBy('created_at')->orderBy('id')]);
         $bisaUbah = $p->bisaDiubah();
         $irban = Irban::orderBy('id')->pluck('nama', 'id')->all();

@@ -30,7 +30,9 @@
                 <div class="flex flex-wrap justify-end gap-2">
                     @if ($foto_latar)
                         <x-ui.button type="button" variant="ghost" wire:click="batal">Batal</x-ui.button>
-                        <x-ui.button wire:loading.attr="disabled" wire:target="save,foto_latar">Simpan foto</x-ui.button>
+                        @unless ($errors->has('foto_latar'))
+                            <x-ui.button wire:loading.attr="disabled" wire:target="save,foto_latar">Simpan foto</x-ui.button>
+                        @endunless
                     @elseif ($base !== '')
                         <x-ui.button type="button" variant="secondary" icon="trash" wire:click="confirmHapus">Hapus foto</x-ui.button>
                     @endif
