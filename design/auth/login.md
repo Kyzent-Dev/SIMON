@@ -4,9 +4,9 @@
 
 ## 1. Login
 - **Layout ≥1024:** split 5/7.
-  - **Left brand panel:** mint-950, Delapan Sungai motif in mint-200 at 15%, logo 64px, "SINTAS" display-lg white, "Sistem Informasi Surat Tugas Pengawasan — Inspektorat Daerah Kabupaten Muara Enim" in mint-200, accent-400 rule.
+  - **Left brand panel:** mint-950 (when Admin has set a background photo: layers photo `object-cover` → scrim `bg-mint-950/80` uniform, same rule as the mobile hero scrim in `landing.md` and DESIGN §14 → motif → content; white and mint-200 text stay valid pairs over the scrim, ≥8.12:1 worst case; no photo = plain panel below),  Delapan Sungai motif in mint-200 at 15%, logo 64px, "SINTAS" display-lg white, "Sistem Informasi Surat Tugas Pengawasan — Inspektorat Daerah Kabupaten Muara Enim" in mint-200, accent-400 rule.
   - **Right:** neutral-25 bg with a centered white card, max-w 420, p-8, radius-lg, shadow-sm.
-- **<1024:** a single column with a mint-950 band 120px tall (logo + name) and the card beneath, overlapping by −24px.
+- **<1024:** a single column with a mint-950 band 120px tall (logo + name; the same photo + scrim, cropped by `object-cover`) and the card beneath, overlapping by −24px.
 - **Fields:**
   - "Nama pengguna" (`autocomplete="username"`)
   - "Kata sandi" (show/hide toggle button, `aria-pressed`, label "Tampilkan kata sandi")

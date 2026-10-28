@@ -11,7 +11,7 @@ Health cards (Pengguna aktif, Pegawai, PKPT 2026 status (Draf/Disahkan), Slide a
 - Pengguna
 - Master Data (Pegawai, Irban, Komposisi Irban Tahunan, Tim, Objek Pemeriksaan, Jenis Penugasan, Klasifikasi & Aturan)
 - PKPT
-- Konten Beranda (Slide, Kontak & Footer)
+- Konten Beranda (Slide, Kontak & Footer, Latar Halaman Masuk)
 - Pengaturan Sistem
 - Impor Excel
 - Log Aktivitas
@@ -27,6 +27,7 @@ Health cards (Pengguna aktif, Pegawai, PKPT 2026 status (Draf/Disahkan), Slide a
   - Card list with thumbnail, title, active switch, and drag reordering (Alpine Sort) **plus** "Naikkan/Turunkan" buttons.
   - Editor: image upload (crop guide 16:9 with a safe-area overlay showing where text sits), title (max 80 characters), quote (max 200), owner name and position, and a required alt text ("Deskripsi gambar untuk pembaca layar").
   - A live preview renders with the real scrim, so the admin sees legibility.
+- **Latar Halaman Masuk:** one optional photo for the login page's left brand panel (menu in "Konten Beranda"). Two columns ≥1024: "Pratinjau panel" (the real layers: photo, `mint-950/80` scrim, motif, logo, SINTAS and tagline; decorative) and a card with one `x-ui.file-upload` (JPG/PNG/WebP, 5 MB, ≥960 px wide, checked on choose), "Simpan foto" (disabled until a valid file), "Batal" while a file is pending, and "Hapus foto" (secondary, confirm modal sm "Hapus foto latar?") when a photo is set. After deleting, focus moves to the preview heading. No alt text field: the image is decorative. No photo means the plain mint-950 panel. No animation.
 - **Kontak & Footer:** form for phone, email, Instagram, address and the map embed URL, with a preview.
 - **Impor Excel:**
   - Stepper (1 Unggah → 2 Pratinjau & Validasi → 3 Impor).

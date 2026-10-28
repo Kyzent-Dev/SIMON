@@ -90,6 +90,7 @@ class OtorisasiAksiTest extends TestCase
             [Admin\JenisPenugasan::class, [], [['save'], ['delete']]],
             [Admin\Klasifikasi::class, [], [['save']]],
             [Admin\Kontak::class, [], [['save']]],
+            [Admin\LatarMasuk::class, [], [['save'], ['batal'], ['confirmHapus'], ['hapus']]],
             [Admin\Objek::class, [], [['save'], ['delete']]],
             [Admin\Pegawai::class, [], [['save'], ['delete'], ['toggleAktif', 1]]],
             [Admin\PegawaiImpor::class, [], [['impor']]],

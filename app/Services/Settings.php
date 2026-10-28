@@ -35,6 +35,7 @@ class Settings
         'kontak.instagram' => '',
         'kontak.alamat' => '',
         'kontak.peta_url' => '',
+        'masuk.latar' => '', // base path of the login page background photo (`login/{uuid}`), '' = plain panel
     ];
 
     /** Settings page card => the keys it owns. */
@@ -48,6 +49,8 @@ class Settings
         'kendala' => ['kendala.kategori'],
         // Edited only on admin.kontak (Kontak & Footer); the Pengaturan page has no card for it.
         'kontak' => ['kontak.telepon', 'kontak.email', 'kontak.instagram', 'kontak.alamat', 'kontak.peta_url'],
+        // Edited only on admin.latar-masuk (Latar Halaman Masuk); no card on Pengaturan.
+        'masuk' => ['masuk.latar'],
     ];
 
     public const PETA_PREFIX = 'https://www.google.com/maps/embed?';
@@ -180,6 +183,7 @@ class Settings
                     $fail('Kategori "Lainnya" wajib ada.');
                 }
             }],
+            'masuk.latar' => ['nullable', 'string', 'max:100'],
             'kontak.telepon' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]*$/'],
             'kontak.email' => ['nullable', 'email', 'max:100'],
             'kontak.instagram' => ['nullable', 'string', 'regex:/^[A-Za-z0-9._]{0,30}$/'],

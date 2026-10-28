@@ -47,6 +47,7 @@ class Navigation
                 ['label' => 'Konten Beranda', 'items' => [
                     $item('Slide Beranda', 'admin.slide', 'photo'),
                     $item('Kontak & Footer', 'admin.kontak', 'phone'),
+                    $item('Latar Halaman Masuk', 'admin.latar-masuk', 'computer-desktop'),
                 ]],
                 ['label' => null, 'items' => [
                     $item('Pengaturan Sistem', 'admin.pengaturan', 'cog-6-tooth'),

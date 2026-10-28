@@ -12,14 +12,9 @@
     <a href="#konten" class="sr-only z-[100] rounded-md bg-white px-4 py-2 font-medium text-mint-700 shadow-md focus:not-sr-only focus:fixed focus:top-2 focus:left-2">Lewati ke konten utama</a>
 
     <div class="min-h-dvh lg:grid lg:grid-cols-12">
-        {{-- design/auth/login.md §1: brand panel (lg, 5/12) or 120px band (<lg): logo 64px above the name, 48px beside it in the band. --}}
+        {{-- design/auth/login.md §1: brand panel (lg, 5/12) or 120px band (<lg): logo 64px above the name, 48px beside it in the band; optional photo + scrim (partials/latar-masuk). --}}
         <header class="relative flex h-[120px] flex-col justify-center overflow-hidden bg-mint-950 px-4 pb-6 lg:col-span-5 lg:h-auto lg:px-12 lg:pb-0">
-            <svg class="pointer-events-none absolute inset-0 size-full text-mint-200 opacity-15" viewBox="0 0 400 400" preserveAspectRatio="none" fill="none" aria-hidden="true" focusable="false">
-                @foreach (range(1, 8) as $i)
-                    @php $y = $i * 44; @endphp
-                    <path d="M0 {{ $y }} C 50 {{ $y - 18 }}, 100 {{ $y + 18 }}, 150 {{ $y }} S 250 {{ $y - 18 }}, 300 {{ $y }} S 400 {{ $y + 18 }}, 450 {{ $y }}" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />
-                @endforeach
-            </svg>
+            @include('partials.latar-masuk', ['base' => (string) app(\App\Services\Settings::class)->get('masuk.latar')])
             <div class="relative mx-auto flex w-full max-w-[420px] items-center gap-3 lg:mx-0 lg:max-w-md lg:flex-col lg:items-start lg:gap-0">
                 <x-app.logo class="h-12 lg:h-16" />
                 <p class="font-display text-[1.75rem]/9 font-bold text-white lg:mt-6 lg:text-4xl/11">SINTAS</p>

@@ -41,6 +41,7 @@ return [
         'lampiran' => 'lampiran draf',
         'file' => 'berkas',
         'gambar' => 'gambar slide',
+        'foto_latar' => 'foto latar',
         'berkas_sk' => 'berkas SK',
         'foto' => 'foto profil',
         'latar' => 'latar profil',

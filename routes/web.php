@@ -17,6 +17,7 @@ use App\Livewire\Admin\IrbanTahunan;
 use App\Livewire\Admin\JenisPenugasan;
 use App\Livewire\Admin\Klasifikasi;
 use App\Livewire\Admin\Kontak;
+use App\Livewire\Admin\LatarMasuk;
 use App\Livewire\Admin\Objek;
 use App\Livewire\Admin\Pegawai;
 use App\Livewire\Admin\PegawaiImpor;
@@ -99,6 +100,7 @@ Route::middleware('auth')->group(function () {
             ->missing(fn (Request $r) => to_route('admin.pkpt.show', ['pkpt' => $r->route('pkpt'), 'tab' => 'perubahan'])->with('toast', ['type' => 'error', 'message' => BuangPerubahan::DIBUANG]));
         Route::get('/slide', Slide::class)->name('admin.slide');
         Route::get('/kontak', Kontak::class)->name('admin.kontak');
+        Route::get('/latar-masuk', LatarMasuk::class)->name('admin.latar-masuk');
         Route::get('/impor', Impor::class)->name('admin.impor');
         Route::get('/log', LogAktivitas::class)->name('admin.log');
     });

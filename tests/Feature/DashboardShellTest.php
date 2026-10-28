@@ -97,7 +97,7 @@ class DashboardShellTest extends TestCase
 
         // Take away the routes of that labelled group: it must disappear with its label, while Master Data
         // (some routes left) stays. Holds no matter which routes later phases add.
-        $dibuang = ['admin.slide', 'admin.kontak'];
+        $dibuang = ['admin.slide', 'admin.kontak', 'admin.latar-masuk'];
         $sisa = new RouteCollection;
         foreach (Route::getRoutes()->getRoutes() as $r) {
             if (! in_array($r->getName(), $dibuang, true)) {

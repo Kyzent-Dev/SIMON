@@ -17,16 +17,16 @@ class GambarSlide
 
     private const MAKS_BYTE = 250 * 1024;
 
-    /** Write both variants for an upload (validated: jpg/png/webp, 960–6000 px) and return the new base path `slide/{uuid}`. Throws RuntimeException when GD cannot decode it. */
-    public static function simpan(UploadedFile $file): string
+    /** Write both variants for an upload (validated: jpg/png/webp, 960–6000 px) and return the new base path `{folder}/{uuid}` (folder `slide`, or `login` for the Masuk background). Throws RuntimeException when GD cannot decode it. */
+    public static function simpan(UploadedFile $file, string $folder = 'slide'): string
     {
-        return self::tulis(self::dekode($file));
+        return self::tulis(self::dekode($file), $folder);
     }
 
     /** Write both variants from a GD image (seeder) and return the base path. Always frees $src; on failure no variant is left behind. */
-    public static function tulis(\GdImage $src): string
+    public static function tulis(\GdImage $src, string $folder = 'slide'): string
     {
-        $base = 'slide/'.Str::uuid();
+        $base = $folder.'/'.Str::uuid();
         try {
             $w = imagesx($src);
             $h = imagesy($src);
