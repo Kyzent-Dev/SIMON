@@ -17,6 +17,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $judul }} · SINTAS</title>
+    @include('partials.ikon')
     @vite(['resources/css/app.css'])
 </head>
 <body class="min-h-dvh bg-neutral-25">
@@ -30,8 +31,9 @@
                     <path d="M0 {{ $y }} C 50 {{ $y - 18 }}, 100 {{ $y + 18 }}, 150 {{ $y }} S 250 {{ $y - 18 }}, 300 {{ $y }} S 400 {{ $y + 18 }}, 450 {{ $y }}" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />
                 @endforeach
             </svg>
-            <div class="relative mx-auto w-full max-w-[420px] lg:mx-0 lg:max-w-md">
-                <p class="font-display text-[1.75rem]/9 font-bold text-white lg:text-4xl/11">SINTAS</p>
+            <div class="relative mx-auto flex w-full max-w-[420px] items-center gap-3 lg:mx-0 lg:max-w-md lg:flex-col lg:items-start lg:gap-0">
+                <x-app.logo class="h-12 lg:h-16" />
+                <p class="font-display text-[1.75rem]/9 font-bold text-white lg:mt-6 lg:text-4xl/11">SINTAS</p>
                 <p class="mt-3 hidden text-base text-mint-200 lg:block">Sistem Informasi Surat Tugas Pengawasan — Inspektorat Daerah Kabupaten Muara Enim</p>
                 <div class="mt-6 hidden h-1 w-16 rounded-full bg-accent-400 lg:block" aria-hidden="true"></div>
             </div>

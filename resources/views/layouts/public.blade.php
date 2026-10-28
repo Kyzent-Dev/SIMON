@@ -16,6 +16,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ? $title.' · ' : '' }}Inspektorat Daerah Kabupaten Muara Enim</title>
+    @include('partials.ikon')
     @vite(['resources/css/app.css', 'resources/js/public.js'])
     @livewireStyles
     {{-- Without JS Alpine never lifts x-cloak: the Jadwal views (data-tampilan) must still show their content. --}}
@@ -34,7 +35,7 @@
         class="sticky top-0 z-30 border-b border-neutral-200 bg-white">
         <div class="mx-auto flex h-14 max-w-[1200px] items-center justify-between gap-3 px-4 md:h-16 md:px-6">
             <a href="{{ url('/') }}" class="flex min-w-0 items-center gap-3 rounded-md">
-                <x-app.logo />
+                <x-app.logo class="h-9" />
                 <span class="min-w-0 leading-tight">
                     <span class="block truncate text-sm font-semibold text-neutral-900 md:hidden">Inspektorat Muara Enim</span>
                     <span class="hidden text-sm font-semibold text-neutral-900 md:block">Inspektorat Daerah</span>

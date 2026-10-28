@@ -17,6 +17,7 @@ Keputusan teknis dan penyimpangan dari PRD/DESIGN dicatat per fase di folder `de
 - [Fase 11: Pengerasan dan deploy](decisions/fase-11.md)
 - [Fase 11.1: Ganti nama SINTAS dan MySQL lokal](decisions/fase-11.1.md)
 - [Fase 11.2: Penyelesaian minor tertunda](decisions/fase-11.2.md)
+- [Fase 11.3: Logo resmi](decisions/fase-11.3.md)
 - [Catatan deploy (lintas fase)](decisions/catatan-deploy.md)
 
 Fase baru: buat `decisions/fase-N.md` (judul `# Keputusan Fase N`, bagian `## Fase N, Task M`) dan tambahkan satu baris di daftar ini.

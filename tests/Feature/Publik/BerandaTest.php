@@ -9,6 +9,7 @@ use App\Services\Publik\RealisasiPublik;
 use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -111,7 +112,8 @@ class BerandaTest extends TestCase
         $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Mengawal akuntabilitas pemerintahan Kabupaten Muara Enim/', $html);
         $this->assertSingleH1OutsideSlides($html, 'Mengawal akuntabilitas pemerintahan Kabupaten Muara Enim', false);
         $this->assertStringContainsString('INSPEKTORAT DAERAH', $html);
-        $this->assertStringNotContainsString('<img', $html);
+        $hero = Str::between($html, 'aria-label="Sorotan"', '</section>'); // the header logo is an <img> too
+        $this->assertStringNotContainsString('<img', $hero);
     }
 
     public function test_no_disahkan_pkpt_shows_zero_copy(): void

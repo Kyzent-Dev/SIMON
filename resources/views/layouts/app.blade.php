@@ -11,6 +11,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? config('app.name') }}</title>
+    @include('partials.ikon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -35,7 +36,7 @@
             x-bind:class="{ 'max-lg:invisible max-lg:-translate-x-full': ! $store.nav.open, 'lg:w-[72px]': collapsed, 'lg:w-[264px]': ! collapsed }"
             class="fixed inset-y-0 left-0 z-[60] flex w-[264px] max-w-[85vw] flex-col border-r border-neutral-200 bg-white shadow-lg transition-[translate,width,visibility] duration-[var(--dur-base)] ease-[var(--ease-standard)] max-lg:invisible max-lg:-translate-x-full lg:sticky lg:top-0 lg:z-40 lg:h-dvh lg:w-[264px] lg:shadow-none">
             <div class="flex h-16 shrink-0 items-center gap-3 border-b border-neutral-200 px-4">
-                <span class="flex size-10 shrink-0 items-center justify-center rounded-md bg-mint-700 font-display text-lg font-bold text-white" aria-hidden="true">S</span>
+                <x-app.logo class="h-10" />
                 <p class="min-w-0 flex-1 truncate font-display text-lg font-bold text-mint-700" x-bind:class="collapsed && 'lg:sr-only'">SINTAS</p>
                 <button type="button" x-on:click="$store.nav.open = false" aria-label="Tutup menu"
                     class="-mr-2 inline-flex size-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:hidden">
