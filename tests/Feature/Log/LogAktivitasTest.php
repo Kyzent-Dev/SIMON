@@ -293,6 +293,15 @@ class LogAktivitasTest extends TestCase
         $this->assertTrue($ids->contains(fn ($a) => $a->subject_type === $kendala->getMorphClass() && $a->subject_id === $kendala->id));
         $this->assertTrue($ids->contains(fn ($a) => $a->subject_type === $komentar->getMorphClass() && $a->subject_id === $komentar->id));
         $this->assertFalse($ids->contains(fn ($a) => $a->subject_type === $lain->getMorphClass() && $a->subject_id === $lain->id));
+
+        // The column is filled when the row is written: SPT = its own id, child = its spt_id (an update row has no spt_id in its properties), others null.
+        $kendala->update(['uraian' => 'diubah']);
+        $diubah = Aktivitas::where('subject_type', $kendala->getMorphClass())->where('event', 'updated')->sole();
+        $this->assertArrayNotHasKey('spt_id', $diubah->properties['attributes']);
+        $this->assertSame($spt->id, $diubah->spt_id);
+        $this->assertSame($spt->id, Aktivitas::where('subject_type', $spt->getMorphClass())->where('subject_id', $spt->id)->value('spt_id'));
+        $this->assertSame($spt->id, Aktivitas::where('subject_type', $dihapus->getMorphClass())->where('event', 'deleted')->value('spt_id'));
+        $this->assertSame(0, Aktivitas::whereNotNull('spt_id')->whereNotIn('subject_type', [$spt->getMorphClass(), $kendala->getMorphClass(), $komentar->getMorphClass()])->count());
     }
 
     public function test_simpan_ulang_tim_tanpa_perubahan_tidak_mencatat_anggota(): void

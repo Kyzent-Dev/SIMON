@@ -19,6 +19,7 @@ class Aktivitas extends Activity
             // Console without a test (scheduler, queue worker) has no real client: Request::create() would report 127.0.0.1.
             $a->ip ??= app()->runningInConsole() && ! app()->runningUnitTests() ? null : request()->ip();
             $a->diinput_oleh ??= Context::get('diinput_oleh') ?? $a->penginputSubjek();
+            $a->spt_id ??= $a->sptSubjek();
         });
         static::updating(fn () => throw new LogicException('Log aktivitas tidak dapat diubah atau dihapus.'));
         static::deleting(fn () => throw new LogicException('Log aktivitas tidak dapat diubah atau dihapus.'));
@@ -40,17 +41,24 @@ class Aktivitas extends Activity
         return $this->belongsTo(Pegawai::class, 'diinput_oleh');
     }
 
-    /** Rows of the SPT and of its personel, dokumen, kendala and komentar (deleted children found by their logged spt_id). */
+    /** The SPT this row belongs to: the subject itself, or a child's spt_id (as held, else as logged: a deleted child keeps it in `old`). */
+    private function sptSubjek(): ?int
+    {
+        if ($this->subject_type === (new Spt)->getMorphClass()) {
+            return $this->subject_id;
+        }
+        if (! in_array($this->subject_type, array_map(fn ($k) => (new $k)->getMorphClass(), self::ANAK_SPT), true)) {
+            return null;
+        }
+        $id = $this->relationLoaded('subject') ? $this->getRelation('subject')?->spt_id : null;
+
+        return $id ?? $this->properties['old']['spt_id'] ?? $this->properties['attributes']['spt_id'] ?? null;
+    }
+
+    /** Rows of the SPT and of its personel, dokumen, kendala and komentar (indexed `spt_id`, set when the row is written). */
     public function scopeUntukSpt(Builder $q, int $sptId): Builder
     {
-        return $q->where(function (Builder $q) use ($sptId) {
-            $q->where(fn (Builder $q) => $q->where('subject_type', (new Spt)->getMorphClass())->where('subject_id', $sptId));
-            foreach (self::ANAK_SPT as $kelas) {
-                $q->orWhere(fn (Builder $q) => $q->where('subject_type', (new $kelas)->getMorphClass())
-                    ->where(fn (Builder $q) => $q->whereIn('subject_id', $kelas::query()->where('spt_id', $sptId)->select('id'))
-                        ->orWhere('properties->old->spt_id', $sptId)));
-            }
-        });
+        return $q->where('spt_id', $sptId);
     }
 
     public static function catatImpor(User $user, string $jenis, string $berkas, int $jumlah): void

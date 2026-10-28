@@ -129,7 +129,11 @@ class LogPivotTest extends TestCase
         $sebelum = Aktivitas::count();
 
         // The pivot log row is written before the riwayat row; failing there must roll the pivot and its log row back together.
-        SptRiwayat::creating(fn () => throw new \DomainException('gagal'));
+        $tengah = null;
+        SptRiwayat::creating(function () use ($sebelum, &$tengah) {
+            $tengah = Aktivitas::count() - $sebelum; // the pivot log row exists mid-transaction, so the rollback below really removes it
+            throw new \DomainException('gagal');
+        });
         try {
             app(SimpanSpt::class)->handle($user, $spt, $data([$b->id]), 'draf');
             $this->fail('Transaksi seharusnya gagal.');
@@ -137,6 +141,7 @@ class LogPivotTest extends TestCase
             $this->assertSame('gagal', $e->getMessage());
         }
 
+        $this->assertGreaterThan(0, $tengah, 'kontrol: baris log pivot sudah ada sebelum rollback');
         $this->assertSame($sebelum, Aktivitas::count());
         $this->assertSame([$a->id], $spt->objek()->pluck('objek.id')->all());
         $this->assertTrue(Aktivitas::where('subject_id', $spt->id)->where('event', 'updated')->exists(), 'kontrol: log pembuatan SPT tetap ada');
@@ -176,6 +181,30 @@ class LogPivotTest extends TestCase
         $this->assertSame(2, $spt->personel()->count());
     }
 
+    public function test_menghapus_personel_tengah_menomori_ulang_baris_sesudahnya(): void
+    {
+        [$user, , $data, $spt] = $this->sptBaru([]);
+        $c = Pegawai::factory()->create();
+        IrbanTahunan::where('irban_id', $user->irban_id)->sole()->anggota()->attach($c->id);
+        $ppj = $spt->personel()->where('peran', 'ketua')->value('pegawai_id');
+        $baris = fn (Pegawai $p, string $peran) => ['pegawai_id' => $p->id, 'peran' => $peran, 'sumber' => 'tambahan', 'tim_id' => null, 'ikut' => true];
+        $tiga = $data([]);
+        $tiga['personel'][] = $baris($c, 'anggota');
+        app(SimpanSpt::class)->handle($user, $spt, $tiga, 'draf');
+        $this->assertSame([1, 2, 3], $spt->personel()->orderBy('urutan')->pluck('urutan')->all(), 'kontrol: tiga anggota berurutan 1..3');
+
+        $barisLog = fn () => Aktivitas::where('subject_type', (new SptPersonel)->getMorphClass())->count();
+        $sebelum = $barisLog();
+        $dua = $data([]);
+        $dua['personel'] = [$tiga['personel'][0], $tiga['personel'][2]]; // the middle member goes
+        app(SimpanSpt::class)->handle($user, $spt, $dua, 'draf');
+
+        $this->assertSame([$ppj, $c->id], $spt->personel()->orderBy('urutan')->pluck('pegawai_id')->all());
+        $this->assertSame([1, 2], $spt->personel()->orderBy('urutan')->pluck('urutan')->all());
+        // Deleted: the middle row and the last one at its old urutan 3; created: the last one at urutan 2. The first row is untouched.
+        $this->assertSame($sebelum + 3, $barisLog());
+    }
+
     public function test_pivot_menyegarkan_cache_publik_setelah_commit(): void
     {
         config(['cache.default' => 'array']);
@@ -184,7 +213,12 @@ class LogPivotTest extends TestCase
         $b = Objek::factory()->create(['nama' => 'Objek B', 'jenis' => 'dinas_badan']);
         [$user, , $data, $spt] = $this->sptBaru([$a->id]);
 
+        // Drop the Spt `saved` refresher so only the explicit pivot afterCommit can bump the version.
+        Spt::getEventDispatcher()->forget('eloquent.saved: '.Spt::class);
         $v = CachePublik::versi();
+        $spt->forceFill(['uraian_untuk' => 'diubah'])->save();
+        $this->assertSame($v, CachePublik::versi(), 'kontrol: tanpa listener saved, menyimpan SPT tidak menaikkan versi');
+
         app(SimpanSpt::class)->handle($user, $spt, $data([$b->id]), 'draf');
         $this->assertGreaterThan($v, CachePublik::versi());
 

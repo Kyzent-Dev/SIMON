@@ -56,13 +56,13 @@
                         <p>{{ LabelAktivitas::jenisImpor((string) $props->get('jenis')) }}: {{ number_format((int) $props->get('jumlah'), 0, ',', '.') }} baris dari {{ $props->get('berkas') }}</p>
                     @else
                         <table class="w-full table-fixed border-collapse text-left [&_td]:h-auto! [&_td]:pl-0! [&_td]:pr-3! [&_td]:py-0.5! [&_tbody_tr]:bg-transparent! [&_tbody_tr]:border-0! [&_th]:bg-mint-50! [&_td]:bg-mint-50!">
-                            <thead><tr class="text-neutral-600"><th scope="col" class="w-[42%] pr-3 pb-1 font-semibold">Kolom</th><th scope="col" class="w-[16%] pr-3 pb-1 font-semibold">Lama</th><th scope="col" class="pb-1 font-semibold">Baru</th></tr></thead>
+                            <thead><tr class="text-neutral-600"><th scope="col" class="w-[30%] pr-3 pb-1 font-semibold">Kolom</th><th scope="col" class="w-[30%] pr-3 pb-1 font-semibold">Lama</th><th scope="col" class="pb-1 font-semibold">Baru</th></tr></thead>
                             <tbody>
                                 @foreach ($kolom as $k)
                                     <tr class="align-top">
                                         <th scope="row" class="pr-3 pb-1 text-left font-semibold [overflow-wrap:break-word]">{!! str_replace('_', '_<wbr>', e($k)) !!}</th>
-                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($lama[$k] ?? null, $k) }}</td>
-                                        <td class="pb-1 [overflow-wrap:anywhere]">{{ $nilai($baru[$k] ?? null, $k) }}</td>
+                                        <td class="pb-1 break-words">{{ $nilai($lama[$k] ?? null, $k) }}</td>
+                                        <td class="pb-1 break-words">{{ $nilai($baru[$k] ?? null, $k) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
