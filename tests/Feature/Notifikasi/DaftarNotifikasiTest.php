@@ -215,7 +215,10 @@ class DaftarNotifikasiTest extends TestCase
         $html = Livewire::actingAs($user)->test(Daftar::class)->html();
 
         $this->assertStringContainsString('href="/spt/9"', $html); // new tab / copy link works without JS
-        $this->assertStringContainsString(sprintf('x-on:click="if ($event.button !== 0 || $event.ctrlKey || $event.metaKey || $event.shiftKey) return; $event.preventDefault(); $wire.buka(%s%s%s)"', "'", $n->id, "'"), $html);
+        // Only the meaningful parts, not the whole attribute string: the guard for modified clicks, preventDefault, and the Livewire call.
+        $this->assertMatchesRegularExpression('/x-on:click="[^"]*\$event\.ctrlKey[^"]*\$event\.metaKey[^"]*\$event\.shiftKey[^"]*"/', $html);
+        $this->assertMatchesRegularExpression('/x-on:click="[^"]*\$event\.preventDefault\(\)[^"]*"/', $html);
+        $this->assertStringContainsString("\$wire.buka('{$n->id}')", $html);
     }
 
     public function test_spt_number_in_konteks_wraps_only_after_slashes_and_stays_escaped(): void

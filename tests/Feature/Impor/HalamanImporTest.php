@@ -61,7 +61,7 @@ class HalamanImporTest extends TestCase
     public function test_unduh_templat(): void
     {
         $c = Livewire::actingAs($this->admin)->test(Page::class)->call('unduhTemplat')->assertFileDownloaded('templat-impor-spt.xlsx');
-        $path = tempnam(sys_get_temp_dir(), 't').'.xlsx';
+        $path = $this->berkasXlsxSementara('t');
         file_put_contents($path, $c->effects['download']['content'] ? base64_decode($c->effects['download']['content']) : '');
         $sheet = IOFactory::load($path)->getActiveSheet();
         $this->assertSame(SptImportParser::HEADERS, array_values(array_filter($sheet->rangeToArray('A1:R1')[0])));
@@ -90,7 +90,7 @@ class HalamanImporTest extends TestCase
     public function test_unduh_galat(): void
     {
         $c = $this->unggah($this->campuran())->call('unduhGalat')->assertFileDownloaded('galat-impor-spt.xlsx');
-        $path = tempnam(sys_get_temp_dir(), 'g').'.xlsx';
+        $path = $this->berkasXlsxSementara('g');
         file_put_contents($path, base64_decode($c->effects['download']['content']));
         $this->assertSame([['Baris', 'Kolom', 'Pesan'], ['5', 'irban', 'Irban "Irban IX" tidak ditemukan.']],
             array_map(fn ($r) => array_map('strval', $r), IOFactory::load($path)->getActiveSheet()->toArray()));
@@ -108,6 +108,9 @@ class HalamanImporTest extends TestCase
         $c = $this->unggah([$this->baris(['nomor_spt' => '700/9/I/SPT/2025'])])->assertSet('step', 2);
         // Real race: another request takes the number after the server-side recompute but before our insert (the `creating` hook runs inside the import transaction).
         $diambil = false;
+        $dispatcher = Spt::getEventDispatcher();
+        $event = 'eloquent.creating: '.Spt::class;
+        $sebelumnya = $dispatcher->getListeners($event);
         Spt::creating(function () use (&$diambil) {
             if (! $diambil) {
                 $diambil = true;
@@ -117,7 +120,11 @@ class HalamanImporTest extends TestCase
         try {
             $c->call('impor')->assertSet('step', 2)->assertDispatched('toast', type: 'error', message: 'Nomor SPT 700/9/I/SPT/2025 sudah dipakai. Muat ulang pratinjau.');
         } finally {
-            Spt::getEventDispatcher()->forget('eloquent.creating: '.Spt::class);
+            // Drop only the listener this test added: forget() the event, then put back what was there before.
+            $dispatcher->forget($event);
+            foreach ($sebelumnya as $listener) {
+                $dispatcher->listen($event, $listener);
+            }
         }
         $this->assertTrue($diambil);
         $this->assertSame(0, Spt::count()); // the whole import rolled back (the racing row shares our connection in this test)

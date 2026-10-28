@@ -63,9 +63,10 @@ class PkptIrbanIDemo2026Seeder extends Seeder
             'status' => StatusPkpt::Disahkan, 'disahkan_pada' => self::TAHUN.'-01-02 08:00:00',
         ]);
 
+        $urutanJenis = array_values(array_unique(array_column(self::ROWS, 2)));
         $keep = [];
         foreach (self::ROWS as [$mulai, $selesai, $nama, $keterangan]) {
-            $jenis = JenisPenugasan::where('nama', $nama)->first() ?? $this->buatJenis($nama);
+            $jenis = JenisPenugasan::where('nama', $nama)->first() ?? $this->buatJenis($nama, $urutanJenis);
             $keep[] = PkptItem::firstOrCreate([
                 'pkpt_id' => $pkpt->id, 'irban_id' => $irbanId, 'jenis_penugasan_id' => $jenis->id,
                 'tanggal_mulai' => $mulai, 'tanggal_selesai' => $selesai,
@@ -80,10 +81,15 @@ class PkptIrbanIDemo2026Seeder extends Seeder
             ->delete();
     }
 
-    private function buatJenis(string $nama): JenisPenugasan
+    /** @param list<string> $urutanJenis jenis-jenis unik dalam urutan ROWS */
+    private function buatJenis(string $nama, array $urutanJenis): JenisPenugasan
     {
         // Stable per name (position in ROWS), not the table size, so a rerun or extra rows do not shift colors.
-        $s = ColorRules::SWATCHES[array_search($nama, array_values(array_unique(array_column(self::ROWS, 2)))) % count(ColorRules::SWATCHES)];
+        $posisi = array_search($nama, $urutanJenis, true);
+        if ($posisi === false) {
+            throw new \LogicException("Jenis penugasan {$nama} tidak ada di ROWS.");
+        }
+        $s = ColorRules::SWATCHES[$posisi % count(ColorRules::SWATCHES)];
 
         return JenisPenugasan::create(['nama' => $nama, 'warna' => $s['hex'], 'warna_teks' => $s['label']]);
     }

@@ -121,13 +121,12 @@ class FondasiNotifikasiTest extends TestCase
     {
         $user = User::factory()->bagianUmum()->create();
 
-        try {
+        $this->assertThrows(function () use ($user) {
             DB::transaction(function () use ($user) {
                 $user->notify(new NotifikasiUji);
                 throw new \RuntimeException('batal');
             });
-        } catch (\RuntimeException) {
-        }
+        }, \RuntimeException::class, 'batal');
         $this->assertSame(0, $user->notifications()->count());
 
         DB::transaction(fn () => $user->notify(new NotifikasiUji));

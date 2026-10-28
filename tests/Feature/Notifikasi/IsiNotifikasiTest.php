@@ -33,17 +33,18 @@ class IsiNotifikasiTest extends TestCase
     {
         $spt = Spt::factory()->diterima()->create();
         $user = User::factory()->pimpinan()->create();
+        $perubahan = PkptPerubahan::factory()->diajukan()->create();
         $kasus = [
             [new SptTerlambat($spt, 14), 'Buka SPT', '/spt/'.$spt->id],
             [new PengingatSptFinal($spt), 'Buka SPT', '/spt/'.$spt->id],
-            [new PerubahanPkptDiajukan(PkptPerubahan::factory()->diajukan()->create()), 'Buka SINTAS', null],
+            [new PerubahanPkptDiajukan($perubahan), 'Buka SINTAS', '/pimpinan/perubahan-pkpt/'.$perubahan->id],
             [new EksporGagal('rekap.xlsx', '/rekap'), 'Buka SINTAS', '/rekap'],
-            [new KataSandiDiubah('budi'), 'Buka SINTAS', null],
+            [new KataSandiDiubah('budi'), 'Buka SINTAS', '/profil'],
         ];
         foreach ($kasus as [$n, $label, $path]) {
             $mail = $n->toMail($user);
             $this->assertSame($label, $mail->actionText, $n::class);
-            $this->assertSame(url($path ?? $n->url()), $mail->actionUrl, $n::class);
+            $this->assertSame(url($path), $mail->actionUrl, $n::class);
             $this->assertStringContainsString($label, (string) $mail->render(), $n::class);
         }
     }

@@ -127,9 +127,15 @@ class KalenderIrbanTest extends TestCase
         $html = Blade::render(
             '<x-app.kalender-pkpt :kalender="$k" :tahun="2026" /><x-app.kalender-pkpt :kalender="$k" :tahun="2026" id="kedua" />', ['k' => $kalender]);
 
-        preg_match_all('/\sid="([^"]+)"/', $html, $m);
-        $this->assertNotEmpty($m[1]);
-        $this->assertSame([], array_keys(array_filter(array_count_values($m[1]), fn ($n) => $n > 1)), 'id ganda');
+        $ganda = function (string $html) {
+            preg_match_all('/\sid="([^"]+)"/', $html, $m);
+
+            return array_keys(array_filter(array_count_values($m[1]), fn ($n) => $n > 1));
+        };
+        $this->assertSame([], $ganda($html), 'id ganda');
+        // Control: the same check does flag duplicates when both instances keep the default id (otherwise it would pass vacuously).
+        $this->assertContains('judul-kalender', $ganda(Blade::render(
+            '<x-app.kalender-pkpt :kalender="$k" :tahun="2026" /><x-app.kalender-pkpt :kalender="$k" :tahun="2026" />', ['k' => $kalender])));
         // Control: the second instance really renders ids of its own.
         $this->assertStringContainsString('id="judul-kedua"', $html);
         $this->assertStringContainsString('id="judul-kalender"', $html);

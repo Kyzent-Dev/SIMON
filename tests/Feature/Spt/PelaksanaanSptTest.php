@@ -232,13 +232,9 @@ class PelaksanaanSptTest extends TestCase
         $spt = $this->spt();
         SptDokumen::creating(fn () => throw new \RuntimeException('gagal'));
 
-        try {
-            $this->unggah($spt);
-            $this->fail('RuntimeException expected');
-        } catch (\RuntimeException) {
-            $this->assertSame([], Storage::disk('local')->allFiles());
-            $this->assertSame(0, $spt->riwayat()->count());
-        }
+        $this->assertThrows(fn () => $this->unggah($spt), \RuntimeException::class, 'gagal');
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->assertSame(0, $spt->riwayat()->count());
     }
 
     public function test_dokumen_baru_dapat_diunduh_sesuai_otorisasi(): void

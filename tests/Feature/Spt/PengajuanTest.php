@@ -26,7 +26,6 @@ use Database\Seeders\UserSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -476,11 +475,19 @@ class PengajuanTest extends TestCase
     /** Locking reads of one PKPT row (`Pkpt::whereKey()->lockForUpdate()`) while $fn runs. */
     private function kunciPkpt(callable $fn): int
     {
-        DB::flushQueryLog();
-        DB::enableQueryLog();
-        $fn();
-        $n = collect(DB::getQueryLog())->filter(fn ($q) => preg_match('/^select \* from [`"]pkpt[`"] where [`"]pkpt[`"]\.[`"]id[`"] = \?/', $q['query']))->count();
-        DB::disableQueryLog();
+        // Counts queries that really carry a lock flag: SQLite drops FOR UPDATE from the SQL, so the SQL text cannot tell a locking read from a plain find.
+        $n = 0;
+        $aktif = true;
+        Pkpt::addGlobalScope('hitung-kunci', function ($builder) use (&$n, &$aktif) {
+            if ($aktif && $builder->getQuery()->lock) {
+                $n++;
+            }
+        });
+        try {
+            $fn();
+        } finally {
+            $aktif = false;
+        }
 
         return $n;
     }

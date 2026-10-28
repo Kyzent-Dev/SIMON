@@ -101,6 +101,16 @@ class PegawaiTest extends TestCase
             ->call('sort', 'nip')->assertSet('sortBy', 'nip')->assertSet('sortDir', 'asc');
     }
 
+    public function test_empty_optional_cells_show_a_dash_and_filled_ones_do_not(): void
+    {
+        Pegawai::factory()->create(['nama_bergelar' => 'Kosong', 'pangkat' => null, 'golongan' => null, 'jabatan' => null, 'email' => null]);
+        $this->assertSame(3, substr_count($this->page()->html(), '>—</td>'), 'pangkat/golongan, jabatan, email');
+
+        Pegawai::query()->delete();
+        Pegawai::factory()->denganEmail()->create(['pangkat' => 'Penata', 'golongan' => 'III/c', 'jabatan' => 'Auditor']);
+        $this->assertSame(0, substr_count($this->page()->html(), '>—</td>'));
+    }
+
     public function test_sort_ignores_unknown_column(): void
     {
         $this->page()->call('sort', 'password')->assertSet('sortBy', 'nama');

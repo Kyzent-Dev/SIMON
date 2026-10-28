@@ -89,8 +89,18 @@ trait SptImportTestHelpers
                 is_int($v) || is_float($v) ? $sheet->setCellValueExplicit([$c + 1, $r + 2], $v, 'n') : $sheet->setCellValueExplicit([$c + 1, $r + 2], (string) $v, 's');
             }
         }
-        $path = tempnam(sys_get_temp_dir(), 'spt').'.xlsx';
+        $path = $this->berkasXlsxSementara('spt');
         IOFactory::createWriter($s, 'Xlsx')->save($path);
+
+        return $path;
+    }
+
+    /** A `.xlsx` path in the temp dir; both it and the `tempnam` stub behind it are deleted when the test ends. */
+    protected function berkasXlsxSementara(string $awalan): string
+    {
+        $dasar = tempnam(sys_get_temp_dir(), $awalan);
+        $path = $dasar.'.xlsx';
+        $this->beforeApplicationDestroyed(fn () => array_map(fn ($f) => @unlink($f), [$dasar, $path]));
 
         return $path;
     }

@@ -175,13 +175,12 @@ class NotifikasiPerubahanPkptTest extends TestCase
     {
         // Real delivery (sync queue, array mailer): the bell rows would roll back anyway, so the emails are the signal.
         $terkirim = fn () => count(app('mailer')->getSymfonyTransport()->messages());
-        try {
+        $this->assertThrows(function () {
             DB::transaction(function () {
                 $this->ajukan();
                 throw new \RuntimeException('batal');
             });
-        } catch (\RuntimeException) {
-        }
+        }, \RuntimeException::class, 'batal');
         $this->assertSame(0, $terkirim());
         $this->assertSame('draf', $this->p->fresh()->status->value);
 

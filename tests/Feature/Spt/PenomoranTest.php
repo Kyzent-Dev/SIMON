@@ -332,11 +332,7 @@ class PenomoranTest extends TestCase
                 throw new RuntimeException('Percobaan pertama gagal');
             }
         });
-        try {
-            $this->penomoran()->simpanAturan($simpan);
-            $this->fail('RuntimeException expected');
-        } catch (RuntimeException) {
-        }
+        $this->assertThrows(fn () => $this->penomoran()->simpanAturan($simpan), RuntimeException::class, 'Percobaan pertama gagal');
         $this->assertSame('global', $settings->get('penomoran.scope'));
         $this->assertSame(0, Activity::where('log_name', 'pengaturan')->count());
 
