@@ -162,6 +162,40 @@ class ProfilTest extends TestCase
             ->assertSessionHas('toast', ['type' => 'error', 'message' => 'Tautan tidak berlaku atau sudah dipakai.']);
     }
 
+    public function test_pending_email_can_be_resent_with_a_new_link_and_the_throttle_holds(): void
+    {
+        $user = User::factory()->pimpinan()->create(['email' => 'lama@example.test']);
+        $c = Livewire::actingAs($user)->test(Profil::class)->assertDontSee('Kirim ulang tautan');
+        $c->set('email', 'baru@example.test')->call('simpanAkun')->assertSee('Kirim ulang tautan');
+
+        $c->call('kirimUlangEmail')->assertHasNoErrors()->assertDispatched('toast', type: 'success', message: 'Tautan verifikasi dikirim ulang ke baru@example.test.');
+        Notification::assertSentOnDemandTimes(VerifikasiEmailBaru::class, 2);
+
+        // The resent link replaces the first one (new nonce) and works.
+        $tautan = null;
+        Notification::assertSentOnDemand(VerifikasiEmailBaru::class, function ($n, $ch, AnonymousNotifiable $to) use (&$tautan) {
+            $tautan = $n->toMail($to)->actionUrl;
+
+            return true;
+        });
+        $this->actingAs($user)->get($tautan)->assertSessionHas('toast.type', 'success');
+        $this->assertSame('baru@example.test', $user->fresh()->email);
+
+        // Throttle: simpanAkun + kirimUlang above used 2 of 3; one more is allowed, the fourth is refused.
+        $user->forceFill(['email_baru' => 'lagi@example.test'])->save();
+        $c = Livewire::actingAs($user->fresh())->test(Profil::class);
+        $c->call('kirimUlangEmail')->assertHasNoErrors();
+        $c->call('kirimUlangEmail')->assertHasErrors(['email']);
+        Notification::assertSentOnDemandTimes(VerifikasiEmailBaru::class, 3);
+    }
+
+    public function test_resend_needs_a_pending_request_and_a_non_irban_owner(): void
+    {
+        Livewire::actingAs(User::factory()->pimpinan()->create())->test(Profil::class)->call('kirimUlangEmail')->assertForbidden();
+        Livewire::actingAs(User::factory()->irban()->create(['email_baru' => 'x@example.test']))->test(Profil::class)->assertDontSee('Kirim ulang tautan')->call('kirimUlangEmail')->assertForbidden();
+        Notification::assertNothingSent();
+    }
+
     public function test_expired_or_tampered_link_is_rejected(): void
     {
         $user = User::factory()->pimpinan()->create(['email' => 'lama@example.test']);

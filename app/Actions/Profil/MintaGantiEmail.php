@@ -49,20 +49,38 @@ class MintaGantiEmail
             'email.email' => 'Format email tidak valid.',
         ], ['email' => 'Email'])->validate();
 
-        // Only real attempts count: cancelling or repeating the pending address above never reaches this point.
+        $this->batasi($user);
+
+        $user->forceFill(['email_baru' => $baru])->save();
+        $this->kirimTautan($user, $baru);
+
+        return true;
+    }
+
+    /** Resend the link for the pending `email_baru` (a lost mail); shares the throttle with new requests. */
+    public function kirimUlang(User $user): void
+    {
+        abort_if($user->role === Role::Irban || ! $user->email_baru, 403);
+        $this->batasi($user);
+        $this->kirimTautan($user, $user->email_baru);
+    }
+
+    /** Only real attempts count: cancelling or repeating the pending address never reaches this. */
+    private function batasi(User $user): void
+    {
         $kunci = 'ganti-email:'.$user->id;
         if (RateLimiter::tooManyAttempts($kunci, 3)) {
             throw ValidationException::withMessages(['email' => 'Terlalu banyak permintaan. Coba lagi dalam '.RateLimiter::availableIn($kunci).' detik.']);
         }
         RateLimiter::hit($kunci, 600);
+    }
 
-        $user->forceFill(['email_baru' => $baru])->save();
+    private function kirimTautan(User $user, string $baru): void
+    {
         // A fresh nonce per request: a link from an earlier request (X, then Y, then X again) no longer matches.
         $nonce = Str::random(40);
         Cache::put(self::kunciNonce($user), $nonce, now()->addMinutes(60));
         $tautan = URL::temporarySignedRoute('profil.email.verifikasi', now()->addMinutes(60), ['user' => $user->id, 'hash' => self::hash($baru, $nonce)]);
         Notification::route('mail', $baru)->notify(new VerifikasiEmailBaru($user->username, $tautan));
-
-        return true;
     }
 }

@@ -84,7 +84,10 @@
                         <x-ui.input label="Email" name="email" type="email" wire:model="email" required maxlength="255" autocomplete="email"
                             helper="Email baru berlaku setelah tautan verifikasi yang dikirim ke alamat itu dibuka." :error="$errors->first('email')" />
                         @if ($user->email_baru)
-                            <x-ui.alert variant="info" icon="envelope">Menunggu verifikasi: {{ $user->email_baru }}</x-ui.alert>
+                            <x-ui.alert variant="info" icon="envelope" class="items-center max-sm:flex-col max-sm:items-start">
+                                <p class="break-all">Menunggu verifikasi: {{ $user->email_baru }}</p>
+                                <x-ui.button type="button" variant="secondary" icon="paper-airplane" wire:click="kirimUlangEmail" wire:loading.attr="disabled" wire:target="kirimUlangEmail" class="mt-2">Kirim ulang tautan</x-ui.button>
+                            </x-ui.alert>
                         @endif
                         <div class="{{ $footer }}">
                             <x-ui.button wire:loading.attr="disabled" wire:target="simpanAkun" class="max-sm:w-full sm:ml-auto">Simpan data akun</x-ui.button>

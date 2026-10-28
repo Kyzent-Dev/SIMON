@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Actions\Profil\GantiKataSandi;
 use App\Actions\Profil\HapusGambarProfil;
+use App\Actions\Profil\MintaGantiEmail;
 use App\Actions\Profil\SimpanGambarProfil;
 use App\Actions\Profil\UbahDataAkun;
 use App\Enums\Role;
@@ -93,6 +94,14 @@ class Profil extends Component
             return;
         }
         $this->dispatch('toast', type: 'success', message: $pesan);
+    }
+
+    public function kirimUlangEmail(MintaGantiEmail $action): void
+    {
+        $user = $this->pengguna();
+        $this->resetValidation();
+        $action->kirimUlang($user);
+        $this->dispatch('toast', type: 'success', message: "Tautan verifikasi dikirim ulang ke {$user->email_baru}.");
     }
 
     public function simpanGambar(SimpanGambarProfil $action): void
