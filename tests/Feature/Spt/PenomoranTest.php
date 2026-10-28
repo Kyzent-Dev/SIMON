@@ -16,6 +16,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use RuntimeException;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class PenomoranTest extends TestCase
@@ -309,6 +311,39 @@ class PenomoranTest extends TestCase
         $sebelum = NomorCounter::orderBy('id')->pluck('nomor_terakhir', 'id')->all();
         $this->simpanPenomoran(['penomoran.kode_arsip' => '700']);
         $this->assertSame($sebelum, NomorCounter::orderBy('id')->pluck('nomor_terakhir', 'id')->all());
+    }
+
+    public function test_a_rolled_back_attempt_leaves_no_trace_so_the_retry_still_raises_the_registers(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-05-04 10:00', 'Asia/Jakarta'));
+        $settings = app(Settings::class);
+        $a = $this->irban('A');
+        $this->terbit($a);
+        $this->terbit($a);
+
+        // DB::transaction(attempts: 3) reruns the same closure after a deadlock; under RefreshDatabase that transaction is nested and
+        // Laravel does not retry it, so the test plays both attempts itself. The first fails while raising the registers, after
+        // the new rule was written and read back. (A "Deadlock" message would also skip the savepoint rollback when nested.)
+        $simpan = fn () => $settings->set('penomoran.scope', 'per_irban');
+        $gagal = true;
+        NomorCounter::saving(function () use (&$gagal) {
+            if ($gagal) {
+                $gagal = false;
+                throw new RuntimeException('Percobaan pertama gagal');
+            }
+        });
+        try {
+            $this->penomoran()->simpanAturan($simpan);
+            $this->fail('RuntimeException expected');
+        } catch (RuntimeException) {
+        }
+        $this->assertSame('global', $settings->get('penomoran.scope'));
+        $this->assertSame(0, Activity::where('log_name', 'pengaturan')->count());
+
+        $this->penomoran()->simpanAturan($simpan); // the retry
+        $this->assertSame(2, NomorCounter::where(['tahun' => 2026, 'scope' => "irban:{$a->id}"])->value('nomor_terakhir'));
+        $this->assertSame(3, $this->terbit($a)['nomor_urut']);
+        $this->assertSame(['penomoran.scope' => 'per_irban'], Activity::where('log_name', 'pengaturan')->sole()->properties['attributes']);
     }
 
     public function test_ambil_and_pratinjau_skip_a_nomor_lengkap_already_issued(): void

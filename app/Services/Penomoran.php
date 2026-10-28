@@ -19,10 +19,13 @@ class Penomoran
     /** @return array{tahun: int, scope: string} counter key for a register (year of the decision). */
     public function kunci(?Irban $irban, int $tahun): array
     {
-        return [
-            'tahun' => $this->settings->get('penomoran.reset_tahunan') ? $tahun : 0,
-            'scope' => $this->settings->get('penomoran.scope') === 'per_irban' ? "irban:{$irban?->id}" : 'global',
-        ];
+        return self::kunciAturan([$this->settings->get('penomoran.scope'), $this->settings->get('penomoran.reset_tahunan')], $irban, $tahun);
+    }
+
+    /** @param array{0: string, 1: bool} $aturan [scope, reset_tahunan] */
+    private static function kunciAturan(array $aturan, ?Irban $irban, int $tahun): array
+    {
+        return ['tahun' => $aturan[1] ? $tahun : 0, 'scope' => $aturan[0] === 'per_irban' ? "irban:{$irban?->id}" : 'global'];
     }
 
     /**
@@ -53,19 +56,21 @@ class Penomoran
     {
         DB::transaction(function () use ($simpan) {
             $tahun = CarbonImmutable::now('Asia/Jakarta')->year;
-            $aturan = fn () => [$this->settings->get('penomoran.scope'), $this->settings->get('penomoran.reset_tahunan')];
+            // From the table, not the cache: the cache only changes after commit, and a retried attempt must see the rolled-back values.
+            $aturan = fn () => [$this->settings->segar('penomoran.scope'), $this->settings->segar('penomoran.reset_tahunan')];
             $lama = $aturan();
             // Lock first so an ambil in flight on an old register finishes before the highest number is read.
-            $terpakai = NomorCounter::whereIn('tahun', array_unique([$tahun, $this->kunci(null, $tahun)['tahun']]))
+            $terpakai = NomorCounter::whereIn('tahun', array_unique([$tahun, self::kunciAturan($lama, null, $tahun)['tahun']]))
                 ->lockForUpdate()->pluck('nomor_terakhir')->max();
 
             $simpan();
-            if ($aturan() === $lama) {
+            $baru = $aturan();
+            if ($baru === $lama) {
                 return;
             }
             $tertinggi = max((int) $terpakai, (int) Spt::where('tahun', $tahun)->max('nomor_urut'));
-            foreach ($this->settings->get('penomoran.scope') === 'per_irban' ? Irban::all() : [null] as $irban) {
-                $kunci = $this->kunci($irban, $tahun);
+            foreach ($baru[0] === 'per_irban' ? Irban::all() : [null] as $irban) {
+                $kunci = self::kunciAturan($baru, $irban, $tahun);
                 self::pastikanCounter($kunci);
                 $counter = NomorCounter::where($kunci)->lockForUpdate()->firstOrFail();
                 if ($counter->nomor_terakhir < $tertinggi) {

@@ -64,7 +64,7 @@ class Settings
     public function set(string $key, mixed $value): void
     {
         $this->assertKnown($key);
-        $lama = $this->get($key);
+        $lama = $this->get($key); // inside an outer transaction the cache still holds the committed value, so a retry logs the change again
         DB::transaction(function () use ($key, $value, $lama) { // the value and its log row commit or roll back together
             DB::table('settings')->upsert(
                 [['key' => $key, 'value' => json_encode($value, JSON_UNESCAPED_UNICODE), 'created_at' => now(), 'updated_at' => now()]],
@@ -78,8 +78,19 @@ class Settings
                 activity('pengaturan')->event('updated')
                     ->withProperties(['old' => [$key => $lama], 'attributes' => [$key => $value]])->log('updated');
             }
+            // Only after commit: forgetting now lets the next get() cache this transaction's uncommitted values for every
+            // request, and keep them after a rollback. Without an outer transaction this runs when the block above commits.
+            DB::afterCommit(fn () => Cache::forget(self::CACHE_KEY));
         });
-        Cache::forget(self::CACHE_KEY);
+    }
+
+    /** The value as this connection sees it now, bypassing the cache (stale inside a transaction that called set()). */
+    public function segar(string $key): mixed
+    {
+        $this->assertKnown($key);
+        $value = DB::table('settings')->where('key', $key)->value('value');
+
+        return $value === null ? self::DEFAULTS[$key] : json_decode($value, true);
     }
 
     /** Current values as a nested array (dot keys become nested keys), e.g. ['penomoran' => ['format' => ...]]. */
@@ -142,12 +153,8 @@ class Settings
                 });
             }
         };
-        try {
-            // A scope/reset change must move the counters in the same transaction (PRD §9.1).
-            $group === 'penomoran' ? app(Penomoran::class)->simpanAturan($simpan) : $simpan();
-        } finally {
-            Cache::forget(self::CACHE_KEY); // set() ran inside that transaction: drop values cached before its commit or after a rollback
-        }
+        // A scope/reset change must move the counters in the same transaction (PRD §9.1).
+        $group === 'penomoran' ? app(Penomoran::class)->simpanAturan($simpan) : $simpan();
     }
 
     private static function groupKeys(string $group): array
