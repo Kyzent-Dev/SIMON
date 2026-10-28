@@ -171,14 +171,16 @@ class ProfilTest extends TestCase
         $c->call('kirimUlangEmail')->assertHasNoErrors()->assertDispatched('toast', type: 'success', message: 'Tautan verifikasi dikirim ulang ke baru@example.test.');
         Notification::assertSentOnDemandTimes(VerifikasiEmailBaru::class, 2);
 
-        // The resent link replaces the first one (new nonce) and works.
-        $tautan = null;
+        // The resent link replaces the first one (new nonce): the first is rejected, the second works.
+        $tautan = [];
         Notification::assertSentOnDemand(VerifikasiEmailBaru::class, function ($n, $ch, AnonymousNotifiable $to) use (&$tautan) {
-            $tautan = $n->toMail($to)->actionUrl;
+            $tautan[] = $n->toMail($to)->actionUrl;
 
             return true;
         });
-        $this->actingAs($user)->get($tautan)->assertSessionHas('toast.type', 'success');
+        $this->assertCount(2, $tautan);
+        $this->actingAs($user)->get($tautan[0])->assertSessionHas('toast', ['type' => 'error', 'message' => 'Tautan tidak berlaku atau sudah dipakai.']);
+        $this->actingAs($user)->get($tautan[1])->assertSessionHas('toast.type', 'success');
         $this->assertSame('baru@example.test', $user->fresh()->email);
 
         // Throttle: simpanAkun + kirimUlang above used 2 of 3; one more is allowed, the fourth is refused.
