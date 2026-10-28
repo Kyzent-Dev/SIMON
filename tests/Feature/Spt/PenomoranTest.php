@@ -234,6 +234,102 @@ class PenomoranTest extends TestCase
         $this->assertSame(0, (new AturNomorAwal)->handle($admin, 2026, $irban, 3)->tahun);
     }
 
+    /** Takes the next number and issues an SPT with it, as TerimaPengajuan does. */
+    private function terbit(Irban $irban, string $tanggal = '2026-05-04'): array
+    {
+        $hasil = $this->ambil($irban, $tanggal);
+        Spt::factory()->for($irban)->create([
+            'status_pengajuan' => StatusPengajuan::Diterima, 'nomor_urut' => $hasil['nomor_urut'],
+            'nomor_lengkap' => $hasil['nomor_lengkap'], 'nomor_counter_id' => $hasil['counter']->id, 'tahun' => (int) substr($tanggal, 0, 4),
+        ]);
+
+        return $hasil;
+    }
+
+    /** Saves the penomoran card the way the Pengaturan page does. */
+    private function simpanPenomoran(array $ubah): void
+    {
+        $settings = app(Settings::class);
+        $nested = $settings->all();
+        foreach ($ubah as $key => $value) {
+            data_set($nested, $key, $value);
+        }
+        $settings->saveGroup('penomoran', $nested);
+    }
+
+    public function test_global_to_per_irban_mid_year_continues_from_the_highest_number(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-05-04 10:00', 'Asia/Jakarta'));
+        [$a, $b, $c] = [$this->irban('A'), $this->irban('B'), $this->irban('C')];
+        $this->terbit($a);
+        $this->terbit($a);
+        $this->terbit($b);
+
+        $this->simpanPenomoran(['penomoran.scope' => 'per_irban']);
+
+        foreach ([$a, $b, $c] as $irban) {
+            $this->assertSame(3, NomorCounter::where(['tahun' => 2026, 'scope' => "irban:{$irban->id}"])->value('nomor_terakhir'));
+        }
+        $this->assertSame(['nomor_urut' => 4, 'nomor_lengkap' => '700/4/A/SPT/2026'], $this->penomoran()->pratinjau($a, CarbonImmutable::parse('2026-05-04')));
+        $this->assertSame('700/4/A/SPT/2026', $this->terbit($a)['nomor_lengkap']);
+        $this->assertSame('700/4/C/SPT/2026', $this->terbit($c)['nomor_lengkap']);
+        $this->assertSame(5, Spt::count());
+    }
+
+    public function test_per_irban_to_global_continues_from_the_highest_register(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-05-04 10:00', 'Asia/Jakarta'));
+        app(Settings::class)->set('penomoran.scope', 'per_irban');
+        [$a, $b] = [$this->irban('A'), $this->irban('B')];
+        foreach ([$a, $a, $a, $b] as $irban) {
+            $this->terbit($irban);
+        }
+
+        $this->simpanPenomoran(['penomoran.scope' => 'global']);
+
+        $this->assertSame(4, $this->terbit($b)['nomor_urut']);
+        $this->assertSame(5, $this->terbit($a)['nomor_urut']);
+    }
+
+    public function test_reset_tahunan_on_off_on_never_reuses_a_stale_register(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-05-04 10:00', 'Asia/Jakarta'));
+        $a = $this->irban('A');
+        $this->terbit($a);
+        $this->terbit($a);
+
+        $this->simpanPenomoran(['penomoran.reset_tahunan' => false]);
+        $this->assertSame(3, $this->terbit($a)['nomor_urut']);
+        $this->assertSame(4, $this->terbit($a)['nomor_urut']);
+
+        $this->simpanPenomoran(['penomoran.reset_tahunan' => true]);
+        $this->assertSame('700/5/A/SPT/2026', $this->terbit($a)['nomor_lengkap']);
+
+        // Control: saving without a scope/reset change leaves the registers alone.
+        $sebelum = NomorCounter::orderBy('id')->pluck('nomor_terakhir', 'id')->all();
+        $this->simpanPenomoran(['penomoran.kode_arsip' => '700']);
+        $this->assertSame($sebelum, NomorCounter::orderBy('id')->pluck('nomor_terakhir', 'id')->all());
+    }
+
+    public function test_ambil_and_pratinjau_skip_a_nomor_lengkap_already_issued(): void
+    {
+        $settings = app(Settings::class);
+        $a = $this->irban('A');
+        $settings->set('penomoran.format', '{nomor_urut}{kode_arsip}/{tahun}');
+        $settings->set('penomoran.kode_arsip', '0');
+        $this->assertSame('10/2026', $this->terbit($a)['nomor_lengkap']);
+        NomorCounter::first()->forceFill(['nomor_terakhir' => 9])->save();
+
+        // The new format rebuilds "10/2026" at nomor 10, already issued under the old format.
+        $settings->set('penomoran.format', '{nomor_urut}/{tahun}');
+        $tanggal = CarbonImmutable::parse('2026-05-04');
+        $this->assertSame(['nomor_urut' => 11, 'nomor_lengkap' => '11/2026'], $this->penomoran()->pratinjau($a, $tanggal));
+        $this->assertSame(9, NomorCounter::first()->nomor_terakhir);
+        $hasil = $this->terbit($a);
+        $this->assertSame(['nomor_urut' => 11, 'nomor_lengkap' => '11/2026'], ['nomor_urut' => $hasil['nomor_urut'], 'nomor_lengkap' => $hasil['nomor_lengkap']]);
+        $this->assertSame(11, NomorCounter::first()->nomor_terakhir);
+    }
+
     private function assertRejected(callable $fn, string $key, string $message): void
     {
         try {

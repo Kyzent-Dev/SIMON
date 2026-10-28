@@ -128,16 +128,25 @@ class Settings
     /** Persist one card from validated nested input, coercing each value to its default's type. Other cards' keys are untouched. */
     public function saveGroup(string $group, array $nested): void
     {
-        foreach (self::groupKeys($group) as $key) {
-            $value = Arr::get($nested, $key);
-            $default = self::DEFAULTS[$key];
-            $this->set($key, match (true) {
-                is_bool($default) => (bool) $value,
-                is_int($default) => (int) $value,
-                is_array($default) => array_values(array_map('trim', (array) $value)),
-                is_string($default) => (string) $value,
-                default => $value,
-            });
+        $keys = self::groupKeys($group);
+        $simpan = function () use ($keys, $nested) {
+            foreach ($keys as $key) {
+                $value = Arr::get($nested, $key);
+                $default = self::DEFAULTS[$key];
+                $this->set($key, match (true) {
+                    is_bool($default) => (bool) $value,
+                    is_int($default) => (int) $value,
+                    is_array($default) => array_values(array_map('trim', (array) $value)),
+                    is_string($default) => (string) $value,
+                    default => $value,
+                });
+            }
+        };
+        try {
+            // A scope/reset change must move the counters in the same transaction (PRD §9.1).
+            $group === 'penomoran' ? app(Penomoran::class)->simpanAturan($simpan) : $simpan();
+        } finally {
+            Cache::forget(self::CACHE_KEY); // set() ran inside that transaction: drop values cached before its commit or after a rollback
         }
     }
 

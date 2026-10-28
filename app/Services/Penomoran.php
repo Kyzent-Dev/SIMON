@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Irban;
 use App\Models\Klasifikasi;
 use App\Models\NomorCounter;
+use App\Models\Spt;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -37,13 +39,40 @@ class Penomoran
 
         self::pastikanCounter($kunci);
         $counter = NomorCounter::where($kunci)->lockForUpdate()->firstOrFail();
-        $counter->increment('nomor_terakhir');
+        $bebas = $this->nomorBebas($counter->nomor_terakhir + 1, $irban, $tanggal, $klasifikasi);
+        $counter->increment('nomor_terakhir', $bebas['nomor_urut'] - $counter->nomor_terakhir);
 
-        return [
-            'counter' => $counter,
-            'nomor_urut' => $counter->nomor_terakhir,
-            'nomor_lengkap' => $this->format($counter->nomor_terakhir, $irban, $tanggal, $klasifikasi),
-        ];
+        return ['counter' => $counter] + $bebas;
+    }
+
+    /**
+     * Saves the penomoran card through $simpan. When scope or reset_tahunan changes, every register of the new rule for the current
+     * year (Asia/Jakarta) continues from the highest number used this year, so a new register never restarts at 1 (PRD §9.1).
+     */
+    public function simpanAturan(Closure $simpan): void
+    {
+        DB::transaction(function () use ($simpan) {
+            $tahun = CarbonImmutable::now('Asia/Jakarta')->year;
+            $aturan = fn () => [$this->settings->get('penomoran.scope'), $this->settings->get('penomoran.reset_tahunan')];
+            $lama = $aturan();
+            // Lock first so an ambil in flight on an old register finishes before the highest number is read.
+            $terpakai = NomorCounter::whereIn('tahun', array_unique([$tahun, $this->kunci(null, $tahun)['tahun']]))
+                ->lockForUpdate()->pluck('nomor_terakhir')->max();
+
+            $simpan();
+            if ($aturan() === $lama) {
+                return;
+            }
+            $tertinggi = max((int) $terpakai, (int) Spt::where('tahun', $tahun)->max('nomor_urut'));
+            foreach ($this->settings->get('penomoran.scope') === 'per_irban' ? Irban::all() : [null] as $irban) {
+                $kunci = $this->kunci($irban, $tahun);
+                self::pastikanCounter($kunci);
+                $counter = NomorCounter::where($kunci)->lockForUpdate()->firstOrFail();
+                if ($counter->nomor_terakhir < $tertinggi) {
+                    $counter->forceFill(['nomor_terakhir' => $tertinggi])->save(); // per model, so the activity log records it
+                }
+            }
+        }, attempts: 3);
     }
 
     /**
@@ -62,7 +91,25 @@ class Penomoran
     {
         $nomor = (int) NomorCounter::where($this->kunci($irban, $this->tahun($tanggal)))->value('nomor_terakhir') + 1;
 
-        return ['nomor_urut' => $nomor, 'nomor_lengkap' => $this->format($nomor, $irban, $tanggal, $klasifikasi)];
+        return $this->nomorBebas($nomor, $irban, $tanggal, $klasifikasi);
+    }
+
+    /**
+     * First number from $nomor whose nomor_lengkap is not issued yet: a changed format or an imported/manual number can rebuild
+     * a string already in spt (unique), so it is skipped instead of failing the acceptance.
+     *
+     * @return array{nomor_urut: int, nomor_lengkap: string}
+     */
+    private function nomorBebas(int $nomor, Irban $irban, CarbonImmutable $tanggal, ?Klasifikasi $klasifikasi): array
+    {
+        for ($batas = $nomor + 1000; $nomor < $batas; $nomor++) {
+            $lengkap = $this->format($nomor, $irban, $tanggal, $klasifikasi);
+            if (! Spt::where('nomor_lengkap', $lengkap)->exists()) {
+                return ['nomor_urut' => $nomor, 'nomor_lengkap' => $lengkap];
+            }
+        }
+
+        throw new LogicException('Tidak ada nomor SPT bebas dalam 1.000 nomor berikutnya; periksa format penomoran.');
     }
 
     public function format(int $nomorUrut, Irban $irban, CarbonImmutable $tanggal, ?Klasifikasi $klasifikasi = null): string

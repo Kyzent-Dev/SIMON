@@ -4,10 +4,14 @@ namespace Tests\Feature\MasterData;
 
 use App\Enums\Role;
 use App\Livewire\Admin\Pengaturan;
+use App\Models\Irban;
+use App\Models\NomorCounter;
+use App\Models\Spt;
 use App\Models\User;
 use App\Services\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class PengaturanTest extends TestCase
@@ -129,6 +133,24 @@ class PengaturanTest extends TestCase
 
         $this->assertDatabaseCount('settings', 0);
         $this->assertCount(5, app(Settings::class)->get('kendala.kategori'));
+    }
+
+    public function test_changing_scope_moves_every_new_register_past_the_highest_number_and_logs_it(): void
+    {
+        $this->travelTo(now('Asia/Jakarta')->setDate(2026, 5, 4));
+        [$a, $b] = Irban::factory()->count(2)->create();
+        // An imported number with no counter still counts: numbers are never reused.
+        Spt::factory()->for($a)->diterima()->create(['nomor_urut' => 7, 'nomor_lengkap' => '700/7/X/SPT/2026', 'tahun' => 2026]);
+
+        Livewire::actingAs($this->admin())->test(Pengaturan::class)
+            ->set('v.penomoran.scope', 'per_irban')->call('save', 'penomoran')->assertHasNoErrors();
+
+        foreach ([$a, $b] as $irban) {
+            $counter = NomorCounter::where(['tahun' => 2026, 'scope' => "irban:{$irban->id}"])->firstOrFail();
+            $this->assertSame(7, $counter->nomor_terakhir);
+            $log = Activity::where('subject_type', $counter->getMorphClass())->where('subject_id', $counter->id)->where('event', 'updated')->firstOrFail();
+            $this->assertSame(7, $log->properties['attributes']['nomor_terakhir']);
+        }
     }
 
     public function test_unknown_group_is_404(): void

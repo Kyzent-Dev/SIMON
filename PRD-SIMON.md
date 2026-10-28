@@ -312,6 +312,7 @@ Tabel `pkpt_item_revisi` dihapus pada Fase 9.2: migrasi data mengubah setiap rev
 - Format: `{kode_arsip}/{nomor_urut}/{kode_irban}/SPT/{tahun}`. Default `kode_arsip` = `700`. Simpan format sebagai template di Pengaturan.
 - Ambil nomor di dalam transaksi database dengan `lockForUpdate()` pada baris `nomor_counter`. **Jangan** memakai `MAX(nomor_urut) + 1`.
 - Scope urutan (global untuk semua irban atau per irban) dan reset per tahun diatur di Pengaturan. Default: global, reset setiap tahun.
+- Bila scope atau reset tahunan diganti di tengah tahun, setiap register menurut aturan baru untuk tahun berjalan melanjutkan dari nomor urut tertinggi yang sudah terpakai tahun itu (termasuk nomor manual, impor, dan yang dibatalkan), dan nomor lengkap yang sudah ada di SPT dilewati, sehingga nomor tidak pernah bentrok.
 - Nomor yang sudah terbit tidak boleh berubah atau dipakai ulang. Pembatalan hanya mengubah status.
 - Tahun di nomor mengikuti tanggal keputusan Bagian Umum.
 
