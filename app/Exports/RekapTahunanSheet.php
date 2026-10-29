@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Exports\Concerns\AmanFormula;
+use App\Services\ColorRules;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
@@ -94,6 +95,12 @@ class RekapTahunanSheet extends DefaultValueBinder implements FromArray, WithCol
         return $lebar;
     }
 
+    /** Text on a klasifikasi colour: the same white/neutral-900 choice as the Admin preview. */
+    private static function teks(string $warna): string
+    {
+        return ltrim(ColorRules::labelFor('#'.$warna) ?? ColorRules::DARK, '#');
+    }
+
     public function registerEvents(): array
     {
         return [AfterSheet::class => function (AfterSheet $e) {
@@ -115,6 +122,7 @@ class RekapTahunanSheet extends DefaultValueBinder implements FromArray, WithCol
                 $sel->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
                 if ($l['warna']) {
                     $sel->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($l['warna']);
+                    $sel->getFont()->getColor()->setRGB(self::teks($l['warna']));
                 }
             }
             $s->getRowDimension($h)->setRowHeight(30);
@@ -138,6 +146,7 @@ class RekapTahunanSheet extends DefaultValueBinder implements FromArray, WithCol
                 $pita->getFont()->setBold(true);
                 if ($b['warna']) {
                     $pita->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($b['warna']);
+                    $pita->getFont()->getColor()->setRGB(self::teks($b['warna']));
                 }
                 // Merged and wrapped cells do not auto-fit: size the name row to the longer of Nama Tim and Dalam Rangka.
                 $baris = max(substr_count($b['tim'], "\n") + 1, (int) ceil(mb_strlen($b['rangka']) / (self::LEBAR['D'] - 4)) - 1, 1);

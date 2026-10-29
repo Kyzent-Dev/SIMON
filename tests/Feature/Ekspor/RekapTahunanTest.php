@@ -124,6 +124,7 @@ class RekapTahunanTest extends TestCase
         $this->assertStringNotContainsString('Ketua Tim)', $jan->getCell('E3')->getValue());
         $this->assertSame('28 Januari s.d 03 Februari 2025', $jan->getCell('E4')->getValue());
         $this->assertSame('BDD7EE', $jan->getStyle('E4')->getFill()->getStartColor()->getRGB());
+        $this->assertSame('151C1A', $jan->getStyle('E4')->getFont()->getColor()->getRGB()); // light colour: dark text, as in the Admin preview
         $this->assertSame(Border::BORDER_THICK, $jan->getStyle('E3')->getBorders()->getRight()->getBorderStyle());
         $this->assertSame('0070C0', $jan->getStyle('E3')->getBorders()->getRight()->getColor()->getRGB());
 
