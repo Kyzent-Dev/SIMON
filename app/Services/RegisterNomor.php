@@ -81,19 +81,22 @@ class RegisterNomor
     }
 
     /** @return list<string> the 16 cells of one row as plain text, identical for the table and both exports. */
-    public function baris(Spt $spt): array
+    public function baris(Spt $spt, string $pemisahAnggota = '; '): array
     {
         $d = $this->data($spt);
-        $d['anggota'] = implode('; ', $d['anggota']);
+        $d['anggota'] = implode($pemisahAnggota, $d['anggota']);
         $d['status'] = $d['status']->label();
 
         return array_values(array_map(fn ($v) => $v === null || $v === '' ? self::KOSONG : $v, $d));
     }
 
-    /** @return list<list<string>> */
-    public function semua(array $f): array
+    /**
+     * @param  string  $pemisahAnggota  "; " for screen text and PDF; the Excel sheet passes a newline (one person per line in the cell)
+     * @return list<list<string>>
+     */
+    public function semua(array $f, string $pemisahAnggota = '; '): array
     {
-        return $this->query($f)->get()->map(fn (Spt $s) => $this->baris($s))->all();
+        return $this->query($f)->get()->map(fn (Spt $s) => $this->baris($s, $pemisahAnggota))->all();
     }
 
     /** @return list<string> human summary of the active filters (PDF header). */

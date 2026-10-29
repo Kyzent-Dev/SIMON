@@ -2,12 +2,13 @@
 
 namespace App\Services\Ekspor;
 
-use App\Exports\ArrayExport;
+use App\Exports\RegisterSheet;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\RegisterNomor;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
+use Maatwebsite\Excel\Concerns\Export;
 
 class PembangunRegister implements Pembangun
 {
@@ -37,9 +38,12 @@ class PembangunRegister implements Pembangun
         return "register-nomor-spt-{$filter['tahun']}";
     }
 
-    public function export(User $user, array $filter): ArrayExport
+    /** Text columns: Nomor SPT (A) and Nomor SPPD (C) are free text; RegisterSheet binds with AmanFormula so a leading = + - @ stays text. Anggota is newline-joined. */
+    public function export(User $user, array $filter): Export
     {
-        return new ArrayExport(RegisterNomor::KOLOM, app(RegisterNomor::class)->semua($filter), ['A', 'C']);
+        $r = app(RegisterNomor::class);
+
+        return new RegisterSheet($filter['tahun'], $r->ringkasanFilter($filter), $r->semua($filter, "\n"), now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB');
     }
 
     public function html(User $user, array $filter): string

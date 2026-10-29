@@ -1,0 +1,102 @@
+<?php
+
+namespace App\Exports;
+
+use App\Exports\Concerns\AmanFormula;
+use App\Services\RegisterNomor;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+
+/**
+ * Register Nomor SPT as one styled sheet (spec 1.1.4 Task 3): rows 1-3 title, filter summary and "Dibuat",
+ * row 4 the mint header, then one row per SPT. Colours and widths are read from RekapSheet, which stays untouched.
+ */
+class RegisterSheet extends DefaultValueBinder implements FromArray, WithColumnWidths, WithCustomValueBinder, WithEvents, WithStrictNullComparison, WithStyles, WithTitle
+{
+    use AmanFormula;
+
+    public const BARIS_HEADER = 4;
+
+    /** Width type per RegisterNomor::KOLOM column (RekapSheet::LEBAR keys). */
+    private const TIPE = ['nomor', 'tanggal', 'nomor', 'teks', 'panjang', 'teks', 'panjang', 'tanggal', 'tanggal', 'teks', 'panjang', 'teks', 'panjang', 'teks', 'panjang', 'panjang'];
+
+    /** Wrapped in the sheet; every body column that holds free text or a multi-line list. */
+    private const BUNGKUS = ['teks', 'tanggal', 'panjang'];
+
+    /**
+     * @param  list<string>  $filter  RegisterNomor::ringkasanFilter()
+     * @param  list<list<string>>  $baris  RegisterNomor::semua($f, "\n"): anggota already one person per line
+     */
+    public function __construct(private int $tahun, private array $filter, private array $baris, private string $dibuat) {}
+
+    public function array(): array
+    {
+        return [
+            ["Register Nomor SPT {$this->tahun}"],
+            ['Filter: '.($this->filter ? implode('; ', $this->filter) : 'Semua data')],
+            ['Dibuat: '.$this->dibuat.' · '.count($this->baris).' nomor'],
+            RegisterNomor::KOLOM,
+            ...$this->baris,
+        ];
+    }
+
+    public function title(): string
+    {
+        return 'Register Nomor SPT';
+    }
+
+    public function columnWidths(): array
+    {
+        $lebar = [];
+        foreach (self::TIPE as $i => $tipe) {
+            $lebar[Coordinate::stringFromColumnIndex($i + 1)] = RekapSheet::LEBAR[$tipe];
+        }
+
+        return $lebar;
+    }
+
+    public function styles(Worksheet $sheet): array
+    {
+        return [
+            1 => ['font' => ['bold' => true, 'size' => 14]],
+            2 => ['font' => ['bold' => true]],
+            self::BARIS_HEADER => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
+        ];
+    }
+
+    public function registerEvents(): array
+    {
+        return [AfterSheet::class => function (AfterSheet $e) {
+            $s = $e->sheet->getDelegate();
+            $h = self::BARIS_HEADER;
+            $akhir = $h + count($this->baris);
+            $z = Coordinate::stringFromColumnIndex(count(self::TIPE));
+
+            $s->getStyle("A{$h}:{$z}{$akhir}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB(RekapSheet::GARIS);
+            $s->getStyle("A{$h}:{$z}{$h}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(RekapSheet::HEADER_ISI);
+            $s->getStyle("A{$h}:{$z}{$h}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+            foreach (self::TIPE as $i => $tipe) {
+                $k = Coordinate::stringFromColumnIndex($i + 1);
+                $s->getStyle($k.($h + 1).':'.$k.max($akhir, $h + 1))->getAlignment()->setVertical(Alignment::VERTICAL_TOP)->setWrapText(in_array($tipe, self::BUNGKUS, true));
+            }
+            $s->setAutoFilter("A{$h}:{$z}{$akhir}");
+            $s->freezePane('B'.($h + 1)); // header row and the Nomor SPT column stay in view
+            $s->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd($h, $h);
+            $s->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)->setPaperSize(PageSetup::PAPERSIZE_A4)->setFitToWidth(1)->setFitToHeight(0);
+            $s->getPageSetup()->setFitToPage(true);
+        }];
+    }
+}

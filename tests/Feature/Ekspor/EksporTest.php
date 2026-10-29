@@ -112,7 +112,7 @@ class EksporTest extends TestCase
         {
             public function __construct(private \ArrayObject $selama) {}
 
-            public function export(User $u, array $f): ArrayExport
+            public function export(User $u, array $f): \Maatwebsite\Excel\Concerns\Export
             {
                 $this->selama->exchangeArray([ini_get('memory_limit'), ini_get('max_execution_time')]);
 
@@ -315,9 +315,9 @@ class EksporTest extends TestCase
         file_put_contents($tmp, $r->streamedContent());
         $sheet = IOFactory::load($tmp)->getActiveSheet();
         unlink($tmp);
-        $this->assertSame('Nomor SPT', $sheet->getCell('A1')->getValue());
-        $this->assertSame('=HYPERLINK("x")', $sheet->getCell('K2')->getValue());
-        $this->assertSame('s', $sheet->getCell('K2')->getDataType());
+        $this->assertSame('Nomor SPT', $sheet->getCell('A4')->getValue());
+        $this->assertSame('=HYPERLINK("x")', $sheet->getCell('K5')->getValue());
+        $this->assertSame('s', $sheet->getCell('K5')->getDataType());
 
         $pdf = $this->actingAs($this->bu)->get("/ekspor/{$p->id}")->assertOk()->assertDownload('register-nomor-spt-2026.pdf');
         $this->assertStringStartsWith('%PDF', $pdf->streamedContent());

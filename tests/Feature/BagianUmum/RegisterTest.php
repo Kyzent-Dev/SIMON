@@ -8,7 +8,7 @@ use App\Actions\Spt\TerimaPengajuan;
 use App\Enums\Role;
 use App\Enums\StatusPengajuan;
 use App\Enums\SumberSpt;
-use App\Exports\ArrayExport;
+use App\Exports\RegisterSheet;
 use App\Livewire\BagianUmum\Register;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
@@ -341,10 +341,10 @@ class RegisterTest extends TestCase
         Excel::fake();
 
         $this->register()->set('status', 'dibatalkan')->call('ekspor', 'xlsx');
-        Excel::assertDownloaded('register-nomor-spt-2026.xlsx', function (ArrayExport $e) use ($b) {
-            $this->assertSame(RegisterNomor::KOLOM, $e->headings());
-            $this->assertCount(1, $e->array());
-            $this->assertSame([$b->nomor_lengkap, 'Dua', 'Dibatalkan', 'Dibatalkan: Salah ketik perihal SPT'], array_values(array_intersect_key($e->array()[0], array_flip([0, 10, 13, 15]))));
+        Excel::assertDownloaded('register-nomor-spt-2026.xlsx', function (RegisterSheet $e) use ($b) {
+            $this->assertSame(RegisterNomor::KOLOM, $e->array()[3]);
+            $this->assertCount(5, $e->array());
+            $this->assertSame([$b->nomor_lengkap, 'Dua', 'Dibatalkan', 'Dibatalkan: Salah ketik perihal SPT'], array_values(array_intersect_key($e->array()[4], array_flip([0, 10, 13, 15]))));
 
             return true;
         });
