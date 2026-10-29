@@ -9,6 +9,7 @@ use App\Services\Ekspor\Pembangun;
 use App\Services\Ekspor\PembangunMonitoring;
 use App\Services\Ekspor\PembangunRegister;
 use App\Services\Ekspor\PembangunRekap;
+use App\Services\Ekspor\PembangunRekapTahunan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +25,13 @@ class Ekspor
     /** dompdf needs about 0,26 MB per row, so a direct PDF must stay well inside a 128M web request. */
     public const BATAS_LANGSUNG_PDF = 200;
 
-    private const PEMBANGUN = ['register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class, 'rekap' => PembangunRekap::class];
+    private const PEMBANGUN = [
+        'register' => PembangunRegister::class, 'monitoring' => PembangunMonitoring::class, 'rekap' => PembangunRekap::class,
+        'rekap-tahunan' => PembangunRekapTahunan::class,
+    ];
+
+    /** Jenis without a PDF form (ruling 1.1.4 Task 4). */
+    private const HANYA_XLSX = ['rekap-tahunan'];
 
     public function pembangun(string $jenis): Pembangun
     {
@@ -35,6 +42,7 @@ class Ekspor
     public function minta(User $user, string $jenis, string $format, array $filter): ?Response
     {
         abort_unless(in_array($format, ['xlsx', 'pdf'], true), 422);
+        abort_if($format === 'pdf' && in_array($jenis, self::HANYA_XLSX, true), 422);
         $p = $this->pembangun($jenis);
         $p->otorisasi($user);
         // Counted only after authorization, so a refused request neither spends the quota nor hides the 403 behind "too many requests".

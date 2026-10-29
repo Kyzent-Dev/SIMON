@@ -10,7 +10,16 @@
 <div>
     <x-ui.page-header title="Register Nomor SPT" description="Stambook digital nomor SPT tahun {{ $this->tahun }}. Nomor yang dibatalkan tetap tercatat dan tidak dipakai ulang.">
         <x-slot:actions>
-            <x-app.export-buttons />
+            <x-app.export-buttons>
+                <x-slot:tambahan>
+                    {{-- Rekap Tahunan (spec 1.1.4 Task 4): Excel only, Tahun filter only; the caption says the other filters are ignored. --}}
+                    <button type="button" role="menuitem" wire:click="eksporRekapTahunan" x-on:click="tutup()"
+                        class="flex min-h-11 w-full items-start gap-2 px-3 py-2 text-left text-sm text-neutral-900 hover:bg-neutral-50 focus-visible:bg-neutral-50 lg:min-h-9">
+                        {{ svg('heroicon-m-calendar-days', 'mt-px size-5 shrink-0 text-mint-700') }}
+                        <span>Rekap Tahunan (Excel)<span class="mt-0.5 block text-xs text-neutral-500">Hanya filter Tahun ({{ $this->tahun }}); filter lain diabaikan</span></span>
+                    </button>
+                </x-slot:tambahan>
+            </x-app.export-buttons>
             <x-ui.button type="button" variant="secondary" icon="hashtag" wire:click="bukaAwal" :disabled="$terkunciHalaman" aria-describedby="{{ $terkunciHalaman ? 'awal-terkunci' : '' }}">Atur nomor awal</x-ui.button>
             <x-ui.button type="button" icon="plus" wire:click="bukaManual">Catat Nomor Manual</x-ui.button>
         </x-slot:actions>

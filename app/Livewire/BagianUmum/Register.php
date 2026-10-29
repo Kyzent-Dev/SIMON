@@ -174,6 +174,14 @@ class Register extends Component
         return $this->mintaEkspor('register', $format, $this->filter());
     }
 
+    /** Rekap Tahunan workbook (spec 1.1.4 Task 4): Excel only and the Tahun filter only. */
+    public function eksporRekapTahunan()
+    {
+        Gate::authorize('kelolaNomor', Spt::class);
+
+        return $this->mintaEkspor('rekap-tahunan', 'xlsx', ['tahun' => $this->tahun]);
+    }
+
     private function filter(): array
     {
         return ['tahun' => $this->tahun, 'cari' => $this->cari, 'status' => $this->status, 'irban' => $this->irban, 'bulan' => $this->bulan];

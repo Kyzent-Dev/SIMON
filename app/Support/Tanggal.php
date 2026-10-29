@@ -27,6 +27,27 @@ class Tanggal
         return $m->format('j').'–'.$s->translatedFormat('j F Y');
     }
 
+    /**
+     * Rekap Tahunan ribbon (Bagian Umum stambook wording, two-digit days): "03 Februari 2025", "03 s.d 07 Februari 2025",
+     * "28 Januari s.d 03 Februari 2025", "29 Desember 2025 s.d 02 Januari 2026".
+     */
+    public static function pita(DateTimeInterface $mulai, DateTimeInterface $selesai): string
+    {
+        $m = CarbonImmutable::instance($mulai);
+        $s = CarbonImmutable::instance($selesai);
+        $akhir = $s->translatedFormat('d F Y');
+        if ($m->isSameDay($s)) {
+            return $akhir;
+        }
+        $awal = $m->translatedFormat(match (true) {
+            $m->year !== $s->year => 'd F Y',
+            $m->month !== $s->month => 'd F',
+            default => 'd',
+        });
+
+        return "{$awal} s.d {$akhir}";
+    }
+
     /** Assignment duration: kalender or kerja per `penugasan.hitungan_hari` (one place for Spt::durasi() and the form). */
     public static function durasiPenugasan(DateTimeInterface|string $mulai, DateTimeInterface|string $selesai): int
     {

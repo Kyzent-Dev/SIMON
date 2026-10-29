@@ -1,5 +1,6 @@
 {{-- _shared.md §6 split button "Ekspor": the main button exports Excel, the chevron opens a menu with "Excel (.xlsx)" and "PDF"; subtext "Mengikuti filter aktif".
-     Calls the host's `{$aksi}('xlsx'|'pdf')` (default `ekspor`; Rekap passes `bukaEkspor` to open its section picker) (App\Services\Ekspor: direct download up to its threshold, queued with a notification above it). Menu: Esc/outside click close, focus trap, arrow keys move between items. No animation. --}}
+     Calls the host's `{$aksi}('xlsx'|'pdf')` (default `ekspor`; Rekap passes `bukaEkspor` to open its section picker) (App\Services\Ekspor: direct download up to its threshold, queued with a notification above it). Menu: Esc/outside click close, focus trap, arrow keys move between items. No animation.
+     Optional slot `tambahan`: extra `role="menuitem"` buttons below the caption, for exports that do not follow the active filters (Register: Rekap Tahunan). --}}
 @props(['label' => 'Ekspor', 'aksi' => 'ekspor'])
 
 <div x-data="{ open: false, top: 0, left: 0,
@@ -28,6 +29,9 @@
                 </button>
             @endforeach
             <p class="border-t border-neutral-200 px-3 pt-2 pb-1 text-xs text-neutral-500">Mengikuti filter aktif</p>
+            @isset($tambahan)
+                <div class="mt-1 border-t border-neutral-200 pt-1">{{ $tambahan }}</div>
+            @endisset
         </div>
     </template>
 </div>

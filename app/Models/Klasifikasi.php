@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 // Admin edits the rules only; the five rows are fixed (no create/delete UI).
-#[Fillable(['wajib_item_pkpt', 'syarat_selesai', 'tampil_publik'])]
+#[Fillable(['wajib_item_pkpt', 'syarat_selesai', 'tampil_publik', 'warna'])]
 class Klasifikasi extends Model
 {
     use DicatatAktivitas, MenyegarkanCachePublik;
