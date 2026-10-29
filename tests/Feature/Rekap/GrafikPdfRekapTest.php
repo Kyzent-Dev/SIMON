@@ -60,11 +60,14 @@ class GrafikPdfRekapTest extends TestCase
         $this->assertStringContainsString('Realisasi', $html);
     }
 
-public function test_jenis_is_sorted_descending_with_percent_label_and_klasifikasi_keeps_zero_rows(): void
+    public function test_jenis_is_sorted_descending_with_percent_label_and_klasifikasi_keeps_zero_rows(): void
     {
         $html = $this->html(['klasifikasi', 'jenis']);
         $this->assertLessThan(strpos($html, '33% (2/6)'), strpos($html, '67% (2/3)'));
-        $this->assertStringContainsString('Berjalan', $html);
+        $grafik = explode('data-grafik="jenis"', explode('data-grafik="klasifikasi"', $html)[1])[0];
+        $this->assertStringContainsString('>DIKLAT</td>', $grafik); // zero row keeps its category label
+        $this->assertSame(3, substr_count($grafik, 'class="grafik-nilai">0<')); // DIKLAT, LUAR DARAH, LAIN-LAIN show 0
+        $this->assertSame(4, substr_count($grafik, 'class="grafik-batang"')); // only REGULER and KHUSUS draw segments
         $this->assertStringContainsString('grafik-tabel', $html); // Per Jenis stays horizontal
     }
 
