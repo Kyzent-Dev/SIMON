@@ -141,6 +141,11 @@
             <x-ui.textarea label="Alasan" name="manual_alasan" id="manual-alasan" wire:model="manual.alasan" rows="3" maxlength="1000" required
                 helper="Minimal 10 karakter. Dicatat pada riwayat SPT." :error="$errors->first('manual.alasan')" />
             <div>
+                <x-ui.input label="Nomor SPPD" name="manual_sppd" id="manual-sppd" wire:model.live.debounce.500ms="manual.nomor_sppd" maxlength="100" autocomplete="off"
+                    class="tabular-nums" aria-describedby="manual-sppd-peringatan" helper="Opsional. Dapat diisi nanti di halaman detail SPT." :error="$errors->first('manual.nomor_sppd')" />
+                <x-app.peringatan-sppd id="manual-sppd-peringatan" :duplikat="$duplikatSppd" :tahun="$tahunIni" />
+            </div>
+            <div>
                 <p class="text-sm font-medium text-neutral-900">Nomor yang akan terbit</p>
                 <p class="mt-1.5 rounded-md border border-mint-200 bg-mint-50 px-4 py-3 text-center font-sans text-xl font-bold [overflow-wrap:anywhere] text-neutral-900 tabular-nums" aria-live="polite">
                     {{ $pratinjau ?: 'Pilih Irban untuk melihat nomor' }}

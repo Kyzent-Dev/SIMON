@@ -5,6 +5,7 @@ namespace App\Livewire\BagianUmum;
 use App\Actions\Spt\MintaRevisi;
 use App\Actions\Spt\TerimaPengajuan;
 use App\Actions\Spt\TolakPengajuan;
+use App\Actions\Spt\UbahNomorSppd;
 use App\Enums\StatusPengajuan;
 use App\Models\Irban;
 use App\Models\Spt;
@@ -58,6 +59,9 @@ class Pengajuan extends Component
 
     public bool $konflik = false;
 
+    /** Optional Nomor SPPD in the Terima modal, prefilled with the stored value. */
+    public string $nomor_sppd = '';
+
     public function mount(): void
     {
         Gate::authorize('kelolaNomor', Spt::class);
@@ -100,14 +104,18 @@ class Pengajuan extends Component
         }
         $tanggal = CarbonImmutable::now('Asia/Jakarta');
         $this->pratinjau = app(Penomoran::class)->pratinjau($spt->irban, $tanggal, $spt->klasifikasi)['nomor_lengkap'];
+        $this->nomor_sppd = (string) $spt->nomor_sppd;
+        $this->resetErrorBag();
         $this->showTerima = true;
     }
 
     public function terima(TerimaPengajuan $terima): void
     {
-        $this->showTerima = false;
+        $this->resetErrorBag();
+        // A nomor_sppd field error is rethrown by putuskan() and keeps the modal open.
         $this->putuskan(function (Spt $spt) use ($terima) {
-            $hasil = $terima->handle(auth()->user(), $spt);
+            $hasil = $terima->handle(auth()->user(), $spt, $this->nomor_sppd);
+            $this->showTerima = false;
             $this->dispatch('toast', type: 'success', message: "Nomor {$hasil->nomor_lengkap} diterbitkan");
         });
     }
@@ -216,6 +224,9 @@ class Pengajuan extends Component
             'jumlahTab' => (int) ($jumlah[$this->tab] ?? 0),
             'irbanOptions' => Irban::orderBy('nama')->pluck('nama', 'id')->all(),
             'detail' => $detail,
+            // Terima numbers the SPT in the current Jakarta year, so that is the year the duplicate check uses.
+            'tahunSppd' => now('Asia/Jakarta')->year,
+            'duplikatSppd' => $this->showTerima ? app(UbahNomorSppd::class)->duplikat(now('Asia/Jakarta')->year, $this->nomor_sppd, $this->pilih) : null,
         ]);
     }
 }

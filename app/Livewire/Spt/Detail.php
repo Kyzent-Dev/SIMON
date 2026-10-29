@@ -5,6 +5,7 @@ namespace App\Livewire\Spt;
 use App\Actions\Spt\Concerns\IzinPelaksanaan;
 use App\Actions\Spt\SimpanKendala;
 use App\Actions\Spt\TandaiSelesai;
+use App\Actions\Spt\UbahNomorSppd;
 use App\Actions\Spt\UbahTanggalRealisasi;
 use App\Actions\Spt\UnggahDokumenSpt;
 use App\Models\Aktivitas;
@@ -24,6 +25,7 @@ use Livewire\WithFileUploads;
  * Shared SPT detail page (_shared.md §7), any role allowed by SptPolicy::view, with the four Irban action modals
  * (Ubah Tanggal, Unggah SPT Final, Tandai Selesai, Kendala). The component only collects input and calls the actions;
  * the actions authorize `laksanakan` and hold every rule (the UI reads TandaiSelesai::syarat()/bisa()).
+ * The Nomor SPPD panel is editable for `ubahSppd` (Bagian Umum) through UbahNomorSppd, read-only for everyone else.
  */
 class Detail extends Component
 {
@@ -67,10 +69,32 @@ class Detail extends Component
     /** Diinput oleh shows the combobox instead of the prefilled chip. */
     public bool $ganti = false;
 
+    /** Nomor SPPD panel input (Bagian Umum). */
+    public string $nomor_sppd = '';
+
     public function mount(Spt $spt): void
     {
         Gate::authorize('view', $spt);
         $this->sptId = $spt->id;
+        $this->nomor_sppd = (string) $spt->nomor_sppd;
+    }
+
+    public function simpanSppd(UbahNomorSppd $aksi): void
+    {
+        $spt = $this->sptDasar();
+        Gate::authorize('kelolaNomor', Spt::class); // other roles 403; a Dibatalkan SPT reaches the action and becomes a toast
+        $this->resetValidation();
+        try {
+            $spt = $aksi->handle(auth()->user(), $spt, $this->nomor_sppd);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $key => $messages) {
+                $key === 'nomor_sppd' ? $this->addError($key, $messages[0]) : $this->galatUmum($messages[0]);
+            }
+
+            return;
+        }
+        $this->nomor_sppd = (string) $spt->nomor_sppd;
+        $this->dispatch('toast', type: 'success', message: $spt->nomor_sppd === null ? 'Nomor SPPD dihapus' : 'Nomor SPPD disimpan');
     }
 
     public function buka(string $modal): void
@@ -206,6 +230,8 @@ class Detail extends Component
         $spt = $this->spt();
         $item = $spt->pkptItem;
         $laksanakan = auth()->user()->can('laksanakan', $spt);
+        $ubahSppd = auth()->user()->can('ubahSppd', $spt);
+        $tahunSppd = $spt->tahun ?? now('Asia/Jakarta')->year;
         $modal = $laksanakan ? $this->modal : '';
 
         return view('livewire.spt.detail', [
@@ -217,6 +243,9 @@ class Detail extends Component
             'hariKerja' => $settings->get('penugasan.hitungan_hari') === 'kerja',
             'laksanakan' => $laksanakan,
             'bisaUbah' => auth()->user()->can('update', $spt),
+            'ubahSppd' => $ubahSppd,
+            'tahunSppd' => $tahunSppd,
+            'duplikatSppd' => $ubahSppd ? app(UbahNomorSppd::class)->duplikat($tahunSppd, $this->nomor_sppd, $spt->id) : null,
             'aktif' => $modal,
             'penginput' => $modal !== '' ? DiinputOleh::pilihan(auth()->user()) : collect(),
             'syarat' => $modal === 'selesai' ? $selesai->syarat($spt) : null,

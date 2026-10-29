@@ -119,6 +119,11 @@
         <p class="text-neutral-600">Nomor berikutnya dalam register {{ now('Asia/Jakarta')->year }}</p>
         <p class="mt-2 rounded-md border border-mint-200 bg-mint-50 px-4 py-3 text-center font-sans text-2xl font-bold [overflow-wrap:anywhere] text-neutral-900 tabular-nums">{{ $pratinjau }}</p>
         <p class="mt-3 text-neutral-600">Nomor terbit saat Anda menekan "Terbitkan Nomor" dan tidak dapat diubah atau dipakai ulang.</p>
+        <div class="mt-4">
+            <x-ui.input label="Nomor SPPD" name="nomor_sppd" id="terima-sppd" wire:model.live.debounce.500ms="nomor_sppd" maxlength="100" autocomplete="off"
+                class="tabular-nums" aria-describedby="terima-sppd-peringatan" helper="Opsional. Dapat diisi nanti di halaman detail SPT." :error="$errors->first('nomor_sppd')" />
+            <x-app.peringatan-sppd id="terima-sppd-peringatan" :duplikat="$duplikatSppd" :tahun="$tahunSppd" />
+        </div>
         <x-slot:footer>
             <x-ui.button type="button" variant="ghost" x-on:click="$wire.showTerima = false">Batal</x-ui.button>
             <x-ui.button type="button" icon="check" wire:click="terima" wire:loading.attr="disabled" wire:target="terima" autofocus>

@@ -17,12 +17,15 @@ trait PutuskanPengajuan
 {
     public const KONFLIK = 'Pengajuan ini sudah diproses oleh pengguna lain.';
 
-    /** @param Closure(Spt): array{0: StatusPengajuan, 1: string, 2: ?string, 3?: array} $ubah returns [status, kejadian, alasan, extra nilai_baru] after forceFilling the locked SPT */
-    private function putuskan(User $user, Spt $spt, Closure $ubah): Spt
+    /**
+     * @param  Closure(Spt): array{0: StatusPengajuan, 1: string, 2: ?string, 3?: array}  $ubah  returns [status, kejadian, alasan, extra nilai_baru] after forceFilling the locked SPT
+     * @param  ?Closure(Spt): mixed  $setelah  more writes on the locked SPT in the same transaction, after the decision riwayat (Terima: Nomor SPPD)
+     */
+    private function putuskan(User $user, Spt $spt, Closure $ubah, ?Closure $setelah = null): Spt
     {
         Gate::forUser($user)->authorize('kelolaNomor', Spt::class);
 
-        [$spt, $alasan] = DB::transaction(function () use ($user, $spt, $ubah) {
+        [$spt, $alasan] = DB::transaction(function () use ($user, $spt, $ubah, $setelah) {
             $spt = Spt::whereKey($spt->id)->lockForUpdate()->first();
             if ($spt?->status_pengajuan !== StatusPengajuan::MenungguNomor) {
                 throw ValidationException::withMessages(['spt' => self::KONFLIK]);
@@ -35,6 +38,7 @@ trait PutuskanPengajuan
                 'kejadian' => $kejadian, 'nilai_lama' => ['status_pengajuan' => StatusPengajuan::MenungguNomor->value],
                 'nilai_baru' => ['status_pengajuan' => $status->value] + $extra, 'alasan' => $alasan, 'oleh' => $user->id,
             ]);
+            $setelah && $setelah($spt);
 
             return [$spt, $alasan];
         }, attempts: 3);

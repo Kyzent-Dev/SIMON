@@ -203,8 +203,9 @@ class PenandaSptTest extends TestCase
             KejadianSpt::NOMOR_AWAL => 'Nomor awal diatur', KejadianSpt::TANGGAL_DIUBAH => 'Tanggal realisasi diubah',
             KejadianSpt::FINAL_DIUNGGAH => 'SPT final diunggah', KejadianSpt::DITANDAI_SELESAI => 'Ditandai Selesai',
             KejadianSpt::KENDALA_DIISI => 'Kendala diisi', KejadianSpt::DIIMPOR => 'Diimpor dari data lama',
+            KejadianSpt::SPPD_DIUBAH => 'Nomor SPPD diubah',
         ];
-        $this->assertCount(14, (new \ReflectionClass(KejadianSpt::class))->getConstants(\ReflectionClassConstant::IS_PUBLIC));
+        $this->assertCount(15, (new \ReflectionClass(KejadianSpt::class))->getConstants(\ReflectionClassConstant::IS_PUBLIC));
         foreach ($expected as $kejadian => $label) {
             $this->assertSame($label, KejadianSpt::label($kejadian));
         }

@@ -33,6 +33,8 @@ final class KejadianSpt
 
     public const DIIMPOR = 'diimpor';
 
+    public const SPPD_DIUBAH = 'sppd_diubah';
+
     private const LABELS = [
         self::DIBUAT => 'Dibuat',
         self::DIUBAH => 'Diubah',
@@ -48,6 +50,7 @@ final class KejadianSpt
         self::DITANDAI_SELESAI => 'Ditandai Selesai',
         self::KENDALA_DIISI => 'Kendala diisi',
         self::DIIMPOR => 'Diimpor dari data lama',
+        self::SPPD_DIUBAH => 'Nomor SPPD diubah',
     ];
 
     /** Riwayat step label; unknown values fall back to the raw value. */

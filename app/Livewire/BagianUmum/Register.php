@@ -5,6 +5,7 @@ namespace App\Livewire\BagianUmum;
 use App\Actions\Spt\AturNomorAwal;
 use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\CatatNomorManual;
+use App\Actions\Spt\UbahNomorSppd;
 use App\Enums\StatusPengajuan;
 use App\Livewire\Concerns\MintaEkspor;
 use App\Models\Irban;
@@ -94,7 +95,7 @@ class Register extends Component
     public function bukaManual(): void
     {
         Gate::authorize('kelolaNomor', Spt::class);
-        $this->manual = ['irban_id' => '', 'klasifikasi_id' => '', 'jenis_penugasan_id' => '', 'uraian_untuk' => '', 'tanggal_mulai' => '', 'tanggal_selesai' => '', 'alasan' => ''];
+        $this->manual = ['irban_id' => '', 'klasifikasi_id' => '', 'jenis_penugasan_id' => '', 'uraian_untuk' => '', 'tanggal_mulai' => '', 'tanggal_selesai' => '', 'alasan' => '', 'nomor_sppd' => ''];
         $this->pratinjau = '';
         $this->resetErrorBag();
         $this->showManual = true;
@@ -208,6 +209,8 @@ class Register extends Component
             'awalTerkunci' => $register->nomorAwalTerkunci($this->tahun, $perIrban ? $awalIrban : null),
             'terkunciHalaman' => ! $perIrban && $register->nomorAwalTerkunci($this->tahun, null),
             'batal' => $this->batalId ? Spt::find($this->batalId) : null,
+            'tahunIni' => $tahunIni,
+            'duplikatSppd' => $this->showManual ? app(UbahNomorSppd::class)->duplikat($tahunIni, $this->manual['nomor_sppd'] ?? null) : null,
         ]);
     }
 }

@@ -52,6 +52,12 @@ class SptPolicy
         return $user->role === Role::BagianUmum;
     }
 
+    /** Nomor SPPD (K5): Bagian Umum on any submitted SPT except a Dibatalkan one; other roles see it read-only. */
+    public function ubahSppd(User $user, Spt $spt): bool
+    {
+        return $user->role === Role::BagianUmum && $this->view($user, $spt) && $spt->status_pengajuan !== StatusPengajuan::Dibatalkan;
+    }
+
     /** Rekap Triwulanan (Pimpinan) and Rekap Saya (Irban with an irban); read-only. */
     public function rekap(User $user): bool
     {

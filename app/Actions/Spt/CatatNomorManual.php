@@ -14,19 +14,28 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Bagian Umum records an urgent SPT outside the inbox flow. The number comes from the same locked sequence as accepted submissions
- * (PRD §7.7), never typed in. $data: irban_id, klasifikasi_id, jenis_penugasan_id?, uraian_untuk, tanggal_mulai, tanggal_selesai, alasan.
+ * (PRD §7.7), never typed in. $data: irban_id, klasifikasi_id, jenis_penugasan_id?, uraian_untuk, tanggal_mulai, tanggal_selesai, alasan,
+ * nomor_sppd? (UbahNomorSppd, same transaction).
  */
 class CatatNomorManual
 {
-    public function __construct(private Penomoran $penomoran) {}
+    public function __construct(private Penomoran $penomoran, private UbahNomorSppd $sppd) {}
 
     public function handle(User $user, array $data): Spt
     {
         Gate::forUser($user)->authorize('kelolaNomor', Spt::class);
-        $d = Validator::make($data, [
+        // Validated together with the other fields so every error shows at once; UbahNomorSppd::normal stays the single rule.
+        try {
+            $sppd = UbahNomorSppd::normal($data['nomor_sppd'] ?? null);
+            $galatSppd = [];
+        } catch (ValidationException $e) {
+            [$sppd, $galatSppd] = [null, $e->errors()];
+        }
+        $v = Validator::make($data, [
             'irban_id' => ['required', 'exists:irban,id'],
             'klasifikasi_id' => ['required', 'exists:klasifikasi,id'],
             'jenis_penugasan_id' => ['nullable', 'exists:jenis_penugasan,id'],
@@ -40,9 +49,13 @@ class CatatNomorManual
             'tanggal_mulai.*' => 'Tanggal mulai wajib diisi.', 'tanggal_selesai.required' => 'Tanggal selesai wajib diisi.', 'tanggal_selesai.date_format' => 'Tanggal selesai wajib diisi.',
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'alasan.required' => 'Alasan wajib diisi.', 'alasan.min' => 'Alasan minimal 10 karakter.', 'alasan.max' => 'Alasan maksimal 1000 karakter.',
-        ])->validate();
+        ]);
+        if ($v->fails() || $galatSppd) {
+            throw ValidationException::withMessages($v->errors()->messages() + $galatSppd);
+        }
+        $d = $v->validated();
 
-        return DB::transaction(function () use ($user, $d) {
+        return DB::transaction(function () use ($user, $d, $sppd) {
             $irban = Irban::findOrFail($d['irban_id']);
             $tanggal = CarbonImmutable::now('Asia/Jakarta')->startOfDay();
             $n = $this->penomoran->ambil($irban, $tanggal, Klasifikasi::find($d['klasifikasi_id']));
@@ -57,6 +70,7 @@ class CatatNomorManual
                 'kejadian' => KejadianSpt::DICATAT_MANUAL, 'nilai_baru' => ['status_pengajuan' => StatusPengajuan::Diterima->value, 'nomor_lengkap' => $n['nomor_lengkap']],
                 'alasan' => trim($d['alasan']), 'oleh' => $user->id,
             ]);
+            $this->sppd->terapkan($user, $spt, $sppd);
 
             return $spt;
         }, attempts: 3);

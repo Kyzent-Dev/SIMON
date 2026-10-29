@@ -187,6 +187,23 @@
         </div>
 
         <div class="contents lg:col-span-4 lg:flex lg:flex-col lg:gap-6">
+            {{-- Nomor SPPD (versi 1.1.4 Task 2): Bagian Umum edits (UbahNomorSppd), other roles and a Dibatalkan SPT read-only. Same order slot as Riwayat, before it in DOM. --}}
+            <x-ui.card class="order-2 lg:order-none">
+                <h2 id="judul-sppd" class="{{ $judulKartu }}">Nomor SPPD</h2>
+                @if ($ubahSppd)
+                    <form wire:submit="simpanSppd" class="mt-3">
+                        <x-ui.input label="Nomor SPPD" name="nomor_sppd" id="nomor-sppd" wire:model.live.debounce.500ms="nomor_sppd" maxlength="100" autocomplete="off"
+                            class="tabular-nums" aria-describedby="nomor-sppd-peringatan" helper="Opsional. Kosongkan lalu simpan untuk menghapus." :error="$errors->first('nomor_sppd')" />
+                        <x-app.peringatan-sppd id="nomor-sppd-peringatan" :duplikat="$duplikatSppd" :tahun="$tahunSppd" />
+                        <x-ui.button type="submit" variant="secondary" icon="check" class="mt-3 max-sm:w-full" wire:loading.attr="disabled" wire:target="simpanSppd">Simpan Nomor SPPD</x-ui.button>
+                    </form>
+                @elseif ($spt->nomor_sppd)
+                    <p class="mt-2 text-sm text-neutral-900 tabular-nums [overflow-wrap:anywhere]">{{ $spt->nomor_sppd }}</p>
+                @else
+                    <p class="mt-2 text-sm text-neutral-600">Belum dicatat.</p>
+                @endif
+            </x-ui.card>
+
             <x-ui.card class="order-2 lg:order-none">
                 <h2 class="{{ $judulKartu }}">Riwayat Status</h2>
                 @if ($spt->riwayat->isEmpty())
@@ -202,6 +219,8 @@
                                 <p class="text-neutral-600">{{ $r->olehUser?->name }}@if ($r->diinputOleh) · Diinput oleh {{ $r->diinputOleh->nama_bergelar }}@endif</p>
                                 @if ($r->kejadian === KejadianSpt::TANGGAL_DIUBAH)
                                     <p class="mt-1 tabular-nums text-neutral-900">{{ $rentangNilai($r->nilai_lama) }} → {{ $rentangNilai($r->nilai_baru) }}</p>
+                                @elseif ($r->kejadian === KejadianSpt::SPPD_DIUBAH)
+                                    <p class="mt-1 tabular-nums text-neutral-900 [overflow-wrap:anywhere]">{{ $r->nilai_lama['nomor_sppd'] ?? '—' }} → {{ $r->nilai_baru['nomor_sppd'] ?? '—' }}</p>
                                 @endif
                                 @if ($r->alasan)<p class="mt-1 whitespace-pre-line text-neutral-600">{{ $r->alasan }}</p>@endif
                             </li>
