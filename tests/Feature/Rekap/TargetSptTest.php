@@ -184,6 +184,27 @@ class TargetSptTest extends TestCase
         $this->assertStringNotContainsString(e(PembangunRekap::CATATAN_LEBIH), $html);
     }
 
+    /** The target note sits right under Rencana vs Realisasi (Gabungan: under Ringkasan per Irban); the >100% footnote closes the summary. */
+    public function test_excel_target_note_directly_under_rencana_vs_realisasi(): void
+    {
+        $buku = $this->buku(['bagian' => ['rr', 'klasifikasi', 'jenis']]);
+        $kolomA = fn (string $sheet) => array_column($buku->getSheetByName($sheet)->toArray(null, true, false, false), 0);
+
+        $a = $kolomA('Gabungan');
+        $ringkasan = array_search('Ringkasan per Irban', $a, true);
+        $catatan = $ringkasan + 2 + 2 + 1; // title, header, two irban rows, empty row
+        $this->assertSame(['Catatan', 'Keterangan', PembangunRekap::CATATAN_TARGET, null, 'Per Klasifikasi'], array_slice($a, $catatan, 5));
+        $this->assertSame(PembangunRekap::CATATAN_LEBIH, end($a));
+
+        $a = $kolomA('Irban A');
+        $rr = array_search('Rencana vs Realisasi', $a, true);
+        $this->assertSame(['Catatan', 'Keterangan', PembangunRekap::CATATAN_TARGET, null, 'Per Klasifikasi'], array_slice($a, $rr + 2 + 5 + 1, 5)); // TW I–IV + Total
+
+        // Without Rencana vs Realisasi the note follows Per Jenis Penugasan, as in the PDF.
+        $a = array_column($this->buku(['bagian' => ['klasifikasi', 'jenis']])->getSheetByName('Gabungan')->toArray(null, true, false, false), 0);
+        $this->assertGreaterThan(array_search('Per Jenis Penugasan', $a, true), array_search(PembangunRekap::CATATAN_TARGET, $a, true));
+    }
+
     public function test_excel_catatan_section_only_when_relevant_per_sheet(): void
     {
         $buku = $this->buku(['bagian' => ['rr']]);

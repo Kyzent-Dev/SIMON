@@ -151,13 +151,16 @@ class PembangunRekap implements Pembangun
 
     /**
      * Selected summary sections of one sheet in RekapSheet shape ($irban null = the Gabungan sheet, which adds "Ringkasan per Irban"
-     * after Rencana vs Realisasi). Percentages above 100 become "133 *"; a closing "Catatan" section carries the notes that apply.
+     * after Rencana vs Realisasi). Percentages above 100 become "133 *". CATATAN_TARGET is a "Catatan" section right under the section
+     * kodeCatatanTarget() picks (as in the PDF; after "Ringkasan per Irban" on Gabungan); CATATAN_LEBIH is a closing "Catatan" section.
      */
     private function bagianSheet(array $data, array $filter, ?int $irban): array
     {
         $gabungan = $irban === null;
         // Only the row's percentage cell (index `lebih`) gets the marker; the cell becomes text, e.g. "133 *".
         $tanda = fn (array $b) => array_map(fn ($n, $i) => $i === $b['lebih'] ? $n.' *' : $n, $b['sel'], array_keys($b['sel']));
+        $catatan = fn (string $teks) => ['judul' => 'Catatan', 'kolom' => ['Keterangan'], 'tipe' => ['label'], 'baris' => [[$teks]], 'total' => []];
+        $kodeTarget = $this->kodeCatatanTarget($filter, $irban);
         $hasil = [];
         $lebih = false;
         foreach ($this->bagian($data, $filter['tw'], $gabungan ? 'gabungan' : 'irban') as $s) {
@@ -175,16 +178,12 @@ class PembangunRekap implements Pembangun
                 $hasil[] = ['judul' => 'Ringkasan per Irban', 'kolom' => ['Irban', ...self::RR[0]], 'tipe' => ['label', 'angka', 'angka', 'angka'], 'total' => [],
                     'baris' => array_map(fn ($b) => [$b['label'], ...$tanda($b)], $ringkasan)];
             }
-        }
-        $catatan = [];
-        if (array_intersect(['rr', 'jenis'], $filter['bagian']) && $this->tanpaTarget($filter['tahun'], $filter['tw'], $irban) > 0) {
-            $catatan[] = [self::CATATAN_TARGET];
+            if ($s['kode'] === $kodeTarget) {
+                $hasil[] = $catatan(self::CATATAN_TARGET);
+            }
         }
         if ($lebih) {
-            $catatan[] = [self::CATATAN_LEBIH];
-        }
-        if ($catatan) {
-            $hasil[] = ['judul' => 'Catatan', 'kolom' => ['Keterangan'], 'tipe' => ['label'], 'baris' => $catatan, 'total' => []];
+            $hasil[] = $catatan(self::CATATAN_LEBIH);
         }
 
         return $hasil;
@@ -198,19 +197,19 @@ class PembangunRekap implements Pembangun
         return view('pdf.rekap-triwulan', [
             'tahun' => $filter['tahun'], 'tw' => $filter['tw'] ? self::TW[$filter['tw']] : 'Semua TW',
             'irban' => $filter['irban'] ? Irban::whereKey($filter['irban'])->value('nama') : null,
-            'pkptDisahkan' => $data['pkpt_disahkan'], 'catatanTarget' => $this->kodeCatatanTarget($filter), 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL,
+            'pkptDisahkan' => $data['pkpt_disahkan'], 'catatanTarget' => $this->kodeCatatanTarget($filter, $filter['irban']), 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL,
             'detail' => in_array('detail', $pilihan, true) ? $this->detail($filter) : [], 'pilihan' => $pilihan, 'grafik' => $this->grafik($data, $filter),
             'bagian' => array_values(array_filter($this->bagian($data, $filter['tw'], 'semua'), fn ($s) => in_array($s['kode'], $pilihan, true))),
             'dibuat' => now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB',
         ])->render();
     }
 
-    /** Section that carries CATATAN_TARGET in the PDF: Rencana vs Realisasi, else Per Jenis Penugasan (both show rencana); null when no item lacks a target. */
-    private function kodeCatatanTarget(array $filter): ?string
+    /** Section that carries CATATAN_TARGET in the PDF and the Excel sheet of scope $irban: Rencana vs Realisasi, else Per Jenis Penugasan (both show rencana); null when no item lacks a target. */
+    private function kodeCatatanTarget(array $filter, ?int $irban): ?string
     {
         $kode = array_values(array_intersect(['rr', 'jenis'], $filter['bagian']))[0] ?? null;
 
-        return $kode && $this->tanpaTarget($filter['tahun'], $filter['tw'], $filter['irban']) > 0 ? $kode : null;
+        return $kode && $this->tanpaTarget($filter['tahun'], $filter['tw'], $irban) > 0 ? $kode : null;
     }
 
     /**
