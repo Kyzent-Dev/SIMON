@@ -61,7 +61,7 @@ class RegisterSheetTest extends TestCase
         $this->terbit('Satu', 3);
         $this->terbit('=HYPERLINK("x")');
         $f = (new PembangunRegister)->filter($this->bu, ['tahun' => 2026, 'cari' => 'SPT']);
-        $s = $this->baca($f, getenv('SAMPLE_XLSX') ?: null);
+        $s = $this->baca($f, null);
 
         $this->assertSame('Register Nomor SPT 2026', $s->getCell('A1')->getValue());
         $this->assertSame('Filter: Cari: SPT', $s->getCell('A2')->getValue());
@@ -122,19 +122,30 @@ class RegisterSheetTest extends TestCase
         }
         $pdf = app(RegisterNomor::class)->pdf(['tahun' => 2026]);
         $this->assertStringStartsWith('%PDF', $pdf);
-        if ($o = getenv('SAMPLE_PDF')) {
-            file_put_contents($o, $pdf);
-        }
     }
 
     public function test_pdf_of_200_rows_stays_light(): void
     {
         $irban = Irban::factory()->create(['kode_nomor' => 'INSPEKTORAT-II']);
         Spt::factory()->count(200)->diterima()->create(['irban_id' => $irban->id, 'tahun' => 2026]);
-        $t = microtime(true);
         $pdf = app(RegisterNomor::class)->pdf(['tahun' => 2026]);
 
-        fwrite(STDERR, sprintf("\nPDF 200 baris: %.1f dtk, puncak memori %.0f MB, %d KB\n", microtime(true) - $t, memory_get_peak_usage(true) / 1048576, strlen($pdf) / 1024));
         $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertLessThan(5 * 1024 * 1024, strlen($pdf));
+    }
+
+    public function test_numeric_looking_nomor_sppd_stays_text(): void
+    {
+        $a = $this->terbit('Satu');
+        $a->forceFill(['nomor_sppd' => '1e5'])->save();
+        $b = $this->terbit('Dua');
+        $b->forceFill(['nomor_sppd' => '123'])->save();
+        $s = $this->baca((new PembangunRegister)->filter($this->bu, ['tahun' => 2026]));
+
+        $hasil = [$s->getCell('C5')->getValue(), $s->getCell('C6')->getValue()];
+        sort($hasil);
+        $this->assertSame(['123', '1e5'], $hasil);
+        $this->assertSame('s', $s->getCell('C5')->getDataType());
+        $this->assertSame('s', $s->getCell('C6')->getDataType());
     }
 }

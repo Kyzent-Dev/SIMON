@@ -76,6 +76,9 @@ class Register extends Component
     public function mount(): void
     {
         Gate::authorize('kelolaNomor', Spt::class);
+        if (! in_array($this->status, ['', StatusPengajuan::Diterima->value, StatusPengajuan::Dibatalkan->value], true)) {
+            $this->status = '';
+        }
         if ($this->tahun < 2000) {
             $this->tahun = CarbonImmutable::now('Asia/Jakarta')->year;
         }

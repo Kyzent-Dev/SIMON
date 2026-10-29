@@ -277,6 +277,12 @@ class RegisterTest extends TestCase
         $this->register()->assertSee('Dibatalkan: Salah ketik perihal SPT')->assertSee('Manual');
     }
 
+    public function test_invalid_status_from_an_old_bookmark_is_reset(): void
+    {
+        Livewire::withQueryParams(['status' => 'selesai'])->actingAs($this->bu)->test(Register::class)->assertSet('status', '');
+        Livewire::withQueryParams(['status' => 'diterima'])->actingAs($this->bu)->test(Register::class)->assertSet('status', 'diterima');
+    }
+
     public function test_status_filter_is_status_pengajuan_and_named_in_the_pdf_header(): void
     {
         $a = $this->terbit('Satu');

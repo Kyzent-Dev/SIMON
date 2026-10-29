@@ -12,7 +12,9 @@ use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -26,7 +28,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class RegisterSheet extends DefaultValueBinder implements FromArray, WithColumnWidths, WithCustomValueBinder, WithEvents, WithStrictNullComparison, WithStyles, WithTitle
 {
-    use AmanFormula;
+    use AmanFormula {
+        bindValue as amanBindValue;
+    }
 
     public const BARIS_HEADER = 4;
 
@@ -51,6 +55,18 @@ class RegisterSheet extends DefaultValueBinder implements FromArray, WithColumnW
             RegisterNomor::KOLOM,
             ...$this->baris,
         ];
+    }
+
+    /** Nomor SPT (A) and Nomor SPPD (C) stay text: "1e5" or "123" must not become a number. */
+    public function bindValue(Cell $cell, mixed $value): bool
+    {
+        if (is_string($value) && in_array($cell->getColumn(), ['A', 'C'], true) && $cell->getRow() > self::BARIS_HEADER) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return $this->amanBindValue($cell, $value);
     }
 
     public function title(): string

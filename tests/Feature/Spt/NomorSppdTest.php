@@ -60,6 +60,8 @@ class NomorSppdTest extends TestCase
         $this->assertTrue($this->bu->can('ubahSppd', $spt));
         $this->assertTrue($this->bu->can('ubahSppd', $this->spt('menungguNomor')));
         $this->assertFalse($this->bu->can('ubahSppd', $this->spt('dibatalkan')));
+        $this->assertFalse($this->bu->can('ubahSppd', $this->spt('ditolak')));
+        $this->assertFalse($this->bu->can('ubahSppd', $this->spt('perluRevisi')));
         $this->assertFalse($this->bu->can('ubahSppd', Spt::factory()->create(['irban_id' => $this->irban->id])));
         foreach ([Role::Pimpinan, Role::Admin] as $role) {
             $this->assertFalse(User::factory()->create(['role' => $role])->can('ubahSppd', $spt));
