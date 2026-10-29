@@ -52,6 +52,9 @@
 </td>
 <td class="relative align-top !py-2">
     <label for="{{ $p }}-target" class="sr-only">Target SPT ({{ $caption }})</label>
-    <input id="{{ $p }}-target" type="number" inputmode="numeric" min="1" max="999" form="{{ $form }}" wire:model="{{ $p }}.target_spt" {!! $aria('target_spt') !!} class="{{ $field }} min-w-16 {{ $border('target_spt') }} px-2 text-right tabular-nums">
+    <input id="{{ $p }}-target" type="number" inputmode="numeric" min="1" max="999" form="{{ $form }}" wire:model="{{ $p }}.target_spt"
+        @if ($errors->has("$p.target_spt")) aria-invalid="true" @endif aria-describedby="{{ $p }}-target-bantuan{{ $errors->has("$p.target_spt") ? ' '.$p.'-target_spt-error' : '' }}"
+        class="{{ $field }} min-w-16 {{ $border('target_spt') }} px-2 text-right tabular-nums">
+    <p id="{{ $p }}-target-bantuan" class="mt-1 w-24 text-xs whitespace-normal text-neutral-500">Perkiraan jumlah SPT untuk item ini. Kosong dihitung 1.</p>
     {!! $error('target_spt') !!}
 </td>

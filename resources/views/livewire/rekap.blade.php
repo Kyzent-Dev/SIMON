@@ -46,8 +46,15 @@
                                 @foreach ($t['baris'] as $b)
                                     <tr @class(['font-bold border-t-neutral-300!' => $b['total']])>
                                         <th scope="row" class="bg-white px-4 text-left text-sm {{ $b['total'] ? 'font-bold' : 'font-medium' }}">{{ $i === 0 ? $b['periode'] : $b['label'] }}</th>
-                                        @foreach ($b['sel'] as $n)
-                                            <td class="text-right">{{ is_int($n) ? number_format($n, 0, ',', '.') : $n }}</td>
+                                        @foreach ($b['sel'] as $j => $n)
+                                            @if ($b['lebih'] === $j)
+                                                {{-- Task 6 1.1.4: above 100% = icon + "*" + sr-only text, explained by the footnote under the section. --}}
+                                                <td class="relative text-right whitespace-nowrap">
+                                                    <span class="inline-flex items-center gap-1">{{ svg('heroicon-m-exclamation-triangle', 'size-4 shrink-0 text-accent-700') }}{{ number_format($n, 0, ',', '.') }}<span aria-hidden="true">*</span><span class="sr-only">, di atas 100%, lihat catatan</span></span>
+                                                </td>
+                                            @else
+                                                <td class="text-right">{{ is_int($n) ? number_format($n, 0, ',', '.') : $n }}</td>
+                                            @endif
                                         @endforeach
                                     </tr>
                                 @endforeach
@@ -55,6 +62,12 @@
                         </div>
                     @endforeach
                 </div>
+                @if ($s['kode'] === 'rr' && $catatanTarget)
+                    <x-ui.alert variant="info" class="mt-3">{{ \App\Services\Ekspor\PembangunRekap::CATATAN_TARGET }}</x-ui.alert>
+                @endif
+                @if (collect($s['tabel'])->pluck('baris')->flatten(1)->contains(fn ($b) => $b['lebih'] !== null))
+                    <p class="mt-2 text-sm text-neutral-600">{{ \App\Services\Ekspor\PembangunRekap::CATATAN_LEBIH }}</p>
+                @endif
             </section>
         @endforeach
         @foreach ($detail ?? [] as $d)

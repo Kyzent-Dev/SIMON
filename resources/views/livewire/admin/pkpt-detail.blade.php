@@ -51,6 +51,9 @@
         <div class="w-full sm:w-64">
             <x-ui.select label="Irban" name="irbanId" wire:model.live="irbanId" :options="$irbans" :value="$irbanId" placeholder="Semua Irban" />
         </div>
+        <div class="w-full sm:w-auto sm:pb-2">
+            <x-ui.switch name="targetKosong" id="target-kosong" label="Target kosong" wire:model.live="targetKosong" :checked="$targetKosong" />
+        </div>
         @unless ($draf)
             <div class="w-full sm:w-auto sm:pb-2">
                 <x-ui.switch name="dihapus" label="Tampilkan yang dihapus" wire:model.live="dihapus" :checked="$dihapus" />
@@ -58,8 +61,11 @@
         @endunless
         <p class="text-sm text-neutral-600 sm:ml-auto" aria-live="polite">
             @php $nDihapus = $draf ? 0 : $items->filter(fn ($i) => $i->status === \App\Enums\StatusItemPkpt::Dihapus)->count(); @endphp
-            @if ($irbanId !== ''){{ $items->count() - $nDihapus }} dari {{ $total }} item @else{{ $total }} item @endif
+            @if ($irbanId !== '' || $targetKosong){{ $items->count() - $nDihapus }} dari {{ $total }} item @else{{ $total }} item @endif
             @if ($nDihapus)· {{ $nDihapus }} dihapus @endif
+            @if ($tanpaTarget)
+                · <span class="inline-flex items-center gap-1">{{ svg('heroicon-m-exclamation-triangle', 'size-4 shrink-0 text-accent-700') }}{{ $tanpaTarget }} item belum punya target SPT</span>
+            @endif
         </p>
     </div>
 
@@ -73,7 +79,7 @@
             <x-ui.empty-state icon="calendar-days" title="Tidak ada item untuk filter ini." />
         </x-ui.card>
     @else
-        <x-ui.table label="Item PKPT {{ $pkpt->tahun }}" wire:loading.class="opacity-60" wire:target="irbanId,dihapus">
+        <x-ui.table label="Item PKPT {{ $pkpt->tahun }}" wire:loading.class="opacity-60" wire:target="irbanId,dihapus,targetKosong">
             <x-slot:head>
                 <x-ui.th>Irban</x-ui.th>
                 <x-ui.th>Jenis Penugasan</x-ui.th>
@@ -114,7 +120,13 @@
                         <td class="min-w-32 align-top !py-3">
                             @if ($item->keterangan){{ $item->keterangan }}@else<span class="text-neutral-500">—</span>@endif
                         </td>
-                        <td class="align-top !py-3 text-right">{{ $item->target_spt ?? '—' }}</td>
+                        <td class="align-top !py-3 text-right">
+                            @if ($item->target_spt === null)
+                                <x-app.tag icon="exclamation-triangle" variant="warning">Target kosong</x-app.tag>
+                            @else
+                                {{ $item->target_spt }}
+                            @endif
+                        </td>
                         @if ($draf)
                             <td class="whitespace-nowrap align-top !py-2 text-right">
                                 <div class="flex items-center justify-end gap-2">
@@ -132,7 +144,7 @@
             @if ($draf)
                 @if ($items->isEmpty())
                     <tr>
-                        <td colspan="{{ $cols }}" class="!h-auto !py-6 text-center text-sm text-neutral-600">Belum ada item. Isi baris di bawah lalu pilih "Tambah", atau impor dari Excel.</td>
+                        <td colspan="{{ $cols }}" class="!h-auto !py-6 text-center text-sm text-neutral-600">{{ $irbanId !== '' || $targetKosong ? 'Tidak ada item untuk filter ini.' : 'Belum ada item. Isi baris di bawah lalu pilih "Tambah", atau impor dari Excel.' }}</td>
                     </tr>
                 @endif
                 <tr wire:key="item-baru" class="!bg-neutral-25">
@@ -174,6 +186,10 @@
                     <x-ui.alert variant="warning">
                         {{ $total === 0 ? 'PKPT belum memiliki item.' : 'Isi nomor dan tanggal SK Bupati sebelum mengesahkan.' }}
                     </x-ui.alert>
+                @endif
+                @if ($tanpaTarget)
+                    {{-- Task 6 1.1.4: a warning only; Sahkan stays available. --}}
+                    <x-ui.alert variant="warning">{{ $tanpaTarget }} item belum punya target SPT. Rencana di rekap akan dihitung 1 per item.</x-ui.alert>
                 @endif
             </div>
             <x-slot:footer>

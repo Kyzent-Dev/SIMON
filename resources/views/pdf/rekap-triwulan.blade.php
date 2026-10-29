@@ -35,6 +35,7 @@
     .grafik-kat td { font-size: 8px; padding-top: 3px; vertical-align: top; color: {{ \App\Support\PaletGrafik::TEKS }}; }
     .titik { display: inline-block; width: 7px; height: 7px; border-radius: 4px; }
     .legenda { color: {{ \App\Support\PaletGrafik::TEKS_SEKUNDER }}; }
+    p.catatan { margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -54,12 +55,19 @@
                     <thead><tr><th>{{ ['rr' => 'Triwulan', 'klasifikasi' => 'Klasifikasi', 'jenis' => 'Jenis Penugasan'][$s['kode']] }}</th>@foreach ($s['kolom'] as $k)<th class="n">{{ $k }}</th>@endforeach</tr></thead>
                     <tbody>
                         @foreach ($t['baris'] as $b)
-                            <tr @class(['total' => $b['total']])><th>{{ $s['kode'] === 'rr' ? $b['periode'] : $b['label'] }}</th>@foreach ($b['sel'] as $n)<td class="n">{{ $n }}</td>@endforeach</tr>
+                            <tr @class(['total' => $b['total']])><th>{{ $s['kode'] === 'rr' ? $b['periode'] : $b['label'] }}</th>@foreach ($b['sel'] as $j => $n)<td class="n">{{ $n }}{{ ($b['lebih'] ?? null) === $j ? ' *' : '' }}</td>@endforeach</tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
         @endforeach
+        {{-- Task 6 1.1.4: notes only when relevant (catatanTarget = the section code that carries it). --}}
+        @if (($catatanTarget ?? null) === $s['kode'])
+            <p class="catatan">{{ \App\Services\Ekspor\PembangunRekap::CATATAN_TARGET }}</p>
+        @endif
+        @if (collect($s['tabel'])->pluck('baris')->flatten(1)->contains(fn ($b) => is_int($b['lebih'] ?? null)))
+            <p class="catatan">{{ \App\Services\Ekspor\PembangunRekap::CATATAN_LEBIH }}</p>
+        @endif
         @isset($grafik[$s['kode']])
             @include('pdf.partials.grafik-batang', ['kode' => $s['kode'], ...$grafik[$s['kode']]])
         @endisset

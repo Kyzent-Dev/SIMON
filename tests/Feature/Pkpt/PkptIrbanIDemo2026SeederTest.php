@@ -44,7 +44,8 @@ class PkptIrbanIDemo2026SeederTest extends TestCase
         $this->assertSame(['2026-12-07', '2026-12-25', 'Monev'], [
             $items[24]->tanggal_mulai->toDateString(), $items[24]->tanggal_selesai->toDateString(), $items[24]->jenisPenugasan->nama,
         ]);
-        $this->assertNull($items[24]->target_spt);
+        $this->assertSame(1, $items[24]->target_spt); // no object count: demo target 1
+        $this->assertSame(8, $items[2]->target_spt);  // "1 tim 1 minggu 2 sekolah" over 4 weeks
         $this->assertSame(1, JenisPenugasan::where('nama', 'Evaluasi RB dan Reviu DAK')->count());
     }
 

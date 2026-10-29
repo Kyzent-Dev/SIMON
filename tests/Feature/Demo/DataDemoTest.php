@@ -22,8 +22,10 @@ use App\Models\SptDokumen;
 use App\Models\Tim;
 use App\Models\User;
 use App\Services\ColorRules;
+use App\Services\Ekspor\PembangunRekap;
 use App\Services\PenandaSpt;
 use App\Services\Publik\RealisasiPublik;
+use App\Services\RekapTriwulan;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\KinerjaSeeder;
@@ -216,6 +218,19 @@ class DataDemoTest extends TestCase
             $this->assertTrue($hasil['ketua'] && $hasil['supervisor'] && $hasil['duplikat']);
             $this->assertEmpty(array_diff(array_column($baris, 'pegawai_id'), $anggota));
         }
+    }
+
+    /** 1.1.4 Task 6 (K9): with the demo target_spt filled, the Irban I rekap is no longer above 100% in any quarter or the year. */
+    public function test_rekap_demo_irban_i_tidak_di_atas_100_persen(): void
+    {
+        $this->seedDemo();
+        $irban = Irban::where('nama', 'Irban I')->value('id');
+        $baris = app(RekapTriwulan::class)->hitung(2026, $irban)['irban']['baris'][0];
+
+        foreach ($baris['tw'] + ['total' => $baris['total']] as $periode => $sel) {
+            $this->assertFalse(PembangunRekap::diAtas100($sel['persen']), "Irban I {$periode}: {$sel['realisasi']}/{$sel['rencana']}");
+        }
+        $this->assertSame(0, app(PembangunRekap::class)->tanpaTarget(2026, 0, $irban));
     }
 
     public function test_warna_jenis_demo_stabil_per_nama_bukan_jumlah_baris(): void

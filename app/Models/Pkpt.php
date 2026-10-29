@@ -39,6 +39,12 @@ class Pkpt extends Model
         return $this->belongsTo(User::class, 'disahkan_oleh');
     }
 
+    /** Active items without target_spt (PKPT detail summary and the Sahkan warning). */
+    public function jumlahTanpaTarget(): int
+    {
+        return $this->items()->aktif()->tanpaTarget()->count();
+    }
+
     public function isDraf(): bool
     {
         return $this->status === StatusPkpt::Draf;

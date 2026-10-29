@@ -51,6 +51,10 @@ class PkptDetail extends Component
     #[Url]
     public bool $dihapus = false;
 
+    /** Filter "Target kosong": only items without target_spt (Task 6 1.1.4). */
+    #[Url(as: 'target-kosong')]
+    public bool $targetKosong = false;
+
     /** Modal "Buat Perubahan". */
     public bool $buatOpen = false;
 
@@ -199,6 +203,7 @@ class PkptDetail extends Component
         $items = $this->pkpt->items()->when($draf || ! $this->dihapus, fn ($q) => $q->aktif())
             ->with(['irban', 'jenisPenugasan'])
             ->when($this->irbanId !== '', fn ($q) => $q->where('irban_id', $this->irbanId))
+            ->when($this->targetKosong, fn ($q) => $q->tanpaTarget())
             ->orderBy('tanggal_mulai')->orderBy('id')->get();
 
         $rentang = $items->mapWithKeys(fn (PkptItem $i) => [$i->id => $kesesuaian->rentang($i)]);
@@ -213,6 +218,7 @@ class PkptDetail extends Component
             'riwayat' => $draf ? [] : $perubahan->riwayatItemUntuk(auth()->user(), $items->pluck('id')->all()),
             'usulanTerbuka' => $draf ? 0 : PkptUsulan::where('pkpt_id', $this->pkpt->id)->where('status', StatusUsulan::Terbuka->value)->count(),
             'total' => $this->pkpt->items()->aktif()->count(),
+            'tanpaTarget' => $this->pkpt->jumlahTanpaTarget(),
             'irbans' => Irban::orderBy('id')->pluck('nama', 'id')->all(),
             'jenis' => JenisPenugasan::orderBy('nama')->pluck('nama', 'id')->all(),
             'deleting' => $this->deletingId ? PkptItem::with(['irban', 'jenisPenugasan'])->find($this->deletingId) : null,

@@ -3,9 +3,11 @@
 namespace App\Services\Ekspor;
 
 use App\Enums\Role;
+use App\Enums\StatusPkpt;
 use App\Exports\RekapSheet;
 use App\Exports\RekapWorkbook;
 use App\Models\Irban;
+use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\RealisasiItemPkpt;
@@ -39,6 +41,11 @@ class PembangunRekap implements Pembangun
 
     private const DETAIL = 'Detail Realisasi per Item PKPT';
 
+    /** Task 6 1.1.4 (K9): shown on the page and in both files only when relevant. */
+    public const CATATAN_TARGET = 'Sebagian item PKPT belum punya target SPT dan dihitung 1.';
+
+    public const CATATAN_LEBIH = '* Di atas 100%: realisasi melebihi rencana, biasanya karena target SPT item belum diisi (dihitung 1) atau lebih kecil dari jumlah SPT yang terbit.';
+
     private const KOLOM_DETAIL = ['Jenis Penugasan', 'Periode Penugasan (PKPT)', 'Nomor SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'];
 
     /** hitung() results of this instance (one request or one job), so jumlah() and export() do not recompute: "tahun|irban" => result. */
@@ -49,6 +56,24 @@ class PembangunRekap implements Pembangun
     private function hitung(int $tahun, ?int $irban = null): array
     {
         return $this->hasilHitung["{$tahun}|{$irban}"] ??= $this->rekap->hitung($tahun, $irban);
+    }
+
+    /**
+     * Items of the year's Disahkan PKPT without target_spt whose rencana falls in the period (tw 0 = the year), scoped like
+     * RekapTriwulan::hitung and placed by the same RekapTriwulan::rencanaItem (read-only reuse).
+     */
+    public function tanpaTarget(int $tahun, int $tw, ?int $irban): int
+    {
+        return PkptItem::aktif()->tanpaTarget()
+            ->whereHas('pkpt', fn ($q) => $q->where('tahun', $tahun)->where('status', StatusPkpt::Disahkan))
+            ->when($irban, fn ($q) => $q->where('irban_id', $irban))->get()
+            ->filter(fn (PkptItem $item) => ($r = $this->rekap->rencanaItem($item, $tahun)) && (! $tw || $r[0] === $tw))->count();
+    }
+
+    /** A realisasi percentage above 100 gets the "*" marker and CATATAN_LEBIH. */
+    public static function diAtas100(mixed $persen): bool
+    {
+        return is_int($persen) && $persen > 100;
     }
 
     /** Known codes only, unique, in canonical order; nothing left → the default of tab `irban`. */
@@ -109,11 +134,11 @@ class PembangunRekap implements Pembangun
         $dibuat = now('Asia/Jakarta')->translatedFormat('d F Y H.i').' WIB';
         $sheets = [];
         if (! $filter['irban'] && array_diff($filter['bagian'], ['detail'])) {
-            $sheets[] = new RekapSheet($judul, 'Gabungan', $dibuat, $this->bagianSheet($this->hitung($filter['tahun']), $filter, true));
+            $sheets[] = new RekapSheet($judul, 'Gabungan', $dibuat, $this->bagianSheet($this->hitung($filter['tahun']), $filter, null));
         }
         $detail = in_array('detail', $filter['bagian'], true) ? array_column($this->detail($filter), null, 'id') : [];
         foreach (Irban::orderBy('id')->when($filter['irban'], fn ($q, $id) => $q->whereKey($id))->get(['id', 'nama']) as $i) {
-            $bagian = $this->bagianSheet($this->hitung($filter['tahun'], $i->id), $filter, false);
+            $bagian = $this->bagianSheet($this->hitung($filter['tahun'], $i->id), $filter, $i->id);
             if (isset($detail[$i->id])) {
                 $bagian[] = ['judul' => self::DETAIL, 'kolom' => self::KOLOM_DETAIL, 'tipe' => ['label', 'tanggal', 'nomor', 'tanggal', 'teks', 'teks', 'panjang'],
                     'baris' => $detail[$i->id]['baris'], 'total' => [], 'gabung' => $detail[$i->id]['gabung']];
@@ -124,22 +149,42 @@ class PembangunRekap implements Pembangun
         return new RekapWorkbook($sheets);
     }
 
-    /** Selected summary sections of one sheet in RekapSheet shape; the Gabungan sheet adds "Ringkasan per Irban" after Rencana vs Realisasi. */
-    private function bagianSheet(array $data, array $filter, bool $gabungan): array
+    /**
+     * Selected summary sections of one sheet in RekapSheet shape ($irban null = the Gabungan sheet, which adds "Ringkasan per Irban"
+     * after Rencana vs Realisasi). Percentages above 100 become "133 *"; a closing "Catatan" section carries the notes that apply.
+     */
+    private function bagianSheet(array $data, array $filter, ?int $irban): array
     {
+        $gabungan = $irban === null;
+        // Only the row's percentage cell (index `lebih`) gets the marker; the cell becomes text, e.g. "133 *".
+        $tanda = fn (array $b) => array_map(fn ($n, $i) => $i === $b['lebih'] ? $n.' *' : $n, $b['sel'], array_keys($b['sel']));
         $hasil = [];
+        $lebih = false;
         foreach ($this->bagian($data, $filter['tw'], $gabungan ? 'gabungan' : 'irban') as $s) {
             if (! in_array($s['kode'], $filter['bagian'], true)) {
                 continue;
             }
             $baris = $s['tabel'][0]['baris'];
+            $lebih = $lebih || (bool) array_filter(array_column($baris, 'lebih'), 'is_int');
             $hasil[] = ['judul' => $s['judul'], 'kolom' => [self::KEPALA[$s['kode']], 'Periode', ...$s['kolom']], 'tipe' => ['label', 'teks', ...array_fill(0, count($s['kolom']), 'angka')],
-                'baris' => array_map(fn ($b) => [$b['label'], $b['periode'], ...$b['sel']], $baris), 'total' => array_keys(array_filter(array_column($baris, 'total')))];
+                'baris' => array_map(fn ($b) => [$b['label'], $b['periode'], ...$tanda($b)], $baris), 'total' => array_keys(array_filter(array_column($baris, 'total')))];
             if ($s['kode'] === 'rr' && $gabungan) {
                 $sel = fn (array $b) => $filter['tw'] ? $b['tw'][$filter['tw']] : $b['total'];
+                $ringkasan = array_map(fn ($b) => $this->baris($b['nama'], '', $sel($b), self::RR[1], false), $data['irban']['baris']);
+                $lebih = $lebih || (bool) array_filter(array_column($ringkasan, 'lebih'), 'is_int');
                 $hasil[] = ['judul' => 'Ringkasan per Irban', 'kolom' => ['Irban', ...self::RR[0]], 'tipe' => ['label', 'angka', 'angka', 'angka'], 'total' => [],
-                    'baris' => array_map(fn ($b) => [$b['nama'], ...array_map(fn ($k) => $sel($b)[$k] ?? '–', self::RR[1])], $data['irban']['baris'])];
+                    'baris' => array_map(fn ($b) => [$b['label'], ...$tanda($b)], $ringkasan)];
             }
+        }
+        $catatan = [];
+        if (array_intersect(['rr', 'jenis'], $filter['bagian']) && $this->tanpaTarget($filter['tahun'], $filter['tw'], $irban) > 0) {
+            $catatan[] = [self::CATATAN_TARGET];
+        }
+        if ($lebih) {
+            $catatan[] = [self::CATATAN_LEBIH];
+        }
+        if ($catatan) {
+            $hasil[] = ['judul' => 'Catatan', 'kolom' => ['Keterangan'], 'tipe' => ['label'], 'baris' => $catatan, 'total' => []];
         }
 
         return $hasil;
@@ -153,11 +198,19 @@ class PembangunRekap implements Pembangun
         return view('pdf.rekap-triwulan', [
             'tahun' => $filter['tahun'], 'tw' => $filter['tw'] ? self::TW[$filter['tw']] : 'Semua TW',
             'irban' => $filter['irban'] ? Irban::whereKey($filter['irban'])->value('nama') : null,
-            'pkptDisahkan' => $data['pkpt_disahkan'], 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL,
+            'pkptDisahkan' => $data['pkpt_disahkan'], 'catatanTarget' => $this->kodeCatatanTarget($filter), 'detailJudul' => self::DETAIL, 'detailKolom' => self::KOLOM_DETAIL,
             'detail' => in_array('detail', $pilihan, true) ? $this->detail($filter) : [], 'pilihan' => $pilihan, 'grafik' => $this->grafik($data, $filter),
             'bagian' => array_values(array_filter($this->bagian($data, $filter['tw'], 'semua'), fn ($s) => in_array($s['kode'], $pilihan, true))),
             'dibuat' => now('Asia/Jakarta')->translatedFormat('d F Y H:i').' WIB',
         ])->render();
+    }
+
+    /** Section that carries CATATAN_TARGET in the PDF: Rencana vs Realisasi, else Per Jenis Penugasan (both show rencana); null when no item lacks a target. */
+    private function kodeCatatanTarget(array $filter): ?string
+    {
+        $kode = array_values(array_intersect(['rr', 'jenis'], $filter['bagian']))[0] ?? null;
+
+        return $kode && $this->tanpaTarget($filter['tahun'], $filter['tw'], $filter['irban']) > 0 ? $kode : null;
     }
 
     /**
@@ -291,8 +344,10 @@ class PembangunRekap implements Pembangun
         return $baris;
     }
 
+    /** `lebih`: index in `sel` of the percentage when it is above 100 (diAtas100), else null; the page and both files mark that cell. */
     private function baris(string $label, string $periode, array $sel, array $kunci, bool $total): array
     {
-        return ['label' => $label, 'periode' => $periode, 'total' => $total, 'sel' => array_map(fn ($k) => $sel[$k] ?? '–', $kunci)];
+        return ['label' => $label, 'periode' => $periode, 'total' => $total, 'sel' => array_map(fn ($k) => $sel[$k] ?? '–', $kunci),
+            'lebih' => self::diAtas100($sel['persen'] ?? null) ? array_search('persen', $kunci, true) : null];
     }
 }

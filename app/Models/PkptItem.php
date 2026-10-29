@@ -40,6 +40,12 @@ class PkptItem extends Model
         $query->where('pkpt_item.status', StatusItemPkpt::Aktif->value);
     }
 
+    /** Items without target_spt (K9, Task 6 1.1.4): the rekap counts them as one planned SPT. Shared by PKPT detail, Sahkan and Rekap. */
+    public function scopeTanpaTarget(Builder $query): void
+    {
+        $query->whereNull('pkpt_item.target_spt');
+    }
+
     /** True when the dates differ from the snapshot taken at pengesahan. */
     public function direvisi(): bool
     {

@@ -118,6 +118,7 @@ class Rekap extends Component
             'judul' => $pimpinan ? 'Rekap Triwulanan' : 'Rekap Saya',
             'rekap' => $rekap,
             'bagian' => $detail ? [] : $pembangun->bagian($rekap, $f['tw'], $this->tab),
+            'catatanTarget' => ! $detail && $pembangun->tanpaTarget($f['tahun'], $f['tw'], $f['irban']) > 0,
             'detail' => $detail ? app(RealisasiItemPkpt::class)->untuk($f['tahun'], $f['tw'], $f['irban']) : null,
             'tahunList' => $tahunList,
             'irbanOptions' => $pimpinan ? Irban::orderBy('nama')->pluck('nama', 'id')->all() : [],
