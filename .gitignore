@@ -31,3 +31,12 @@ Thumbs.db
 
 # graphify knowledge graph (local, rebuilt by hooks)
 /graphify-out/
+
+# unnecesarry .md file
+docs/plans/
+decisions/
+design/
+*.md
+
+!README.md
+!DEPLOY.md
