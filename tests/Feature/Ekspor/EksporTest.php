@@ -315,9 +315,9 @@ class EksporTest extends TestCase
         file_put_contents($tmp, $r->streamedContent());
         $sheet = IOFactory::load($tmp)->getActiveSheet();
         unlink($tmp);
-        $this->assertSame('Nomor SPT', $sheet->getCell('B1')->getValue());
-        $this->assertSame('=HYPERLINK("x")', $sheet->getCell('E2')->getValue());
-        $this->assertSame('s', $sheet->getCell('E2')->getDataType());
+        $this->assertSame('Nomor SPT', $sheet->getCell('A1')->getValue());
+        $this->assertSame('=HYPERLINK("x")', $sheet->getCell('K2')->getValue());
+        $this->assertSame('s', $sheet->getCell('K2')->getDataType());
 
         $pdf = $this->actingAs($this->bu)->get("/ekspor/{$p->id}")->assertOk()->assertDownload('register-nomor-spt-2026.pdf');
         $this->assertStringStartsWith('%PDF', $pdf->streamedContent());

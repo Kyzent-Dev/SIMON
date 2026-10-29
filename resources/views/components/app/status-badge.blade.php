@@ -3,6 +3,11 @@
 @props(['status'])
 
 @php
+    // A StatusPengajuan (Register) maps onto its StatusSpt twin; Diterima has none and borrows the blue "On Process" look with its own icon.
+    $diterima = $status === \App\Enums\StatusPengajuan::Diterima;
+    if ($status instanceof \App\Enums\StatusPengajuan) {
+        $status = $diterima ? \App\Enums\StatusSpt::SiapDilaksanakan : \App\Enums\StatusSpt::from($status->value);
+    }
     $warna = [
         'draf' => 'bg-status-draf-bg text-status-draf-fg border-status-draf-bd',
         'menunggu_nomor' => 'bg-status-menunggu_nomor-bg text-status-menunggu_nomor-fg border-status-menunggu_nomor-bd',
@@ -14,9 +19,9 @@
         'selesai' => 'bg-status-selesai-bg text-status-selesai-fg border-status-selesai-bd',
         'dibatalkan' => 'bg-status-dibatalkan-bg text-status-dibatalkan-fg border-status-dibatalkan-bd border-dashed',
     ][$status->value];
-    $icon = ($status === \App\Enums\StatusSpt::Selesai ? 'heroicon-s-' : 'heroicon-m-').$status->icon();
+    $icon = $diterima ? 'heroicon-m-check-badge' : ($status === \App\Enums\StatusSpt::Selesai ? 'heroicon-s-' : 'heroicon-m-').$status->icon();
 @endphp
 
 <span {{ $attributes->class(['inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-xs font-semibold', $warna]) }}>
-    {{ svg($icon, 'size-3.5 shrink-0', ['aria-hidden' => 'true']) }}{{ $status->label() }}
+    {{ svg($icon, 'size-3.5 shrink-0', ['aria-hidden' => 'true']) }}{{ $diterima ? 'Diterima' : $status->label() }}
 </span>

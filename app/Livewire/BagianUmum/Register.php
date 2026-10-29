@@ -6,7 +6,6 @@ use App\Actions\Spt\AturNomorAwal;
 use App\Actions\Spt\BatalkanNomor;
 use App\Actions\Spt\CatatNomorManual;
 use App\Enums\StatusPengajuan;
-use App\Enums\StatusSpt;
 use App\Livewire\Concerns\MintaEkspor;
 use App\Models\Irban;
 use App\Models\JenisPenugasan;
@@ -201,7 +200,7 @@ class Register extends Component
             'baris' => $register->query($this->filter())->paginate(self::PER_HALAMAN),
             'tahunList' => $tahunList,
             'irbanOptions' => Irban::orderBy('nama')->pluck('nama', 'id')->all(),
-            'statusOptions' => collect([StatusSpt::SiapDilaksanakan, StatusSpt::Pelaksanaan, StatusSpt::PenyusunanLaporan, StatusSpt::Selesai, StatusSpt::Dibatalkan])->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all(),
+            'statusOptions' => collect([StatusPengajuan::Diterima, StatusPengajuan::Dibatalkan])->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all(),
             'bulanOptions' => collect(range(1, 12))->mapWithKeys(fn ($m) => [$m => CarbonImmutable::create(2000, $m, 1)->translatedFormat('F')])->all(),
             'klasifikasiOptions' => Klasifikasi::orderBy('id')->pluck('nama', 'id')->all(),
             'jenisOptions' => JenisPenugasan::orderBy('nama')->pluck('nama', 'id')->all(),

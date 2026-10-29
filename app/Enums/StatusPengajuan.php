@@ -11,4 +11,10 @@ enum StatusPengajuan: string
     case Ditolak = 'ditolak';
     case Diterima = 'diterima';
     case Dibatalkan = 'dibatalkan';
+
+    /** Stored-state label (Register "Status Pengajuan"); every case but Diterima shares its StatusSpt label. */
+    public function label(): string
+    {
+        return $this === self::Diterima ? 'Diterima' : StatusSpt::from($this->value)->label();
+    }
 }

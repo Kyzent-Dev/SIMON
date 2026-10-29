@@ -11,8 +11,12 @@ use App\Enums\SumberSpt;
 use App\Exports\ArrayExport;
 use App\Livewire\BagianUmum\Register;
 use App\Models\Irban;
+use App\Models\JenisPenugasan;
 use App\Models\Klasifikasi;
 use App\Models\NomorCounter;
+use App\Models\Objek;
+use App\Models\Pegawai;
+use App\Models\PkptItem;
 use App\Models\Spt;
 use App\Models\User;
 use App\Services\RegisterNomor;
@@ -21,6 +25,7 @@ use App\Support\Navigation;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Maatwebsite\Excel\Facades\Excel;
@@ -170,7 +175,7 @@ class RegisterTest extends TestCase
     public function test_number_link_has_a_touch_target(): void
     {
         $spt = $this->terbit('Contoh');
-        $this->register()->assertSeeHtml('<a href="'.route('spt.show', $spt).'" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline lg:min-h-6">');
+        $this->register()->assertSeeHtml('<a href="'.route('spt.show', $spt).'" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline max-sm:max-w-32 lg:min-h-6">');
     }
 
     public function test_cancel_only_offered_for_diterima_and_tampered_ids_fail(): void
@@ -224,8 +229,99 @@ class RegisterTest extends TestCase
             ->set('cari', '')->set('irban', (string) $this->irban3->id)->assertSee($b->nomor_lengkap)->assertDontSee($a->nomor_lengkap)
             ->set('irban', '')->set('bulan', '3')->assertSee($b->nomor_lengkap)->assertDontSee($a->nomor_lengkap)
             ->set('bulan', '')->set('status', 'dibatalkan')->assertSee($c->nomor_lengkap)->assertDontSee($a->nomor_lengkap)
-            ->set('status', 'pelaksanaan')->assertDontSee($a->nomor_lengkap)
-            ->set('status', 'siap_dilaksanakan')->assertDontSee($c->nomor_lengkap);
+            ->set('status', 'diterima')->assertSee($a->nomor_lengkap)->assertSee($b->nomor_lengkap)->assertDontSee($c->nomor_lengkap)
+            // Old progress values from bookmarked URLs mean "Semua".
+            ->set('status', 'pelaksanaan')->assertSee($a->nomor_lengkap)->assertSee($c->nomor_lengkap);
+    }
+
+    /** Spec 1.1.4 Task 1: the 16 columns of a system SPT, in order. */
+    public function test_row_of_a_system_spt_has_the_16_columns(): void
+    {
+        $jenis = JenisPenugasan::factory()->create(['nama' => 'Reviu LKPD']);
+        $item = PkptItem::factory()->create(['irban_id' => $this->irban->id, 'jenis_penugasan_id' => $jenis->id]);
+        $desa = Objek::factory()->create(['nama' => 'Desa Muara', 'jenis' => 'desa', 'parent_id' => Objek::factory()->create(['nama' => 'Kec Lawang'])->id]);
+        $spt = Spt::factory()->diterima()->create([
+            'irban_id' => $this->irban->id, 'pkpt_item_id' => $item->id, 'jenis_penugasan_id' => $jenis->id, 'nomor_lengkap' => '700/5/INSPEKTORAT-II/SPT/2026',
+            'ppj_pegawai_id' => Pegawai::factory()->create(['nama_bergelar' => 'Drs. Penanggung, M.Si'])->id, 'catatan_bagian_umum' => 'Mohon segera',
+        ]);
+        $spt->forceFill(['nomor_sppd' => '090/12/SPPD/2026'])->save();
+        $spt->objek()->attach($desa->id);
+        foreach ([['Sup', 'supervisor_dalnis'], ['Ketua', 'ketua'], ['Anggota Satu', 'anggota']] as $u => [$nama, $peran]) {
+            $spt->personel()->create(['pegawai_id' => Pegawai::factory()->create(['nama_bergelar' => $nama])->id, 'peran' => $peran, 'urutan' => $u + 1, 'sumber' => 'tambahan']);
+        }
+
+        $this->assertSame([
+            '700/5/INSPEKTORAT-II/SPT/2026', '19 Oktober 2026', '090/12/SPPD/2026', Klasifikasi::where('kode', 'KHUSUS')->value('nama'), 'Reviu LKPD · 2–20 Maret 2026',
+            'Reviu LKPD', 'Kec Lawang › Desa Muara', '02 Maret 2026', '20 Maret 2026', 'Tahun Anggaran 2025', 'Melaksanakan pemeriksaan khusus.', 'Drs. Penanggung, M.Si',
+            'Sup (Supervisor/Dalnis); Ketua (Ketua Tim); Anggota Satu (Anggota)', 'Diterima', 'Mohon segera', '–',
+        ], app(RegisterNomor::class)->baris($spt->fresh()));
+
+        $this->register()->assertSeeInOrder(['Sup (Supervisor/Dalnis)', '+ 2 lainnya', 'Diterima'])->assertSee('Ketua (Ketua Tim)')
+            ->assertSee('090/12/SPPD/2026')->assertSeeHtml('aria-controls="anggota-'.$spt->id.'"');
+    }
+
+    public function test_manual_and_cancelled_rows_fill_empty_cells_with_a_dash(): void
+    {
+        $m = app(CatatNomorManual::class)->handle($this->bu, $this->manual());
+        $b = $this->terbit('Akan dibatalkan');
+        app(BatalkanNomor::class)->handle($this->bu, $b, 'Salah ketik perihal SPT');
+        $svc = app(RegisterNomor::class);
+
+        $this->assertSame([
+            $m->nomor_lengkap, '19 Oktober 2026', '–', Klasifikasi::where('kode', 'KHUSUS')->value('nama'), 'Non-PKPT', '–', '–', '20 Oktober 2026',
+            '25 Oktober 2026', '–', 'Pemeriksaan mendesak', '–', '–', 'Diterima', '–', 'Manual',
+        ], $svc->baris($m->fresh()));
+        $baris = $svc->baris($b->fresh());
+        $this->assertCount(16, $baris);
+        $this->assertSame(['Dibatalkan', 'Dibatalkan: Salah ketik perihal SPT'], [$baris[13], $baris[15]]);
+        $this->register()->assertSee('Dibatalkan: Salah ketik perihal SPT')->assertSee('Manual');
+    }
+
+    public function test_status_filter_is_status_pengajuan_and_named_in_the_pdf_header(): void
+    {
+        $a = $this->terbit('Satu');
+        $b = $this->terbit('Dua');
+        app(BatalkanNomor::class)->handle($this->bu, $b, 'Salah ketik perihal SPT');
+        $svc = app(RegisterNomor::class);
+
+        $this->assertSame([$a->id], $svc->query(['tahun' => 2026, 'status' => 'diterima'])->pluck('id')->all());
+        $this->assertSame([$b->id], $svc->query(['tahun' => 2026, 'status' => 'dibatalkan'])->pluck('id')->all());
+        $this->assertCount(2, $svc->query(['tahun' => 2026, 'status' => 'menunggu_nomor'])->get());
+        $this->assertSame(['Status: Diterima'], $svc->ringkasanFilter(['tahun' => 2026, 'status' => 'diterima']));
+        $this->assertSame(['Status: Dibatalkan'], $svc->ringkasanFilter(['tahun' => 2026, 'status' => 'dibatalkan']));
+        $this->assertSame([], $svc->ringkasanFilter(['tahun' => 2026, 'status' => 'selesai']));
+        $this->register()->assertSeeHtml('<option value="diterima"')->assertSeeHtml('<option value="dibatalkan"')->assertDontSeeHtml('<option value="pelaksanaan"');
+    }
+
+    /** No N+1: the page and the export run the same number of queries for 10 and 100 fully filled rows. */
+    public function test_query_count_is_constant(): void
+    {
+        $jenis = JenisPenugasan::factory()->create();
+        $item = PkptItem::factory()->create(['irban_id' => $this->irban->id, 'jenis_penugasan_id' => $jenis->id]);
+        $buat = function (int $n) use ($jenis, $item) {
+            for ($i = 0; $i < $n; $i++) {
+                $spt = Spt::factory()->diterima()->create(['irban_id' => $this->irban->id, 'pkpt_item_id' => $item->id, 'jenis_penugasan_id' => $jenis->id,
+                    'ppj_pegawai_id' => Pegawai::factory()->create()->id, 'catatan_bagian_umum' => 'Catatan']);
+                $spt->objek()->attach(Objek::factory()->create(['jenis' => 'desa', 'parent_id' => Objek::factory()->create()->id])->id);
+                $spt->personel()->create(['pegawai_id' => Pegawai::factory()->create()->id, 'peran' => 'ketua', 'urutan' => 1, 'sumber' => 'tambahan']);
+                $spt->personel()->create(['pegawai_id' => Pegawai::factory()->create()->id, 'peran' => 'anggota', 'urutan' => 2, 'sumber' => 'tambahan']);
+            }
+        };
+        $hitung = function () {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($this->bu)->get('/bagian-umum/register')->assertOk()->assertSee('lainnya');
+            app(RegisterNomor::class)->semua(['tahun' => 2026]);
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $buat(10);
+        $hitung(); // warm-up: the settings cache is read once per process
+        $sepuluh = $hitung();
+        $buat(90);
+        $this->assertSame($sepuluh, $hitung());
     }
 
     public function test_pagination_is_100_per_page(): void
@@ -246,8 +342,9 @@ class RegisterTest extends TestCase
 
         $this->register()->set('status', 'dibatalkan')->call('ekspor', 'xlsx');
         Excel::assertDownloaded('register-nomor-spt-2026.xlsx', function (ArrayExport $e) use ($b) {
-            $this->assertSame(['No. Urut', 'Nomor SPT', 'Tanggal', 'Irban', 'Perihal/Jenis', 'Status', 'Keterangan'], $e->headings());
-            $this->assertSame([['2', $b->nomor_lengkap, '19 Oktober 2026', 'Irban III', 'Dua', 'Dibatalkan', 'Dibatalkan: Salah ketik perihal SPT']], $e->array());
+            $this->assertSame(RegisterNomor::KOLOM, $e->headings());
+            $this->assertCount(1, $e->array());
+            $this->assertSame([$b->nomor_lengkap, 'Dua', 'Dibatalkan', 'Dibatalkan: Salah ketik perihal SPT'], array_values(array_intersect_key($e->array()[0], array_flip([0, 10, 13, 15]))));
 
             return true;
         });

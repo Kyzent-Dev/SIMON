@@ -39,7 +39,7 @@ class PembangunRegister implements Pembangun
 
     public function export(User $user, array $filter): ArrayExport
     {
-        return new ArrayExport(RegisterNomor::KOLOM, app(RegisterNomor::class)->semua($filter), ['A']);
+        return new ArrayExport(RegisterNomor::KOLOM, app(RegisterNomor::class)->semua($filter), ['A', 'C']);
     }
 
     public function html(User $user, array $filter): string

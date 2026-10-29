@@ -1,5 +1,7 @@
-{{-- Register Nomor SPT (design/dashboard/bagian-umum.md "Register", _shared.md §3 tables + §6 filter bar/export): compact table, sticky header, search by number,
-     filters status/irban/bulan, 100 per page, export split button. Cancelled rows keep the Dibatalkan badge, text never struck through. No animation (DESIGN §7.5). --}}
+{{-- Register Nomor SPT (design/dashboard/bagian-umum.md "Register", _shared.md §3 tables + §6 filter bar/export): compact table with the 16 columns of
+     RegisterNomor::KOLOM (cells from RegisterNomor::data, the source of the exports too), sticky header and sticky Nomor SPT column, scrolling inside its
+     own container; long text clamped with "Selengkapnya", team shown as "Nama (Peran) + N lainnya". Search by number, filters status pengajuan/irban/bulan,
+     100 per page, export split button. Cancelled rows keep the Dibatalkan badge, text never struck through. No animation (DESIGN §7.5). --}}
 @php
     $filterAktif = count(array_filter([$this->status, $this->irban, $this->bulan, $this->cari]));
     $total = $baris->total();
@@ -50,39 +52,69 @@
         @else
             <x-ui.table label="Register Nomor SPT {{ $this->tahun }}" density="compact">
                 <x-slot:head>
-                    <x-ui.th numeric>No. Urut</x-ui.th>
-                    <x-ui.th>Nomor SPT</x-ui.th>
-                    <x-ui.th>Tanggal</x-ui.th>
-                    <x-ui.th>Irban</x-ui.th>
-                    <x-ui.th>Perihal/Jenis</x-ui.th>
-                    <x-ui.th>Status</x-ui.th>
-                    <x-ui.th><span class="sr-only">Aksi</span></x-ui.th>
-                    <x-ui.th>Keterangan</x-ui.th>
+                    @foreach (\App\Services\RegisterNomor::KOLOM as $i => $k)
+                        <x-ui.th>{{ $k }}</x-ui.th>
+                        @if ($i === 13)
+                            <x-ui.th><span class="sr-only">Aksi</span></x-ui.th>
+                        @endif
+                    @endforeach
                 </x-slot:head>
                 @foreach ($baris as $s)
-                    @php $b = $register->baris($s); @endphp
-                    <tr wire:key="reg-{{ $s->id }}">
-                        <td class="text-right font-medium">{{ $b[0] }}</td>
-                        <td class="whitespace-nowrap">
+                    @php
+                        $d = $register->data($s);
+                        $kosong = \App\Services\RegisterNomor::KOSONG;
+                    @endphp
+                    <tr wire:key="reg-{{ $s->id }}" class="align-top">
+                        {{-- Below 640px the sticky number may wrap (after "/" or "-") so the other columns stay visible beside it. --}}
+                        <td class="whitespace-nowrap max-sm:whitespace-normal">
                             <span class="inline-flex items-center gap-1">
-                                <a href="{{ route('spt.show', $s) }}" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline lg:min-h-6">{{ $b[1] }}</a>
-                                <button type="button" x-data x-on:click="navigator.clipboard?.writeText(@js($b[1])).then(() => $dispatch('toast', { type: 'success', message: 'Nomor disalin' }))"
-                                    aria-label="Salin nomor {{ $b[1] }}" class="inline-flex size-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:size-8">
+                                <a href="{{ route('spt.show', $s) }}" wire:navigate class="inline-flex min-h-11 items-center font-medium text-mint-700 underline-offset-2 hover:underline max-sm:max-w-32 lg:min-h-6">{{ $d['nomor'] }}</a>
+                                <button type="button" x-data x-on:click="navigator.clipboard?.writeText(@js($d['nomor'])).then(() => $dispatch('toast', { type: 'success', message: 'Nomor disalin' }))"
+                                    aria-label="Salin nomor {{ $d['nomor'] }}" class="inline-flex size-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 lg:size-8">
                                     {{ svg('heroicon-m-clipboard', 'size-4') }}
                                 </button>
                             </span>
                         </td>
-                        <td class="whitespace-nowrap">{{ $b[2] }}</td>
-                        <td class="whitespace-nowrap">{{ $b[3] }}</td>
-                        <td class="min-w-36 max-w-44"><span class="line-clamp-1" title="{{ $s->uraian_untuk }}">{{ $b[4] }}</span></td>
-                        <td><x-app.status-badge :status="$s->status()" /></td>
-                        <td class="relative">
-                            @if ($s->status_pengajuan === \App\Enums\StatusPengajuan::Diterima)
-                                <button type="button" wire:click="bukaBatal({{ $s->id }})" aria-label="Batalkan Nomor {{ $s->nomor_lengkap }}" title="Batalkan Nomor"
+                        <td class="whitespace-nowrap">{{ $d['tanggal'] ?? $kosong }}</td>
+                        <td class="whitespace-nowrap">{{ $d['sppd'] ?? $kosong }}</td>
+                        <td class="whitespace-nowrap">{{ $d['klasifikasi'] ?? $kosong }}</td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['item'], 'id' => "item-{$s->id}"])</td>
+                        <td class="min-w-36">{{ $d['jenis'] ?? $kosong }}</td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['objek'], 'id' => "objek-{$s->id}"])</td>
+                        <td class="whitespace-nowrap">{{ $d['mulai'] ?? $kosong }}</td>
+                        <td class="whitespace-nowrap">{{ $d['selesai'] ?? $kosong }}</td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['periode'], 'id' => "periode-{$s->id}"])</td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['uraian'], 'id' => "uraian-{$s->id}"])</td>
+                        <td class="min-w-44">{{ $d['ppj'] ?? $kosong }}</td>
+                        <td>
+                            @if ($d['anggota'] === [])
+                                {{ $kosong }}
+                            @elseif (count($d['anggota']) === 1)
+                                <span class="block min-w-48">{{ $d['anggota'][0] }}</span>
+                            @else
+                                {{-- Short form "Nama (Peran) + N lainnya"; the toggle reveals the whole team in print order. --}}
+                                <div x-data="{ buka: false }" class="min-w-56 max-w-72">
+                                    <p x-show="!buka">{{ $d['anggota'][0] }}</p>
+                                    <ol id="anggota-{{ $s->id }}" x-show="buka" x-cloak class="list-decimal space-y-0.5 pl-5">
+                                        @foreach ($d['anggota'] as $a)
+                                            <li>{{ $a }}</li>
+                                        @endforeach
+                                    </ol>
+                                    <button type="button" x-on:click="buka = !buka" x-bind:aria-expanded="buka.toString()" aria-expanded="false" aria-controls="anggota-{{ $s->id }}"
+                                        class="min-h-11 rounded-sm text-sm font-medium text-mint-700 hover:underline lg:min-h-6"
+                                        x-text="buka ? 'Sembunyikan' : @js('+ '.(count($d['anggota']) - 1).' lainnya')">+ {{ count($d['anggota']) - 1 }} lainnya</button>
+                                </div>
+                            @endif
+                        </td>
+                        <td><x-app.status-badge :status="$d['status']" /></td>
+                        <td>
+                            @if ($d['status'] === \App\Enums\StatusPengajuan::Diterima)
+                                <button type="button" wire:click="bukaBatal({{ $s->id }})" aria-label="Batalkan Nomor {{ $d['nomor'] }}" title="Batalkan Nomor"
                                     class="inline-flex size-11 items-center justify-center rounded-md text-danger-700 hover:bg-neutral-50 lg:size-8">{{ svg('heroicon-m-no-symbol', 'size-5') }}</button>
                             @endif
                         </td>
-                        <td class="min-w-32 max-w-56"><span class="line-clamp-2" title="{{ $b[6] }}">{{ $b[6] ?: '—' }}</span></td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['catatan'], 'id' => "catatan-{$s->id}"])</td>
+                        <td>@include('livewire.bagian-umum.partials.teks-panjang', ['teks' => $d['keterangan'], 'id' => "ket-{$s->id}"])</td>
                     </tr>
                 @endforeach
             </x-ui.table>

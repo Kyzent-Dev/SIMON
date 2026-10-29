@@ -40,6 +40,8 @@ class PrivasiPublikTest extends TestCase
         'MK-KETERANGAN-item', 'MK-KENDALA-hujan', 'MK-KOMENTAR-tanya', 'MK-DOKUMEN-final.pdf', 'MK-USER-Penginput',
         // Fase 9.2 Task 9: Perubahan PKPT and usulan never reach the public pages (only "Tambahan · Perubahan ke-N" and "semula").
         'MK-ALASAN-perubahan', 'MK-SK-Perubahan-77', 'MK-ALASAN-usulan', 'MK-CATATAN-tutup', 'MK-KOMENTAR-putusan', 'perubahan-sk/mk-berkas.pdf',
+        // Versi 1.1.4: Nomor SPPD stays internal.
+        'MK-SPPD-0042',
     ];
 
     protected function setUp(): void
@@ -50,7 +52,7 @@ class PrivasiPublikTest extends TestCase
         DB::table('pkpt_item')->update(['keterangan' => 'MK-KETERANGAN-item']);
         DB::table('spt')->update([
             'periode_diperiksa' => 'MK-PERIODE-2025', 'uraian_untuk' => 'MK-URAIAN-pemeriksaan', 'catatan_bagian_umum' => 'MK-CATATAN-bu',
-            'nomor_lhp' => 'MK-LHP-900',
+            'nomor_lhp' => 'MK-LHP-900', 'nomor_sppd' => 'MK-SPPD-0042',
         ]);
         DB::table('spt')->where('id', $this->v1->id)->update(['nomor_lengkap' => self::NOMOR]);
         Pegawai::query()->update(['nama_bergelar' => 'MK-PEGAWAI-Budi']);
