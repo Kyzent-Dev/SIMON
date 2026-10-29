@@ -44,7 +44,7 @@ class GrafikPdfRekapTest extends TestCase
         $this->assertSame(3, substr_count($semua, 'data-grafik='));
     }
 
-    public function test_paired_bar_widths_are_relative_to_the_chart_maximum(): void
+    public function test_paired_bar_heights_are_relative_to_the_axis_top(): void
     {
         $p = app(PembangunRekap::class);
         $g = $p->grafik(['irban' => ['baris' => [['nama' => 'X', 'tw' => [1 => ['rencana' => 4, 'realisasi' => 3]], 'total' => ['rencana' => 4, 'realisasi' => 3]]]],
@@ -53,17 +53,19 @@ class GrafikPdfRekapTest extends TestCase
         $this->assertSame('berpasangan', $g['rr']['jenis']);
 
         $html = view('pdf.partials.grafik-batang', ['kode' => 'rr', ...$g['rr']])->render();
-        $this->assertStringContainsString('width: 100%', $html);
-        $this->assertStringContainsString('width: 75%', $html);
-        $this->assertStringContainsString('Rencana 4', $html);
-        $this->assertStringContainsString('Realisasi 3', $html);
+        $this->assertStringContainsString('height: 139px', $html); // 4 of axis top 4 (140px, minus the 1px top border)
+        $this->assertStringContainsString('height: 104px', $html); // 3 of 4
+        $this->assertSame(5, substr_count($html, 'class="grafik-y"')); // ticks 0..4
+        $this->assertStringContainsString('class="titik"', $html);
+        $this->assertStringContainsString('Realisasi', $html);
     }
 
-    public function test_jenis_is_sorted_descending_with_percent_label_and_klasifikasi_keeps_zero_rows(): void
+public function test_jenis_is_sorted_descending_with_percent_label_and_klasifikasi_keeps_zero_rows(): void
     {
         $html = $this->html(['klasifikasi', 'jenis']);
         $this->assertLessThan(strpos($html, '33% (2/6)'), strpos($html, '67% (2/3)'));
-        $this->assertStringContainsString('Berjalan 0 · Selesai 0', $html);
+        $this->assertStringContainsString('Berjalan', $html);
+        $this->assertStringContainsString('grafik-tabel', $html); // Per Jenis stays horizontal
     }
 
     public function test_single_irban_charts_by_triwulan_and_empty_year_renders_a_pdf(): void
@@ -103,12 +105,12 @@ class GrafikPdfRekapTest extends TestCase
             ['label' => 'Rencana', 'isi' => '#111111', 'garis' => '#222222'], ['label' => 'Realisasi', 'isi' => '#333333', 'garis' => '#444444'],
         ], 'baris' => [['label' => 'A', 'nilai' => [4, 0], 'teks' => ['Rencana 4', 'Realisasi 0']]]])->render();
 
-        $this->assertSame(1, substr_count($html, 'height: 10px'));
-        $this->assertStringContainsString('Realisasi 0', $html);
+        $this->assertSame(1, substr_count($html, 'class="grafik-batang"'));
+        $this->assertSame(2, substr_count($html, 'class="grafik-nilai"')); // the 0 keeps its number above the axis
     }
 
-    /** Stacked bar: the outer width is the row total against the chart maximum, each segment is its share of the row, and a zero segment is left out. */
-    public function test_stacked_bar_widths_and_zero_segments(): void
+    /** Stacked bar: segments are slices of one stack scaled to the axis top; a zero segment is left out. */
+    public function test_stacked_bar_heights_and_zero_segments(): void
     {
         $g = app(PembangunRekap::class)->grafik($this->rekapPalsu(klasifikasi: [
             ['nama' => 'X', 'total' => ['berjalan' => 1, 'selesai' => 3]],
@@ -118,12 +120,39 @@ class GrafikPdfRekapTest extends TestCase
 
         $html = view('pdf.partials.grafik-batang', ['kode' => 'klasifikasi', ...$g['klasifikasi']])->render();
 
-        $this->assertSame(1, substr_count($html, '<div style="width: 100%;">')); // X: 4 of the maximum 4
-        $this->assertSame(1, substr_count($html, '<div style="width: 50%;">'));  // Y: 2 of 4
-        $this->assertSame(1, substr_count($html, 'width: 25%; height: 10px')); // X berjalan 1 of 4
-        $this->assertSame(1, substr_count($html, 'width: 75%; height: 10px')); // X selesai 3 of 4
-        $this->assertSame(1, substr_count($html, 'width: 100%; height: 10px')); // Y: only berjalan, the whole row
-        $this->assertSame(3, substr_count($html, 'height: 10px')); // Y's zero selesai has no segment
+        $this->assertStringContainsString('height: 34px', $html);  // X berjalan 1 of 4 = 35px
+        $this->assertStringContainsString('height: 104px', $html); // X selesai: stack 140 - 35 = 105px
+        $this->assertStringContainsString('height: 69px', $html);  // Y: 2 of 4 = 70px
+        $this->assertSame(3, substr_count($html, 'class="grafik-batang"')); // Y's zero selesai has no segment
+    }
+
+    private function render(string $jenis, array $baris, array $legenda): string
+    {
+        $html = view('pdf.partials.grafik-batang', ['kode' => 'x', 'jenis' => $jenis, 'judul' => 'T', 'baris' => $baris, 'legenda' => $legenda])->render();
+        $this->assertStringStartsWith('%PDF', Pdf::loadHTML('<html><body>'.$html.'</body></html>')->setPaper('a4')->output());
+
+        return $html;
+    }
+
+    public function test_vertical_chart_renders_in_dompdf_for_empty_single_and_five_categories(): void
+    {
+        $rr = [['label' => 'Rencana', 'isi' => '#E6ECEA', 'garis' => '#7D8B87'], ['label' => 'Realisasi', 'isi' => '#17735B', 'garis' => '#17735B']];
+        $bar = fn ($l, $n) => ['label' => $l, 'nilai' => $n];
+
+        $kosong = $this->render('berpasangan', [], $rr); // no categories at all
+        $this->assertStringContainsString('grafik-y', $kosong);
+
+        $nol = $this->render('bertumpuk', [$bar('A', [0, 0])], $rr); // all zero: axis still drawn, no bars
+        $this->assertSame(5, substr_count($nol, 'class="grafik-y"'));
+        $this->assertStringNotContainsString('class="grafik-batang"', $nol);
+        $this->assertStringContainsString('width: 40%', $nol); // single category: narrow and centred
+
+        $lima = $this->render('berpasangan', array_map(fn ($i) => $bar("Irban $i", [$i + 3, $i]), range(1, 5)), $rr);
+        $this->assertStringContainsString('width: 100%', $lima);
+        $this->assertSame(10, substr_count($lima, 'class="grafik-batang"'));
+        $this->assertSame(5, substr_count($lima, '>Irban '));
+
+        $this->render('persen', [$bar('Reguler', [50])], [$rr[1]]); // horizontal chart still renders
     }
 
     public function test_pdf_text_colours_come_from_the_palette_constants(): void

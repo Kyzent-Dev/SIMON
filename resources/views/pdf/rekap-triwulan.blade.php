@@ -22,6 +22,18 @@
     .grafik-label { width: 28%; color: {{ \App\Support\PaletGrafik::TEKS }}; }
     .grafik-area { width: 78%; }
     .grafik-angka { color: {{ \App\Support\PaletGrafik::TEKS }}; padding-left: 4px; }
+    .grafik-v { margin: 6px auto 0; padding-left: 30px; }
+    .grafik-plot { position: relative; }
+    .grafik-garis { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid #D5DEDB; }
+    .grafik-y { position: absolute; left: -30px; width: 26px; text-align: right; font-size: 7px; line-height: 10px; color: {{ \App\Support\PaletGrafik::TEKS_SEKUNDER }}; }
+    table.grafik-kolom { width: 100%; table-layout: fixed; margin: 0; }
+    .grafik-kolom > tr > td, .grafik-kolom td { border: 0; padding: 0; vertical-align: bottom; text-align: center; }
+    table.grafik-pasang, table.grafik-tumpuk { width: auto; margin: 0 auto; }
+    .grafik-pasang td, .grafik-tumpuk td { padding: 0 2px; border: 0; text-align: center; vertical-align: bottom; }
+    .grafik-nilai { font-size: 8px; line-height: 10px; height: 12px; color: {{ \App\Support\PaletGrafik::TEKS }}; }
+    .grafik-batang { width: 16px; margin: 0 auto; border: 1px solid; border-bottom: 0; }
+    .grafik-kat td { font-size: 8px; padding-top: 3px; vertical-align: top; color: {{ \App\Support\PaletGrafik::TEKS }}; }
+    .titik { display: inline-block; width: 7px; height: 7px; border-radius: 4px; }
     .legenda { color: {{ \App\Support\PaletGrafik::TEKS_SEKUNDER }}; }
 </style>
 </head>
