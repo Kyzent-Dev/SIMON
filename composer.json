@@ -6,12 +6,12 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.5.12",
         "barryvdh/laravel-dompdf": "^3.1",
         "blade-ui-kit/blade-heroicons": "^2.7",
-        "laravel/framework": "^13.17",
+        "laravel/framework": "^13.39",
         "laravel/tinker": "^3.0",
-        "livewire/livewire": "^4.4",
+        "livewire/livewire": "^4.4.8",
         "maatwebsite/excel": "^4.0",
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-backup": "^10.3"

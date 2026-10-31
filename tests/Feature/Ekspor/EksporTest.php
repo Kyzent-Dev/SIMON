@@ -120,12 +120,12 @@ class EksporTest extends TestCase
             }
         });
         $memori = ini_get('memory_limit');
-        ini_set('memory_limit', '128M');
+        ini_set('memory_limit', '256M');
 
         try {
             app()->call([new BuatEkspor($e), 'handle']);
             $this->assertSame(['512M', '570'], $selama->getArrayCopy());
-            $this->assertSame(['128M', '0'], [ini_get('memory_limit'), ini_get('max_execution_time')]);
+            $this->assertSame(['256M', '0'], [ini_get('memory_limit'), ini_get('max_execution_time')]);
         } finally {
             ini_set('memory_limit', $memori);
             set_time_limit(0);
