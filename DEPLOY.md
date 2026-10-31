@@ -4,10 +4,10 @@ Panduan untuk operator server. Perintah di bawah ditulis untuk Linux (Ubuntu/Deb
 
 ## Kebutuhan server
 
-- PHP 8.3 atau lebih baru dengan ekstensi `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `fileinfo`, `bcmath`, `zip`, `gd` (dengan dukungan WebP), `exif`, `intl`. Periksa dengan `php -m` dan `php -r 'var_dump(function_exists("imagewebp"));'`.
+- PHP 8.5.12 atau lebih baru dengan ekstensi `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `fileinfo`, `bcmath`, `zip`, `gd` (dengan dukungan WebP), `exif`, `intl`. Periksa dengan `php -m` dan `php -r 'var_dump(function_exists("imagewebp"));'`.
 - MySQL 8 atau MariaDB 10.6+. Biner dump harus ada di server: `mysqldump` untuk `DB_CONNECTION=mysql`, `mariadb-dump` untuk `DB_CONNECTION=mariadb` (paket klien MariaDB/MySQL).
 - Composer 2.
-- Node.js 20+ hanya di mesin build (`npm ci && npm run build`); server produksi tidak memerlukan Node.
+- Node.js 24.22.1 atau lebih baru (24.x) hanya di mesin build (`npm ci && npm run build`); server produksi tidak memerlukan Node.
 - RAM minimal 1 GB, ditambah ±512 MB untuk setiap worker ekspor yang berjalan bersamaan.
 - Disk: ruang untuk `storage/app` (dokumen SPT, SK, gambar) dan cadangan.
 - Cron (untuk scheduler) dan supervisor (untuk queue worker), atau cron saja di shared hosting.
@@ -184,7 +184,7 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
       location ~ \.php$ {
           include fastcgi_params;
           fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-          fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+          fastcgi_pass unix:/run/php/php8.5-fpm.sock;
           fastcgi_read_timeout 300;
       }
 
@@ -207,6 +207,14 @@ Shared hosting tanpa supervisor: tambahkan cron setiap menit
 | Ekstensi `gd` (WebP), `exif` | aktif | Gambar slide/profil diproses ke WebP; `exif` memutar foto ponsel sesuai orientasi. |
 | `public/` | satu-satunya document root | Jangan arahkan ke folder aplikasi. |
 
+## Mitigasi keamanan PHP
+
+PHP 8.5.12 belum memperbaiki CVE-2026-115560. Sampai rilis PHP berikutnya, matikan `session.upload_progress.enabled`:
+
+- Di `php.ini` PHP-FPM (mis. `/etc/php/8.5/fpm/php.ini`): `session.upload_progress.enabled = 0`, lalu `systemctl reload php8.5-fpm`. Untuk mod_php dan CLI, atur di `php.ini` masing-masing.
+- Repo sudah memuatnya di `public/.user.ini` (berlaku untuk PHP-FPM/CGI; PHP membaca ulang berkas ini tiap `user_ini.cache_ttl`, default 300 detik). Hapus berkas itu setelah PHP merilis perbaikan.
+- Cek dari web atau CLI sesuai SAPI yang dipakai: `php -r 'var_dump(ini_get("session.upload_progress.enabled"));'` harus menampilkan `string(1) "0"`.
+
 ## Memperbarui aplikasi
 
 Dari folder aplikasi, pada jendela rilis:
@@ -214,7 +222,7 @@ Dari folder aplikasi, pada jendela rilis:
 1. Cadangan dulu: `php artisan backup:run` (wajib bila rilis memuat migrasi baru).
 2. `php artisan down --retry=60`
 3. `git pull --ff-only`
-4. `composer install --no-dev --optimize-autoloader`
+4. `composer install --no-dev --optimize-autoloader`. Perintah ini sengaja gagal bila PHP di server < 8.5.12 (platform check); perbarui PHP dulu. Bila pembuatan autoload berhenti di Windows, jalankan `composer dump-autoload -o`.
 5. `npm ci && npm run build` (di mesin build; salin `public/build` bila perlu)
 6. `php artisan migrate --force`
 7. `php artisan optimize`
