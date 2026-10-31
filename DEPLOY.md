@@ -213,7 +213,9 @@ PHP 8.5.12 belum memperbaiki CVE-2026-115560. Sampai rilis PHP berikutnya, matik
 
 - Di `php.ini` PHP-FPM (mis. `/etc/php/8.5/fpm/php.ini`): `session.upload_progress.enabled = 0`, lalu `systemctl reload php8.5-fpm`. Untuk mod_php dan CLI, atur di `php.ini` masing-masing.
 - Repo sudah memuatnya di `public/.user.ini` (berlaku untuk PHP-FPM/CGI; PHP membaca ulang berkas ini tiap `user_ini.cache_ttl`, default 300 detik). Hapus berkas itu setelah PHP merilis perbaikan.
-- Cek dari web atau CLI sesuai SAPI yang dipakai: `php -r 'var_dump(ini_get("session.upload_progress.enabled"));'` harus menampilkan `string(1) "0"`.
+- Cek CLI (hanya membaca `php.ini` CLI, tidak membuktikan PHP-FPM): `php -r 'var_dump(ini_get("session.upload_progress.enabled"));'` harus menampilkan `string(1) "0"`.
+- Cek PHP-FPM: buat berkas sementara `public/cek-ini.php` berisi `<?php var_dump(ini_get('session.upload_progress.enabled'));`, buka lewat peramban (harus `string(1) "0"`), lalu hapus segera. Perubahan `.user.ini` baru berlaku setelah `user_ini.cache_ttl` (default 300 detik).
+- Di Apache mod_php `.user.ini` diabaikan: pakai `php_admin_value` di vhost atau ubah `php.ini`.
 
 ## Memperbarui aplikasi
 
