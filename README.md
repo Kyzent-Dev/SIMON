@@ -1,58 +1,82 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SINTAS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Sistem Informasi Surat Tugas Pengawasan** — Inspektorat Kabupaten Muara Enim.
 
-## About Laravel
+SINTAS menggantikan Google Form, stambook fisik, dan dua sistem lama (input serta rekap/monitoring) dengan satu aplikasi web. Data SPT diinput satu kali, nomor SPT terbit otomatis tanpa duplikat, dan pimpinan memantau status secara langsung.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Pengajuan dan penomoran SPT.** Irban mengajukan nomor, Bagian Umum menerima, meminta revisi, atau menolak. Nomor terbit otomatis dari stambook digital, aman saat dua pengajuan disetujui bersamaan.
+- **Status SPT otomatis** berdasarkan tanggal pelaksanaan. Irban hanya menandai Selesai dengan mengunggah cover LHP. Penanda (Tidak Sesuai PKPT, Terlambat, dan lainnya) dihitung sistem.
+- **PKPT per tahun** beserta **Perubahan PKPT**: Admin menyusun paket perubahan, Irban dapat mengusulkan, Pimpinan menyetujui atau menolak.
+- **Monitoring dan rekap.** Dasbor per peran, monitoring SPT, rekap triwulan dan tahunan, register nomor. Ekspor ke PDF dan Excel; ekspor besar berjalan di antrean.
+- **Komentar dan permintaan penjelasan** per SPT, **notifikasi** lonceng dan email (harian dan ringkasan mingguan).
+- **Landing page publik**: Beranda, Jadwal PKPT, dan Realisasi SPT. Halaman publik tidak pernah menampilkan nama pegawai, NIP, nomor SPT, objek di bawah kecamatan, kendala, komentar, atau dokumen.
+- **Impor data lama** (pegawai, item PKPT, SPT) dari template Excel.
+- **Log aktivitas** lengkap (siapa, apa, dari IP mana), termasuk "Diinput oleh" untuk akun Irban bersama.
+- **Cadangan otomatis** basis data dan berkas, terenkripsi.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Peran pengguna
 
-## Learning Laravel
+| Peran | Hak utama |
+|---|---|
+| Publik | Melihat Beranda, Jadwal PKPT, dan Realisasi (data terbatas), tanpa login |
+| Irban | Satu akun bersama per irban. Mengajukan nomor, mengisi dan mengubah SPT irbannya, mengunggah dokumen, menandai Selesai, mengusulkan perubahan jadwal |
+| Bagian Umum | Kotak masuk pengajuan, keputusan, stambook digital, nomor manual, pembatalan nomor |
+| Pimpinan | Melihat semua data, berkomentar, menyetujui atau menolak Perubahan PKPT, mengekspor rekap. Tidak mengubah data SPT secara langsung |
+| Admin | Pengguna, master data, PKPT, menyusun Perubahan PKPT, konten landing page, pengaturan, impor |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Teknologi
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- PHP 8.5.12+, Laravel 13, Livewire 4, Alpine.js, Tailwind CSS v4, Chart.js, Vite 8
+- `motion` (API vanilla) hanya untuk animasi halaman publik
+- `barryvdh/laravel-dompdf` (PDF), `maatwebsite/excel` (Excel), `spatie/laravel-activitylog` (log), `spatie/laravel-backup` (cadangan), `blade-ui-kit/blade-heroicons` (ikon)
+- MySQL 8 / MariaDB 10.6+ di produksi; SQLite untuk pengembangan lokal
+- Node.js 24.22.1+ hanya untuk build aset
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Struktur kode
 
-## Agentic Development
+| Folder | Isi |
+|---|---|
+| `app/Models` | Model inti: `Spt`, `Pkpt`, `PkptItem`, `PkptPerubahan`, `Irban`, `Pegawai`, `Tim`, `User`, dan lainnya |
+| `app/Actions` | Satu kelas per aksi tulis (Auth, Spt, Pkpt, Perubahan PKPT, Komentar, MasterData, Konten, Profil, Pengguna) |
+| `app/Services` | Aturan bisnis: `Penomoran`, `PenandaSpt`, `KesesuaianPkpt`, `MonitoringSpt`, `RekapTriwulan`, `PerubahanPkpt`, `Ekspor`, `Import`, `Publik` |
+| `app/Livewire` | Layar per peran: `Admin`, `BagianUmum`, `Irban`, `Pimpinan`, `Publik`, `Spt`, `Notifikasi` |
+| `app/Policies`, `app/Enums` | Otorisasi per peran, status SPT dan PKPT |
+| `app/Jobs`, `app/Notifications` | Ekspor di antrean, notifikasi lonceng dan email |
+| `app/Console/Commands` | Perintah `sintas:buat-admin`, `notifikasi:harian`, `notifikasi:ringkasan-mingguan`, `ekspor:bersihkan` |
+| `tests/Feature`, `tests/Unit` | Tes PHPUnit per modul |
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Menjalankan secara lokal
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer setup              # install, .env, key, migrate, npm install, build
+php artisan migrate:fresh --seed   # data demo (hanya lokal, menghapus semua data)
+composer dev                # server pengembangan
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+`.env.example` memakai SQLite, antrean `database`, dan email `log`. Ekspor besar dan email membutuhkan worker: `php artisan queue:work`.
 
-## Contributing
+Akun demo (kata sandi `password`, hanya di lingkungan non-produksi): `admin`, `pimpinan`, `bagianumum`, `irban1` sampai `irban5`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Tes
 
-## Code of Conduct
+```bash
+composer test
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Penjadwal
 
-## Security Vulnerabilities
+Pekerjaan terjadwal (zona Asia/Jakarta) terdaftar di `routes/console.php`: penyegaran cache publik, notifikasi harian dan mingguan, pembersihan ekspor, serta cadangan (`backup:clean`, `backup:run`, `backup:monitor`). Di server, jalankan `php artisan schedule:run` setiap menit lewat cron.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Deploy
 
-## License
+Ikuti [DEPLOY.md](DEPLOY.md): kebutuhan server, konfigurasi `.env`, cron, queue worker, SMTP, cadangan dan pemulihan, reverse proxy, mitigasi keamanan PHP, dan daftar pemeriksaan setelah deploy.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Jangan pernah menjalankan `migrate:fresh` di produksi: perintah itu menghapus semua data, termasuk log aktivitas.
+
+## Konvensi
+
+- Antarmuka dalam Bahasa Indonesia; tanggal `d F Y`; zona waktu Asia/Jakarta.
+- Status selalu ditampilkan dengan ikon dan label (`x-app.status-badge`, `x-app.flag`), tidak hanya warna.
+- Tidak ada animasi pada tabel, formulir, dan layar Bagian Umum; semua animasi menghormati `prefers-reduced-motion`.
