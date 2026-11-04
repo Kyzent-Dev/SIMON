@@ -134,6 +134,8 @@ class GrafikPdfRekapTest extends TestCase
         $this->assertSame(3, substr_count($html, 'class="grafik-batang"')); // Y's zero selesai draws no bar
         $this->assertSame(4, substr_count($html, 'class="grafik-nilai"'));  // every bar has its number, the 0 too
         $this->assertSame(1, substr_count($html, 'class="grafik-nilai">0<'));
+        $this->assertStringContainsString('height: 139px; background: '.PaletGrafik::SELESAI, $html); // X selesai 3
+        $this->assertStringContainsString('height: 46px; background: '.PaletGrafik::BERJALAN_ISI, $html); // X berjalan 1
     }
 
     public function test_klasifikasi_label_total_follows_the_triwulan_filter(): void

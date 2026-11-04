@@ -34,7 +34,7 @@
                                     </td>
                                 @endforeach
                             </tr></table>
-                    </td>
+                        </td>
                     @endforeach
                 </tr></table>
             </div>
