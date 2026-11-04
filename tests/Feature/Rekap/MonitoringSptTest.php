@@ -236,6 +236,17 @@ class MonitoringSptTest extends TestCase
         $this->assertSame([], $this->idDaftar(['cari' => 'tidak-ada']));
     }
 
+    public function test_cari_zero_narrows_instead_of_returning_everything(): void
+    {
+        $this->ubahNomor();
+        DB::table('spt')->where('id', $this->m[2]->id)->update(['nomor_lengkap' => '7/X']); // the one number without a "0"
+
+        $ids = $this->idDaftar(['cari' => '0']);
+        $this->assertNotContains(2, $ids);
+        $this->assertContains(1, $ids);
+        $this->assertLessThan(count($this->idDaftar([])), count($ids));
+    }
+
     public function test_cari_treats_percent_and_underscore_literally(): void
     {
         $this->ubahNomor();
@@ -254,6 +265,7 @@ class MonitoringSptTest extends TestCase
         $this->assertNull($monitoring->filter(['cari' => ['700']])['cari']);
         $this->assertNull($monitoring->filter(['cari' => 700])['cari']);
         $this->assertNull($monitoring->filter([])['cari']);
+        $this->assertSame('0', $monitoring->filter(['cari' => '0'])['cari']);
     }
 
     public function test_daftar_tenggat_puts_unfinished_first_then_earliest_end_then_no_date(): void

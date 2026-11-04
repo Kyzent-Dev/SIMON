@@ -125,7 +125,7 @@ class Monitoring extends Component
         return view('livewire.pimpinan.monitoring', [
             'grup' => $spt ? null : $paginator,
             'daftar' => $spt ? $paginator : null,
-            'filterAktif' => count(array_filter(array_diff_key($f, ['tahun' => 0]))),
+            'filterAktif' => count(array_filter(array_diff_key($f, ['tahun' => 0]), fn ($v) => $v !== null)),
             'kunci' => md5(json_encode($f)),
             'tahunList' => $tahunList,
             'irbanOptions' => Irban::orderBy('nama')->pluck('nama', 'id')->all(),

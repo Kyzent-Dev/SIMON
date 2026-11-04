@@ -170,6 +170,11 @@ class HalamanMonitoringTest extends TestCase
         $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit'])->assertDontSee('Atur ulang');
     }
 
+    public function test_cari_zero_is_kept_and_counted_as_active(): void
+    {
+        $this->halaman(['cari' => '0'])->assertSet('cari', '0')->assertViewHas('filterAktif', 1);
+    }
+
     public function test_penanda_select_filters_terlambat(): void
     {
         $this->halaman()->assertSeeHtml('wire:model.live="penanda"')->assertSee('Terlambat (semua tahun)')

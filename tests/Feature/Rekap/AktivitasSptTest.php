@@ -35,12 +35,12 @@ class AktivitasSptTest extends TestCase
         $hasil = app(AktivitasSpt::class)->terbaru();
 
         $this->assertCount(6, $hasil);
-        // Same created_at (ids 3-8) is broken by id descending; the two oldest events drop out.
-        $this->assertSame([8, 7, 6, 5, 4, 3], array_column($hasil, 'id'));
+        // Same created_at (the six newest) is broken by id descending; the two oldest events drop out.
+        $this->assertSame(array_reverse(array_slice($ids, 2)), array_column($hasil, 'id'));
         $this->assertSame('Nomor diterbitkan', $hasil[0]['label']);
-        $this->assertSame(Spt::find(SptRiwayat::find(8)->spt_id)->nomor_lengkap, $hasil[0]['nomor']);
+        $this->assertSame(Spt::find(SptRiwayat::find(end($ids))->spt_id)->nomor_lengkap, $hasil[0]['nomor']);
         $this->assertSame('Irban Z', $hasil[0]['irban']);
-        $this->assertSame(route('spt.show', SptRiwayat::find(8)->spt_id), $hasil[0]['url']);
+        $this->assertSame(route('spt.show', SptRiwayat::find(end($ids))->spt_id), $hasil[0]['url']);
         $this->assertSame('2026-11-03 10:00', $hasil[0]['waktu']->format('Y-m-d H:i'));
     }
 

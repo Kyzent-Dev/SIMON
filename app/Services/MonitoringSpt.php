@@ -47,7 +47,7 @@ class MonitoringSpt
             'kesesuaian' => $pilih($input['kesesuaian'] ?? null, self::KESESUAIAN),
             'penanda' => $pilih($input['penanda'] ?? null, ['terlambat']),
             'penjelasan' => $pilih($input['penjelasan'] ?? null, ['terbuka']),
-            'cari' => is_string($input['cari'] ?? null) ? (trim(mb_substr(trim($input['cari']), 0, 100)) ?: null) : null,
+            'cari' => is_string($input['cari'] ?? null) ? (($c = trim(mb_substr(trim($input['cari']), 0, 100))) !== '' ? $c : null) : null,
         ];
     }
 
@@ -121,7 +121,7 @@ class MonitoringSpt
             // The quarter follows the year scope: all years while the Terlambat chip is on, else the selected year.
             ->when($f['tw'], fn ($q, $tw) => $f['penanda'] ? $this->triwulan->batasiTriwulan($q, $tw) : $this->triwulan->batasi($q, $f['tahun'], $tw))
             // ESCAPE '!' instead of backslash: SQLite has no default escape character, MySQL has, and '!' works on both.
-            ->when($f['cari'], fn ($q, $c) => $q->whereRaw("nomor_lengkap LIKE ? ESCAPE '!'", ['%'.preg_replace('/[!%_]/', '!$0', $c).'%']))
+            ->when($f['cari'] !== null, fn ($q) => $q->whereRaw("nomor_lengkap LIKE ? ESCAPE '!'", ['%'.preg_replace('/[!%_]/', '!$0', $f['cari']).'%']))
             ->when($f['irban'], fn ($q, $id) => $q->where('irban_id', $id))
             ->when($f['jenis'], fn ($q, $id) => $q->where('jenis_penugasan_id', $id))
             ->when($f['kesesuaian'] === 'non_pkpt', fn ($q) => $q->whereNull('pkpt_item_id'))
