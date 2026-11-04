@@ -241,6 +241,18 @@ class HalamanMonitoringTest extends TestCase
         $this->assertCount(2, $hitung);
     }
 
+    public function test_export_follows_cari_and_lists_it_in_the_pdf_summary(): void
+    {
+        $this->m[2]->forceFill(['nomor_lengkap' => '700/002/X'])->save();
+        $p = app(PembangunMonitoring::class);
+        $sheet = IOFactory::load(app(Ekspor::class)->minta($this->pimpinan, 'monitoring', 'xlsx', ['cari' => ' 700 '])->getFile()->getPathname())->getActiveSheet()->toArray();
+
+        $this->assertCount(2, $sheet); // header + m2 only
+        $this->assertSame('700/002/X', $sheet[1][0]);
+        $this->assertStringContainsString('Cari: 700', $p->html($this->pimpinan, $p->filter($this->pimpinan, ['cari' => '700'])));
+        $this->assertStringNotContainsString('Cari:', $p->html($this->pimpinan, $p->filter($this->pimpinan, [])));
+    }
+
     public function test_export_pdf(): void
     {
         $r = TestResponse::fromBaseResponse(app(Ekspor::class)->minta($this->pimpinan, 'monitoring', 'pdf', ['tahun' => '2026']));
@@ -256,7 +268,7 @@ class HalamanMonitoringTest extends TestCase
         $p = app(PembangunMonitoring::class);
         $f = $p->filter($this->pimpinan, ['tahun' => 'abc', 'irban' => '999', 'status' => 'xyz', 'jenis' => (string) $this->j2->id]);
 
-        $this->assertSame(['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => $this->j2->id, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null], $f);
+        $this->assertSame(['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => $this->j2->id, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null, 'cari' => null], $f);
         $this->assertSame(1, $p->jumlah($this->pimpinan, $f));
         $this->assertSame('/pimpinan/monitoring', $p->halaman($this->pimpinan));
 

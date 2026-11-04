@@ -196,19 +196,105 @@ class MonitoringSptTest extends TestCase
     public function test_invalid_filter_values_fall_back(): void
     {
         $monitoring = app(MonitoringSpt::class);
-        $bawaan = ['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => null, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null];
+        $bawaan = ['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => null, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null, 'cari' => null];
         $this->assertSame($bawaan, $monitoring->filter([]));
 
         $invalid = ['tahun' => 'abc', 'tw' => 5, 'irban' => 99999, 'status' => 'draf', 'jenis' => 'x', 'kesesuaian' => 'foo', 'penanda' => 'non_pkpt', 'penjelasan' => 'ya', 'lain' => 1];
         $this->assertSame($bawaan, $monitoring->filter($invalid));
         $this->assertSame(['i1' => [1, 2], 'i3' => [4], 'i2' => [3], 'luar' => [5, 6]], $this->ringkas($invalid));
-        $this->assertSame(['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => null, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null],
+        $this->assertSame(['tahun' => 2026, 'tw' => null, 'irban' => null, 'status' => null, 'jenis' => null, 'kesesuaian' => null, 'penanda' => null, 'penjelasan' => null, 'cari' => null],
             $monitoring->filter(['tahun' => ['2025'], 'tw' => '0', 'status' => ['selesai']]));
 
         $valid = $monitoring->filter(['tahun' => '2025', 'tw' => '3', 'irban' => (string) $this->b->id, 'status' => 'selesai', 'jenis' => (string) $this->j1->id,
             'kesesuaian' => 'non_pkpt', 'penanda' => 'terlambat', 'penjelasan' => 'terbuka']);
         $this->assertSame(['tahun' => 2025, 'tw' => 3, 'irban' => $this->b->id, 'status' => 'selesai', 'jenis' => $this->j1->id,
-            'kesesuaian' => 'non_pkpt', 'penanda' => 'terlambat', 'penjelasan' => 'terbuka'], $valid);
+            'kesesuaian' => 'non_pkpt', 'penanda' => 'terlambat', 'penjelasan' => 'terbuka', 'cari' => null], $valid);
+    }
+
+    private function ubahNomor(): void
+    {
+        foreach ([1 => '700/001/X', 2 => '700/002/X', 3 => '800/003/X', 4 => '100%/004/X', 5 => '900/005/X', 6 => '900_006/X'] as $n => $nomor) {
+            DB::table('spt')->where('id', $this->m[$n]->id)->update(['nomor_lengkap' => $nomor]);
+        }
+    }
+
+    private function idDaftar(array $filter, string $urut = 'tenggat'): array
+    {
+        $kunci = array_map(fn ($s) => $s->id, $this->m);
+
+        return array_map(fn ($r) => array_search($r['id'], $kunci, true), app(MonitoringSpt::class)->daftar($filter, $urut));
+    }
+
+    public function test_cari_matches_part_of_the_number_in_baris_daftar_and_jumlah(): void
+    {
+        $this->ubahNomor();
+        $monitoring = app(MonitoringSpt::class);
+
+        $this->assertSame(['i1' => [1, 2]], $this->ringkas(['cari' => '700']));
+        $this->assertEqualsCanonicalizing([1, 2], $this->idDaftar(['cari' => '700']));
+        $this->assertSame(2, $monitoring->jumlah(['cari' => '700']));
+        $this->assertSame([], $this->idDaftar(['cari' => 'tidak-ada']));
+    }
+
+    public function test_cari_treats_percent_and_underscore_literally(): void
+    {
+        $this->ubahNomor();
+
+        $this->assertSame([4], $this->idDaftar(['cari' => '%']));
+        $this->assertSame([6], $this->idDaftar(['cari' => '_']));
+    }
+
+    public function test_filter_trims_cari_and_blank_is_null(): void
+    {
+        $monitoring = app(MonitoringSpt::class);
+
+        $this->assertSame('700', $monitoring->filter(['cari' => '  700 '])['cari']);
+        $this->assertNull($monitoring->filter(['cari' => '   '])['cari']);
+        $this->assertSame(100, mb_strlen($monitoring->filter(['cari' => str_repeat('é', 150)])['cari']));
+        $this->assertNull($monitoring->filter(['cari' => ['700']])['cari']);
+        $this->assertNull($monitoring->filter(['cari' => 700])['cari']);
+        $this->assertNull($monitoring->filter([])['cari']);
+    }
+
+    public function test_daftar_tenggat_puts_unfinished_first_then_earliest_end_then_no_date(): void
+    {
+        $this->assertSame([2, 5, 6, 1, 4, 3], $this->idDaftar([]));
+
+        // Same bucket, null end last: a finished SPT without an end date goes after the dated ones.
+        DB::table('spt')->where('id', $this->m[4]->id)->update(['tanggal_selesai' => null]);
+        $this->assertSame([2, 5, 6, 1, 3, 4], $this->idDaftar([]));
+    }
+
+    public function test_daftar_terbit_orders_by_tanggal_spt_then_nomor_urut_desc(): void
+    {
+        $atur = [1 => ['2026-03-01', 5], 2 => ['2026-03-01', 9], 3 => ['2026-06-01', 1], 4 => [null, 99], 5 => ['2026-03-01', 7], 6 => ['2026-01-01', 2]];
+        foreach ($atur as $n => [$tanggal, $urut]) {
+            DB::table('spt')->where('id', $this->m[$n]->id)->update(['tanggal_spt' => $tanggal, 'nomor_urut' => $urut]);
+        }
+
+        $this->assertSame([3, 2, 5, 1, 6, 4], $this->idDaftar([], 'terbit'));
+        $this->assertSame('2026-06-01', app(MonitoringSpt::class)->daftar([], 'terbit')[0]['tanggal_spt']->toDateString());
+        $this->assertNull(app(MonitoringSpt::class)->daftar([], 'terbit')[5]['tanggal_spt']);
+    }
+
+    public function test_daftar_unknown_urut_falls_back_to_tenggat(): void
+    {
+        $this->assertSame(['tenggat', 'terbit'], MonitoringSpt::URUT);
+        $this->assertSame($this->idDaftar([]), $this->idDaftar([], 'acak'));
+    }
+
+    public function test_daftar_applies_the_same_filters_as_baris(): void
+    {
+        $monitoring = app(MonitoringSpt::class);
+        foreach ([['irban' => $this->b->id], ['penanda' => 'terlambat'], ['cari' => 'FACTORY']] as $filter) {
+            $this->assertSame(
+                array_sum(array_map(fn ($g) => count($g['spt']), $monitoring->baris($filter))),
+                count($monitoring->daftar($filter)),
+                json_encode($filter),
+            );
+        }
+        $this->assertCount(2, $monitoring->daftar(['irban' => $this->b->id]));
+        $this->assertCount(1, $monitoring->daftar(['penanda' => 'terlambat']));
     }
 
     public function test_query_count_is_constant(): void

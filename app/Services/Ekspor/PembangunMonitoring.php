@@ -109,6 +109,7 @@ class PembangunMonitoring implements Pembangun
             $f['kesesuaian'] ? 'Kesesuaian: '.self::KESESUAIAN[$f['kesesuaian']] : null,
             $f['penanda'] ? 'Terlambat' : null,
             $f['penjelasan'] ? 'Permintaan Penjelasan Terbuka' : null,
+            $f['cari'] ? 'Cari: '.$f['cari'] : null,
         ]));
     }
 }

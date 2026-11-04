@@ -19,12 +19,15 @@ class MonitoringSpt
 
     public const KESESUAIAN = ['sesuai', 'tidak_sesuai', 'non_pkpt'];
 
+    /** Orders of daftar(): by deadline (unfinished first) or by SPT date, newest first. */
+    public const URUT = ['tenggat', 'terbit'];
+
     public function __construct(private Triwulan $triwulan, private PenandaSpt $penanda, private KesesuaianPkpt $kesesuaian) {}
 
     /**
      * Validated filter; unknown or malformed values fall back to the default (tahun = current Jakarta year, others null).
      *
-     * @return array{tahun: int, tw: ?int, irban: ?int, status: ?string, jenis: ?int, kesesuaian: ?string, penanda: ?string, penjelasan: ?string}
+     * @return array{tahun: int, tw: ?int, irban: ?int, status: ?string, jenis: ?int, kesesuaian: ?string, penanda: ?string, penjelasan: ?string, cari: ?string}
      */
     public function filter(array $input): array
     {
@@ -44,13 +47,14 @@ class MonitoringSpt
             'kesesuaian' => $pilih($input['kesesuaian'] ?? null, self::KESESUAIAN),
             'penanda' => $pilih($input['penanda'] ?? null, ['terlambat']),
             'penjelasan' => $pilih($input['penjelasan'] ?? null, ['terbuka']),
+            'cari' => is_string($input['cari'] ?? null) ? (trim(mb_substr(trim($input['cari']), 0, 100)) ?: null) : null,
         ];
     }
 
     /**
      * Groups (items by effective start, then id; "Di luar PKPT" last; only groups with rows):
      *   {item_id: ?int, label: string, jenis: ?{id, nama, warna, warna_teks}, mulai: ?CarbonImmutable, selesai: ?CarbonImmutable, irban: ?string, spt: list<row>}
-     * Row: {id, nomor_lengkap, irban: string, jenis: ?{id, nama, warna, warna_teks}, mulai, selesai, kesesuaian: sesuai|tidak_sesuai|non_pkpt,
+     * Row: {id, nomor_lengkap, tanggal_spt: ?CarbonImmutable, irban: string, jenis: ?{id, nama, warna, warna_teks}, mulai, selesai, kesesuaian: sesuai|tidak_sesuai|non_pkpt,
      *   status: StatusSpt, penanda: list<string>, kendala: ?{kategori, uraian}, url}
      */
     public function baris(array $filter): array
@@ -80,6 +84,23 @@ class MonitoringSpt
     }
 
     /**
+     * Flat list of the same rows baris() holds (same filters), ordered by `tenggat` (unfinished first, earliest end, no date last)
+     * or `terbit` (tanggal_spt newest first, none last, then nomor_urut desc). An unknown $urut means tenggat.
+     *
+     * @return list<array> rows in the shape documented on baris()
+     */
+    public function daftar(array $filter, string $urut = 'tenggat'): array
+    {
+        $hasil = $this->spt($this->filter($filter));
+        $kunci = $urut === 'terbit'
+            ? fn ($h) => [$h[0]->tanggal_spt === null, -($h[0]->tanggal_spt?->getTimestamp() ?? 0), -$h[0]->nomor_urut, -$h[0]->id]
+            : fn ($h) => [$h[1]['status'] === StatusSpt::Selesai, $h[0]->tanggal_selesai === null, $h[0]->tanggal_selesai?->getTimestamp(), $h[0]->id];
+        usort($hasil, fn ($a, $b) => $kunci($a) <=> $kunci($b));
+
+        return array_column($hasil, 1);
+    }
+
+    /**
      * Number of SPT rows baris() returns for this filter (dashboard stat cards), through the same query and flag pass.
      * Filters decided in SQL alone are counted in SQL; flag-based ones (penanda, sesuai/tidak_sesuai) run saring() like baris().
      */
@@ -99,6 +120,8 @@ class MonitoringSpt
             ->when(! $f['penanda'], fn ($q) => $q->where('tahun', $f['tahun']))
             // The quarter follows the year scope: all years while the Terlambat chip is on, else the selected year.
             ->when($f['tw'], fn ($q, $tw) => $f['penanda'] ? $this->triwulan->batasiTriwulan($q, $tw) : $this->triwulan->batasi($q, $f['tahun'], $tw))
+            // ESCAPE '!' instead of backslash: SQLite has no default escape character, MySQL has, and '!' works on both.
+            ->when($f['cari'], fn ($q, $c) => $q->whereRaw("nomor_lengkap LIKE ? ESCAPE '!'", ['%'.preg_replace('/[!%_]/', '!$0', $c).'%']))
             ->when($f['irban'], fn ($q, $id) => $q->where('irban_id', $id))
             ->when($f['jenis'], fn ($q, $id) => $q->where('jenis_penugasan_id', $id))
             ->when($f['kesesuaian'] === 'non_pkpt', fn ($q) => $q->whereNull('pkpt_item_id'))
@@ -171,6 +194,7 @@ class MonitoringSpt
         return [
             'id' => $spt->id,
             'nomor_lengkap' => $spt->nomor_lengkap,
+            'tanggal_spt' => $spt->tanggal_spt,
             'irban' => $spt->irban->nama,
             'jenis' => $this->jenis($spt->jenisPenugasan),
             'mulai' => $spt->tanggal_mulai,
