@@ -25,19 +25,10 @@ class SkalaGrafikTest extends TestCase
 
     public function test_heights_are_proportional_and_capped(): void
     {
-        $this->assertSame([140, 70, 0], SkalaGrafik::batang([8, 4, 0], 8, false));
-        $this->assertSame([140], SkalaGrafik::batang([20], 8, false)); // capped
-        $this->assertSame([2], SkalaGrafik::batang([1], 1000, false)); // a non-zero value stays visible
-        $this->assertSame([0, 0], SkalaGrafik::batang([0, 0], 0, false));
-    }
-
-    public function test_stacked_segments_sum_to_the_stack_height(): void
-    {
-        $h = SkalaGrafik::batang([3, 5], 8, true);
-        $this->assertSame(140, array_sum($h));
-        $this->assertSame([53, 87], $h);
-        $this->assertSame([0, 70], SkalaGrafik::batang([0, 4], 8, true));
-        $this->assertSame([0, 0], SkalaGrafik::batang([0, 0], 4, true));
+        $this->assertSame([140, 70, 0], SkalaGrafik::batang([8, 4, 0], 8));
+        $this->assertSame([140], SkalaGrafik::batang([20], 8)); // capped
+        $this->assertSame([2], SkalaGrafik::batang([1], 1000)); // a non-zero value stays visible
+        $this->assertSame([0, 0], SkalaGrafik::batang([0, 0], 0));
     }
 
     public function test_gridline_offsets_and_width(): void

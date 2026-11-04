@@ -232,13 +232,13 @@ class PembangunRekap implements Pembangun
                     : array_map(fn ($b) => ['label' => $b['nama'], 'nilai' => $v = $pasang($ambil($b)), 'teks' => $teksRr($v)], $rekap['irban']['baris']);
                 $hasil['rr'] = ['jenis' => 'berpasangan', 'judul' => 'Grafik Rencana vs Realisasi', 'baris' => $baris, 'legenda' => $rr];
             } elseif ($kode === 'klasifikasi') {
-                $hasil['klasifikasi'] = ['jenis' => 'bertumpuk', 'judul' => 'Grafik Per Klasifikasi', 'legenda' => [
+                $hasil['klasifikasi'] = ['jenis' => 'berpasangan', 'judul' => 'Grafik Per Klasifikasi', 'legenda' => [
                     ['label' => 'Berjalan', 'isi' => PaletGrafik::BERJALAN_ISI, 'garis' => PaletGrafik::BERJALAN_GARIS],
                     ['label' => 'Selesai', 'isi' => PaletGrafik::SELESAI, 'garis' => PaletGrafik::SELESAI]],
                     'baris' => array_map(function ($b) use ($ambil) {
                         [$jalan, $selesai] = [$ambil($b)['berjalan'] ?? 0, $ambil($b)['selesai'] ?? 0];
 
-                        return ['label' => $b['nama'], 'nilai' => [$jalan, $selesai], 'teks' => "Berjalan {$jalan} · Selesai {$selesai}"];
+                        return ['label' => "{$b['nama']} (".($jalan + $selesai).')', 'nilai' => [$jalan, $selesai], 'teks' => "Berjalan {$jalan} · Selesai {$selesai}"];
                     }, $rekap['klasifikasi']['baris'])];
             } elseif ($kode === 'jenis') {
                 $baris = [];

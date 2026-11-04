@@ -65,9 +65,10 @@ class GrafikPdfRekapTest extends TestCase
         $html = $this->html(['klasifikasi', 'jenis']);
         $this->assertLessThan(strpos($html, '33% (2/6)'), strpos($html, '67% (2/3)'));
         $grafik = explode('data-grafik="jenis"', explode('data-grafik="klasifikasi"', $html)[1])[0];
-        $this->assertStringContainsString('>DIKLAT</td>', $grafik); // zero row keeps its category label
-        $this->assertSame(3, substr_count($grafik, 'class="grafik-nilai">0<')); // DIKLAT, LUAR DAERAH, LAIN-LAIN show 0
-        $this->assertSame(4, substr_count($grafik, 'class="grafik-batang"')); // only REGULER and KHUSUS draw segments
+        $this->assertStringContainsString('>DIKLAT (0)</td>', $grafik); // zero row keeps its category label
+        $this->assertSame(6, substr_count($grafik, 'class="grafik-nilai">0<')); // DIKLAT, LUAR DAERAH, LAIN-LAIN show 0 twice (berjalan, selesai)
+        $this->assertSame(4, substr_count($grafik, 'class="grafik-batang"')); // only REGULER and KHUSUS draw bars
+        $this->assertStringNotContainsString('grafik-tumpuk', $html);
         $this->assertStringContainsString('grafik-tabel', $html); // Per Jenis stays horizontal
     }
 
@@ -112,21 +113,37 @@ class GrafikPdfRekapTest extends TestCase
         $this->assertSame(2, substr_count($html, 'class="grafik-nilai"')); // the 0 keeps its number above the axis
     }
 
-    /** Stacked bar: segments are slices of one stack scaled to the axis top; a zero segment is left out. */
-    public function test_stacked_bar_heights_and_zero_segments(): void
+    public function test_klasifikasi_paired_bars_scale_to_the_tallest_bar(): void
     {
         $g = app(PembangunRekap::class)->grafik($this->rekapPalsu(klasifikasi: [
             ['nama' => 'X', 'total' => ['berjalan' => 1, 'selesai' => 3]],
             ['nama' => 'Y', 'total' => ['berjalan' => 2, 'selesai' => 0]],
         ]), ['tw' => 0, 'irban' => null, 'bagian' => ['klasifikasi']]);
-        $this->assertSame('bertumpuk', $g['klasifikasi']['jenis']);
+        $k = $g['klasifikasi'];
+        $this->assertSame('berpasangan', $k['jenis']);
+        $this->assertSame([1, 3], $k['baris'][0]['nilai']);
+        $this->assertSame('X (4)', $k['baris'][0]['label']);
+        $this->assertSame('Y (2)', $k['baris'][1]['label']);
 
-        $html = view('pdf.partials.grafik-batang', ['kode' => 'klasifikasi', ...$g['klasifikasi']])->render();
+        $html = view('pdf.partials.grafik-batang', ['kode' => 'klasifikasi', ...$k])->render();
 
-        $this->assertStringContainsString('height: 34px', $html);  // X berjalan 1 of 4 = 35px
-        $this->assertStringContainsString('height: 104px', $html); // X selesai: stack 140 - 35 = 105px
-        $this->assertStringContainsString('height: 69px', $html);  // Y: 2 of 4 = 70px
-        $this->assertSame(3, substr_count($html, 'class="grafik-batang"')); // Y's zero selesai has no segment
+        $this->assertSame(4, substr_count($html, 'class="grafik-y"')); // ticks 0..3: the tallest bar, not the sum 4
+        $this->assertStringContainsString('height: 139px', $html); // 3 of axis top 3 (140px, minus the 1px top border)
+        $this->assertStringContainsString('height: 92px', $html);  // 2 of 3 = 93px
+        $this->assertStringContainsString('height: 46px', $html);  // 1 of 3 = 47px
+        $this->assertSame(3, substr_count($html, 'class="grafik-batang"')); // Y's zero selesai draws no bar
+        $this->assertSame(4, substr_count($html, 'class="grafik-nilai"'));  // every bar has its number, the 0 too
+        $this->assertSame(1, substr_count($html, 'class="grafik-nilai">0<'));
+    }
+
+    public function test_klasifikasi_label_total_follows_the_triwulan_filter(): void
+    {
+        $g = app(PembangunRekap::class)->grafik($this->rekapPalsu(klasifikasi: [
+            ['nama' => 'X', 'tw' => [2 => ['berjalan' => 1, 'selesai' => 1]], 'total' => ['berjalan' => 5, 'selesai' => 5]],
+        ]), ['tw' => 2, 'irban' => null, 'bagian' => ['klasifikasi']]);
+
+        $this->assertSame('X (2)', $g['klasifikasi']['baris'][0]['label']);
+        $this->assertSame([1, 1], $g['klasifikasi']['baris'][0]['nilai']);
     }
 
     private function render(string $jenis, array $baris, array $legenda): string
@@ -145,7 +162,7 @@ class GrafikPdfRekapTest extends TestCase
         $kosong = $this->render('berpasangan', [], $rr); // no categories at all
         $this->assertStringContainsString('grafik-y', $kosong);
 
-        $nol = $this->render('bertumpuk', [$bar('A', [0, 0])], $rr); // all zero: axis still drawn, no bars
+        $nol = $this->render('berpasangan', [$bar('A', [0, 0])], $rr); // all zero: axis still drawn, no bars
         $this->assertSame(5, substr_count($nol, 'class="grafik-y"'));
         $this->assertStringNotContainsString('class="grafik-batang"', $nol);
         $this->assertStringContainsString('width: 40%', $nol); // single category: narrow and centred

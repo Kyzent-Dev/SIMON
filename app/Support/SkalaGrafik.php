@@ -28,29 +28,17 @@ final class SkalaGrafik
     }
 
     /**
-     * Pixel heights of one category's bars. $tumpuk: segments are cumulative slices of one stack (heights sum to the stack's height); otherwise independent bars.
+     * Pixel heights of one category's independent bars.
      * A non-zero value never rounds to 0 px; nothing exceeds $tinggi.
      *
      * @param  list<int>  $nilai
      * @return list<int>
      */
-    public static function batang(array $nilai, int $puncak, bool $tumpuk, int $tinggi = self::TINGGI): array
+    public static function batang(array $nilai, int $puncak, int $tinggi = self::TINGGI): array
     {
         $px = fn (int $n) => $n <= 0 || $puncak <= 0 ? 0 : min($tinggi, max(2, (int) round($n / $puncak * $tinggi)));
-        if (! $tumpuk) {
-            return array_map($px, $nilai);
-        }
-        $hasil = [];
-        $kum = 0;
-        $sebelum = 0;
-        foreach ($nilai as $n) {
-            $kum += $n;
-            $sekarang = $n > 0 ? max($sebelum + 2, $px($kum)) : $sebelum;
-            $hasil[] = min($tinggi, $sekarang) - $sebelum;
-            $sebelum += end($hasil);
-        }
 
-        return $hasil;
+        return array_map($px, $nilai);
     }
 
     /** Gridline offsets from the bottom, in px, per tick. */

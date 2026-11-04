@@ -1,9 +1,8 @@
-{{-- Print-only bar charts in plain tables/divs (dompdf runs no JS, no motion). Props: $kode, $jenis (berpasangan|bertumpuk|persen), $judul, $baris [{label, nilai, teks?}], $legenda [{label, isi, garis}].
-     berpasangan/bertumpuk: vertical bars (Y axis, gridlines, value above, label below), heights from AppSupportSkalaGrafik. persen: horizontal bars, width = value / 100 at least; the number sits after the bar, always in TEKS. --}}
+{{-- Print-only bar charts in plain tables/divs (dompdf runs no JS, no motion). Props: $kode, $jenis (berpasangan|persen), $judul, $baris [{label, nilai, teks?}], $legenda [{label, isi, garis}].
+     berpasangan: vertical bars (Y axis, gridlines, value above, label below), heights from AppSupportSkalaGrafik. persen: horizontal bars, width = value / 100 at least; the number sits after the bar, always in TEKS. --}}
 @php
     $vertikal = $jenis !== 'persen';
-    $total = fn ($b) => $jenis === 'bertumpuk' ? array_sum($b['nilai']) : max($b['nilai'] ?: [0]);
-    $maks = max([$jenis === 'persen' ? 100 : 0, ...array_map($total, $baris)]);
+    $maks = max([$jenis === 'persen' ? 100 : 0, ...array_map(fn ($b) => max($b['nilai'] ?: [0]), $baris)]);
     $pct = fn ($n) => $maks > 0 ? round($n / $maks * 100, 1) : 0;
     $warna = fn ($i) => $legenda[$jenis === 'persen' ? 0 : $i];
     if ($vertikal) {
@@ -25,27 +24,17 @@
                 @endforeach
                 <table class="grafik-kolom"><tr>
                     @foreach ($baris as $b)
-                        @php($h = \App\Support\SkalaGrafik::batang($b['nilai'], $puncak, $jenis === 'bertumpuk', $tinggi))
+                        @php($h = \App\Support\SkalaGrafik::batang($b['nilai'], $puncak, $tinggi))
                         <td valign="bottom" style="vertical-align: bottom; height: {{ $tinggi + 14 }}px;">
-                            @if ($jenis === 'bertumpuk')
-                                <div class="grafik-nilai">{{ $total($b) }}</div>
-                                {{-- Stack: last series on top. A zero segment is left out (its border would be a sliver). --}}
-                                <table class="grafik-tumpuk"><tr><td valign="bottom">
-                                    @foreach (array_reverse(array_keys($b['nilai'])) as $i)
+                            <table class="grafik-pasang"><tr valign="bottom">
+                                @foreach ($b['nilai'] as $i => $n)
+                                    <td valign="bottom">
+                                        <div class="grafik-nilai">{{ $n }}</div>
                                         @if ($h[$i] > 0)<div class="grafik-batang" style="height: {{ $h[$i] - 1 }}px; background: {{ $warna($i)['isi'] }}; border-color: {{ $warna($i)['garis'] }};"></div>@endif
-                                    @endforeach
-                                </td></tr></table>
-                            @else
-                                <table class="grafik-pasang"><tr valign="bottom">
-                                    @foreach ($b['nilai'] as $i => $n)
-                                        <td valign="bottom">
-                                            <div class="grafik-nilai">{{ $n }}</div>
-                                            @if ($h[$i] > 0)<div class="grafik-batang" style="height: {{ $h[$i] - 1 }}px; background: {{ $warna($i)['isi'] }}; border-color: {{ $warna($i)['garis'] }};"></div>@endif
-                                        </td>
-                                    @endforeach
-                                </tr></table>
-                            @endif
-                        </td>
+                                    </td>
+                                @endforeach
+                            </tr></table>
+                    </td>
                     @endforeach
                 </tr></table>
             </div>
