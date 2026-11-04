@@ -45,8 +45,8 @@
         </section>
     @endif
 
-    <div class="mt-6">
-        <section aria-labelledby="grafik-judul" class="min-w-0 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5">
+    <div class="mt-6 grid gap-6 xl:grid-cols-3">
+        <section aria-labelledby="grafik-judul" class="min-w-0 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5 xl:col-span-2">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div class="min-w-0">
                     <h2 id="grafik-judul" class="font-display text-[22px] leading-[30px] font-bold text-neutral-900">Realisasi vs Rencana per Irban</h2>
@@ -98,6 +98,21 @@
             </div>
         </section>
 
+        <section aria-labelledby="aktivitas-judul" class="min-w-0 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs lg:p-5">
+            <h2 id="aktivitas-judul" class="font-display text-[22px] leading-[30px] font-bold text-neutral-900">Aktivitas SPT Terbaru</h2>
+            @forelse ($aktivitas as $a)
+                @if ($loop->first)<ul role="list" class="mt-3 divide-y divide-neutral-200">@endif
+                <li wire:key="aktivitas-{{ $a['id'] }}" class="min-w-0 py-3">
+                    <p class="text-sm font-semibold text-neutral-900">{{ $a['label'] }}</p>
+                    <a href="{{ $a['url'] }}" wire:navigate class="inline-flex min-h-11 max-w-full items-center break-words text-sm font-medium tabular-nums text-mint-700 hover:underline lg:min-h-8">{{ $a['nomor'] }}</a>
+                    <p class="text-xs text-neutral-600">{{ $a['irban'] }} · <span class="tabular-nums">{{ $a['waktu']->translatedFormat('d F Y H.i') }} WIB</span></p>
+                </li>
+                @if ($loop->last)</ul>@endif
+            @empty
+                <p class="mt-3 text-sm text-neutral-600">Belum ada aktivitas SPT.</p>
+            @endforelse
+            <a href="{{ route('pimpinan.monitoring', ['tampilan' => 'spt', 'urut' => 'terbit']) }}" wire:navigate class="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-mint-700 hover:underline lg:min-h-8">Lihat di Monitoring</a>
+        </section>
     </div>
 
     <nav aria-label="Tautan dasbor" class="mt-6 grid gap-3 sm:grid-cols-2">

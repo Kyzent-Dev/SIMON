@@ -8,6 +8,7 @@ use App\Models\Komentar;
 use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Services\Ekspor\PembangunRekap;
+use App\Services\AktivitasSpt;
 use App\Services\MonitoringSpt;
 use App\Services\RekapTriwulan;
 use Illuminate\Support\Facades\Gate;
@@ -72,6 +73,8 @@ class Dasbor extends Component
             'tahunList' => $tahunList,
             'menunggu' => $menunggu->take(5),
             'jumlahMenunggu' => $menunggu->count(),
+            // Latest events regardless of the year filter (it is a feed, like the approval list).
+            'aktivitas' => app(AktivitasSpt::class)->terbaru(),
         ]);
     }
 

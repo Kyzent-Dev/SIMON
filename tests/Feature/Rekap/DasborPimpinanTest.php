@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Rekap;
 
+use App\Enums\KejadianSpt;
 use App\Enums\Role;
 use App\Enums\StatusPermintaan;
 use App\Livewire\Pimpinan\Dasbor;
@@ -10,6 +11,7 @@ use App\Models\Komentar;
 use App\Models\Pkpt;
 use App\Models\PkptPerubahan;
 use App\Models\Spt;
+use App\Models\SptRiwayat;
 use App\Models\User;
 use App\Services\MonitoringSpt;
 use App\Services\RekapTriwulan;
@@ -195,5 +197,30 @@ class DasborPimpinanTest extends TestCase
         foreach ([['tahun' => 2026], ['tahun' => 2026, 'penanda' => 'terlambat'], ['tahun' => 2026, 'irban' => Irban::first()->id]] as $f) {
             $this->assertSame(array_sum(array_map(fn ($g) => count($g['spt']), $m->baris($f))), $m->jumlah($f));
         }
+    }
+
+    public function test_panel_lists_activity_and_links(): void
+    {
+        $spt = Spt::whereDate('tanggal_mulai', '2026-11-01')->sole();
+        SptRiwayat::create(['spt_id' => $spt->id, 'kejadian' => KejadianSpt::KENDALA_DIISI, 'oleh' => $spt->dibuat_oleh])->forceFill(['created_at' => '2026-11-03 10:42:00'])->save();
+
+        $this->actingAs($this->pimpinan)->get('/pimpinan')->assertOk()
+            ->assertSeeInOrder(['Aktivitas SPT Terbaru', 'Kendala diisi', $spt->nomor_lengkap, 'Irban B', '03 November 2026 10.42 WIB'])
+            ->assertSee(route('spt.show', $spt->id), false)
+            ->assertSee('Lihat di Monitoring')
+            ->assertSee(e(route('pimpinan.monitoring', ['tampilan' => 'spt', 'urut' => 'terbit'])), false);
+    }
+
+    public function test_panel_empty_state(): void
+    {
+        $this->halaman()->assertSee('Aktivitas SPT Terbaru')->assertSee('Belum ada aktivitas SPT.');
+    }
+
+    public function test_panel_ignores_the_year_filter(): void
+    {
+        $spt = Spt::whereDate('tanggal_mulai', '2026-11-01')->sole();
+        SptRiwayat::create(['spt_id' => $spt->id, 'kejadian' => KejadianSpt::DITANDAI_SELESAI, 'oleh' => $spt->dibuat_oleh]);
+
+        $this->halaman(['tahun' => 2025])->assertSee('Ditandai Selesai')->assertSee($spt->nomor_lengkap);
     }
 }
