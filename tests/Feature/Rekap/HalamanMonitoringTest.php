@@ -94,10 +94,96 @@ class HalamanMonitoringTest extends TestCase
         return array_values(array_filter(array_keys($this->m), fn ($k) => str_contains($html, e($this->m[$k]->nomor_lengkap).'<')));
     }
 
+    /** Keys of the fixture SPT in the order their numbers first appear in the page. */
+    private function urutan(array $query): array
+    {
+        $html = $this->halaman($query)->html();
+        $pos = [];
+        foreach ($this->m as $k => $spt) {
+            if (($p = strpos($html, e($spt->nomor_lengkap).'<')) !== false) {
+                $pos[$k] = $p;
+            }
+        }
+        asort($pos);
+
+        return array_keys($pos);
+    }
+
+    public function test_default_view_is_per_pkpt(): void
+    {
+        $this->halaman()->assertSet('tampilan', 'pkpt')->assertSet('urut', 'tenggat')
+            ->assertSeeHtml('<th scope="rowgroup"')->assertSee('Buka semua')->assertSee('Per PKPT')->assertSee('Per SPT')
+            ->assertDontSee('Urutkan');
+    }
+
+    public function test_per_spt_view_lists_rows_without_group_rows(): void
+    {
+        $this->halaman(['tampilan' => 'spt'])
+            ->assertDontSeeHtml('<th scope="rowgroup"')->assertDontSee('Buka semua')->assertSee('Urutkan')
+            ->assertSeeHtmlInOrder(['Nomor SPT', 'Tanggal SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'])
+            ->assertSee('Jenis Satu · Irban A', false);
+        // Unfinished first by earliest end (m2 5 Apr, m5 20 Des), then the finished one.
+        $this->assertSame([2, 5, 1], $this->urutan(['tampilan' => 'spt']));
+    }
+
+    public function test_urut_terbit_changes_the_order(): void
+    {
+        $this->m[1]->forceFill(['tanggal_spt' => '2026-03-01'])->save();
+        $this->m[2]->forceFill(['tanggal_spt' => '2026-03-20'])->save();
+        $this->m[5]->forceFill(['tanggal_spt' => '2026-12-01'])->save();
+
+        $this->assertSame([5, 2, 1], $this->urutan(['tampilan' => 'spt', 'urut' => 'terbit']));
+        $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit'])->assertSee('1 Desember 2026');
+    }
+
+    public function test_unknown_tampilan_and_urut_fall_back(): void
+    {
+        $this->halaman(['tampilan' => 'x', 'urut' => 'y'])->assertOk()->assertSet('tampilan', 'pkpt')->assertSet('urut', 'tenggat')->assertSeeHtml('<th scope="rowgroup"');
+    }
+
+    public function test_switching_view_resets_the_page(): void
+    {
+        $this->halaman(['tampilan' => 'pkpt', 'page' => '2'])->assertSet('paginators.page', 2)
+            ->set('tampilan', 'spt')->assertSet('paginators.page', 1);
+    }
+
+    public function test_per_spt_paginates_20_rows(): void
+    {
+        foreach (range(1, 21) as $n) {
+            Spt::factory()->diterima()->create(['irban_id' => $this->a->id, 'tanggal_mulai' => '2024-02-01', 'tanggal_selesai' => '2024-02-02'])->forceFill(['tahun' => 2024])->save();
+        }
+
+        $this->assertSame(20, substr_count($this->halaman(['tahun' => '2024', 'tampilan' => 'spt'])->html(), '<tr wire:key="r-'));
+        $this->assertStringContainsString('Menampilkan 21–21 dari 21', $this->halaman(['tahun' => '2024', 'tampilan' => 'spt', 'page' => '2'])->html());
+    }
+
+    public function test_cari_filters_both_views_and_atur_ulang_clears_it_but_keeps_view(): void
+    {
+        $nomor = $this->m[5]->nomor_lengkap;
+        foreach (['pkpt', 'spt'] as $v) {
+            $this->assertSame([5], $this->tampil(['tampilan' => $v, 'cari' => $nomor]));
+        }
+        $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit', 'cari' => $nomor])->assertSee('Atur ulang')
+            ->call('aturUlang')->assertSet('cari', '')->assertSet('tampilan', 'spt')->assertSet('urut', 'terbit');
+        $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit'])->assertDontSee('Atur ulang');
+    }
+
+    public function test_penanda_select_filters_terlambat(): void
+    {
+        $this->halaman()->assertSeeHtml('wire:model.live="penanda"')->assertSee('Terlambat (semua tahun)')
+            ->set('penanda', 'terlambat')->assertSet('penanda', 'terlambat');
+        $this->assertSame([2], $this->tampil(['penanda' => 'terlambat', 'tampilan' => 'spt']));
+    }
+
+    public function test_per_spt_empty_state(): void
+    {
+        $this->halaman(['tahun' => '2030', 'tampilan' => 'spt'])->assertSee('Tidak ada SPT sesuai filter.')->assertSee('Per SPT');
+    }
+
     public function test_pimpinan_only_and_sidebar_item(): void
     {
         $this->actingAs($this->pimpinan)->get('/pimpinan/monitoring')->assertOk()
-            ->assertSee('<h1', false)->assertSee('Monitoring SPT')->assertSee('Realisasi SPT per item PKPT.')
+            ->assertSee('<h1', false)->assertSee('Monitoring SPT')->assertSee('Realisasi SPT per item PKPT atau per SPT.')
             ->assertSee(route('pimpinan.monitoring'), false);
         foreach ([Role::Irban, Role::BagianUmum, Role::Admin] as $role) {
             $u = User::factory()->create(['role' => $role, 'irban_id' => $role === Role::Irban ? $this->a->id : null]);

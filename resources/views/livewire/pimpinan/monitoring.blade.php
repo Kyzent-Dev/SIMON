@@ -5,10 +5,12 @@
     use App\Support\Tanggal;
     $terbuka = $filterAktif > 0;
     $periode = fn ($g) => $g['mulai'] ? Tanggal::rentang($g['mulai'], $g['selesai']) : null;
+    $spt = $this->tampilan === 'spt';
+    $hal = $spt ? $daftar : $grup;
     $chip = ['penanda' => 'Terlambat (semua tahun)', 'penjelasan' => 'Permintaan Penjelasan Terbuka'];
 @endphp
 <div>
-    <x-ui.page-header title="Monitoring SPT" description="Realisasi SPT per item PKPT.">
+    <x-ui.page-header title="Monitoring SPT" description="Realisasi SPT per item PKPT atau per SPT.">
         <x-slot:actions>
             <x-app.export-buttons />
         </x-slot:actions>
@@ -53,8 +55,21 @@
     </x-ui.drawer>
 
     <div wire:loading.delay.class="opacity-60" wire:loading.delay.attr="aria-busy"
-        wire:target="tahun,tw,irban,status,jenis,kesesuaian,penanda,penjelasan,aturUlang,gotoPage,previousPage,nextPage">
-        @if ($grup->total() === 0)
+        wire:target="cari,tampilan,urut,tahun,tw,irban,status,jenis,kesesuaian,penanda,penjelasan,aturUlang,gotoPage,previousPage,nextPage">
+        <div class="mb-3 flex flex-wrap items-end gap-3">
+            <x-ui.segmented name="tampilan" legend="Tampilan Monitoring" wire:model.live="tampilan" :value="$this->tampilan"
+                :options="['pkpt' => 'Per PKPT', 'spt' => 'Per SPT']" :icons="['pkpt' => 'heroicon-m-rectangle-group', 'spt' => 'heroicon-m-list-bullet']" />
+            @if ($spt)
+                <div class="w-full sm:w-48"><x-ui.select label="Urutkan" name="urut" id="urut" wire:model.live="urut" :options="['tenggat' => 'Tenggat terdekat', 'terbit' => 'Terbit terbaru']" :value="$this->urut" /></div>
+            @elseif ($hal->total() > 0)
+                <div x-data class="flex flex-wrap gap-2">
+                    <x-ui.button type="button" variant="secondary" size="sm" icon="chevron-down" class="max-lg:h-11" x-on:click="$dispatch('monitoring-grup', true)">Buka semua</x-ui.button>
+                    <x-ui.button type="button" variant="secondary" size="sm" icon="chevron-up" class="max-lg:h-11" x-on:click="$dispatch('monitoring-grup', false)">Tutup semua</x-ui.button>
+                </div>
+            @endif
+        </div>
+
+        @if ($hal->total() === 0)
             <x-ui.card>
                 <x-ui.empty-state icon="table-cells" title="Tidak ada SPT sesuai filter." description="Coba ubah tahun atau atur ulang filter.">
                     @if ($filterAktif)
@@ -62,12 +77,9 @@
                     @endif
                 </x-ui.empty-state>
             </x-ui.card>
+        @elseif ($spt)
+            @include('livewire.pimpinan.partials.monitoring-daftar')
         @else
-            <div x-data class="mb-3 flex flex-wrap gap-2">
-                <x-ui.button type="button" variant="secondary" size="sm" icon="chevron-down" class="max-lg:h-11" x-on:click="$dispatch('monitoring-grup', true)">Buka semua</x-ui.button>
-                <x-ui.button type="button" variant="secondary" size="sm" icon="chevron-up" class="max-lg:h-11" x-on:click="$dispatch('monitoring-grup', false)">Tutup semua</x-ui.button>
-            </div>
-
             {{-- px-3 cells (the first cell keeps its 40px indent) and narrower min widths: the expanded table fits beside the open sidebar at 1280 (no sideways scroll there). --}}
             <x-ui.table grouped label="Monitoring SPT {{ $this->tahun }}" class="hidden md:block [&_td]:pr-3! [&_td+td]:pl-3! [&_thead_th]:px-3!">
                 <x-slot:head>

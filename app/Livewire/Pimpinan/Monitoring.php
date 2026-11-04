@@ -16,7 +16,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Monitoring SPT (pimpinan.md "Monitoring table"): accepted SPT grouped per PKPT item, then "Di luar PKPT", 20 groups per page, read-only.
+ * Monitoring SPT (pimpinan.md "Monitoring table"): accepted SPT grouped per PKPT item, then "Di luar PKPT" (Per PKPT, 20 groups per page), or a flat list (Per SPT, 20 rows per page). Read-only.
  * Rows, flags and filter validation come from App\Services\MonitoringSpt; exports go through App\Services\Ekspor ('monitoring').
  */
 #[Title('Monitoring SPT')]
@@ -26,7 +26,17 @@ class Monitoring extends Component
 
     public const GRUP_PER_HALAMAN = 20;
 
-    private const FILTER = ['tahun', 'tw', 'irban', 'status', 'jenis', 'kesesuaian', 'penanda', 'penjelasan'];
+    private const FILTER = ['cari', 'tahun', 'tw', 'irban', 'status', 'jenis', 'kesesuaian', 'penanda', 'penjelasan'];
+
+    #[Url]
+    public string $cari = '';
+
+    /** View and order are not filters: not exported, kept by aturUlang, not counted in filterAktif. */
+    #[Url(except: 'pkpt')]
+    public string $tampilan = 'pkpt';
+
+    #[Url(except: 'tenggat')]
+    public string $urut = 'tenggat';
 
     #[Url]
     public string $tahun = '';
@@ -46,7 +56,7 @@ class Monitoring extends Component
     #[Url]
     public string $kesesuaian = '';
 
-    /** Set from the dashboard stat cards only (shown as chips). */
+    /** Terlambat only: the Penanda select, also set from the dashboard stat cards and the daily bell link. */
     #[Url]
     public string $penanda = '';
 
@@ -64,7 +74,7 @@ class Monitoring extends Component
     public function updated(string $prop): void
     {
         Gate::authorize('monitoring', Spt::class);
-        if (in_array($prop, self::FILTER, true)) {
+        if (in_array($prop, [...self::FILTER, 'tampilan', 'urut'], true)) {
             $this->resetPage();
         }
     }
@@ -103,13 +113,18 @@ class Monitoring extends Component
     {
         Gate::authorize('monitoring', Spt::class);
         $f = $this->terapkan();
-        $grup = app(MonitoringSpt::class)->baris($f);
-        $halaman = min(max(1, $this->getPage()), max(1, (int) ceil(count($grup) / self::GRUP_PER_HALAMAN)));
+        $this->tampilan = in_array($this->tampilan, ['pkpt', 'spt'], true) ? $this->tampilan : 'pkpt';
+        $this->urut = in_array($this->urut, MonitoringSpt::URUT, true) ? $this->urut : 'tenggat';
+        $spt = $this->tampilan === 'spt';
+        $semua = $spt ? app(MonitoringSpt::class)->daftar($f, $this->urut) : app(MonitoringSpt::class)->baris($f);
+        $halaman = min(max(1, $this->getPage()), max(1, (int) ceil(count($semua) / self::GRUP_PER_HALAMAN)));
+        $paginator = new LengthAwarePaginator(array_slice($semua, ($halaman - 1) * self::GRUP_PER_HALAMAN, self::GRUP_PER_HALAMAN), count($semua), self::GRUP_PER_HALAMAN, $halaman);
         $tahunList = Spt::where('status_pengajuan', StatusPengajuan::Diterima)->whereNotNull('tahun')->distinct()->pluck('tahun')
             ->push((int) now('Asia/Jakarta')->year, $f['tahun'])->unique()->sortDesc()->mapWithKeys(fn ($t) => [$t => (string) $t])->all();
 
         return view('livewire.pimpinan.monitoring', [
-            'grup' => new LengthAwarePaginator(array_slice($grup, ($halaman - 1) * self::GRUP_PER_HALAMAN, self::GRUP_PER_HALAMAN), count($grup), self::GRUP_PER_HALAMAN, $halaman),
+            'grup' => $spt ? null : $paginator,
+            'daftar' => $spt ? $paginator : null,
             'filterAktif' => count(array_filter(array_diff_key($f, ['tahun' => 0]))),
             'kunci' => md5(json_encode($f)),
             'tahunList' => $tahunList,
