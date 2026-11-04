@@ -9,6 +9,7 @@ use App\Notifications\NomorDibatalkan;
 use App\Notifications\NotifikasiSintas;
 use App\Notifications\PengajuanBaru;
 use App\Notifications\PengajuanDiputuskan;
+use App\Notifications\RangkumanNomorTerbit;
 use App\Notifications\RingkasanMingguan;
 use App\Notifications\SptTerlambat;
 use App\Services\RingkasanMingguan as Hitung;
@@ -48,6 +49,8 @@ class NotifikasiSeeder extends Seeder
             ->each(fn (Spt $s, int $i) => $this->kirim($umum, fn ($s) => new PengajuanBaru($s), $s, [10, 75, 2900][$i] ?? 4400, $i >= 2));
 
         $this->kirim($pimpinan, fn ($h) => new RingkasanMingguan($h), app(Hitung::class)->hitung(CarbonImmutable::now('Asia/Jakarta')->startOfWeek(CarbonInterface::MONDAY)), 360, false);
+        $kemarin = CarbonImmutable::now('Asia/Jakarta')->subDay()->toDateString();
+        $this->kirim($pimpinan, fn ($h) => new RangkumanNomorTerbit($h), ['tanggal' => $kemarin, 'jumlah' => 3, 'per_irban' => ['Inspektur Pembantu I' => 2, 'Inspektur Pembantu II' => 1]], 180, false);
     }
 
     /** Sends one database notification $menit minutes in the past; returns false when the source model is missing. */

@@ -29,6 +29,7 @@ class JenisNotifikasi
         'minta_penjelasan' => ['ikon' => 'question-mark-circle', 'nada' => 'warning'],
         'balasan_penjelasan' => ['ikon' => 'chat-bubble-left-right', 'nada' => 'success'],
         'ringkasan_mingguan' => ['ikon' => 'chart-bar', 'nada' => 'neutral'],
+        'rangkuman_nomor_terbit' => ['ikon' => 'document-check', 'nada' => 'info'],
         'ekspor_siap' => ['ikon' => 'arrow-down-tray', 'nada' => 'success'],
         'ekspor_gagal' => ['ikon' => 'exclamation-triangle', 'nada' => 'danger'],
         // Mail-only (Profil); listed for completeness.

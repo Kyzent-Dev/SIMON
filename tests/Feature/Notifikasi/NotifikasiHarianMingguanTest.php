@@ -159,7 +159,7 @@ class NotifikasiHarianMingguanTest extends TestCase
     {
         $this->spt(['tanggal_mulai' => '2026-03-01']);
         $this->jam('2026-04-04 06:00');
-        $this->artisan('notifikasi:harian')->expectsOutput('Terlambat: 1 notifikasi, pengingat SPT final: 1 notifikasi, pengingat perubahan PKPT: 0 notifikasi, pengingat SK perubahan: 0 notifikasi.')->assertSuccessful();
+        $this->artisan('notifikasi:harian')->expectsOutput('Terlambat: 1 notifikasi, pengingat SPT final: 1 notifikasi, pengingat perubahan PKPT: 0 notifikasi, pengingat SK perubahan: 0 notifikasi, rangkuman nomor terbit: 0 notifikasi.')->assertSuccessful();
     }
 
     private function riwayat(Spt $spt, string $kejadian, string $waktu): void

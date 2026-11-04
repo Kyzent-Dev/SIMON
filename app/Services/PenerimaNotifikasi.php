@@ -9,6 +9,8 @@ use App\Models\PkptPerubahan;
 use App\Models\Spt;
 use App\Models\User;
 use App\Notifications\EmailPegawai;
+use App\Notifications\RangkumanNomorTerbit;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -52,6 +54,14 @@ class PenerimaNotifikasi
     public function pimpinan(): Collection
     {
         return User::where('role', Role::Pimpinan)->get();
+    }
+
+    /** Pimpinan with no RangkumanNomorTerbit row created since $hariIni (start of day). One query. @return Collection<int, User> */
+    public function pimpinanBelumRangkuman(CarbonInterface $hariIni): Collection
+    {
+        return User::where('role', Role::Pimpinan)
+            ->whereDoesntHave('notifications', fn ($q) => $q->where('type', RangkumanNomorTerbit::class)->where('created_at', '>=', $hariIni))
+            ->get();
     }
 
     /**

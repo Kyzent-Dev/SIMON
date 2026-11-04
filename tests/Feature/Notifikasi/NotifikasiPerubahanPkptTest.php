@@ -122,7 +122,7 @@ class NotifikasiPerubahanPkptTest extends TestCase
 
         $this->travelTo(CarbonImmutable::parse('2026-10-21 06:00', 'Asia/Jakarta'));
         $this->artisan('notifikasi:harian')
-            ->expectsOutput('Terlambat: 0 notifikasi, pengingat SPT final: 0 notifikasi, pengingat perubahan PKPT: 1 notifikasi, pengingat SK perubahan: 0 notifikasi.')
+            ->expectsOutput('Terlambat: 0 notifikasi, pengingat SPT final: 0 notifikasi, pengingat perubahan PKPT: 1 notifikasi, pengingat SK perubahan: 0 notifikasi, rangkuman nomor terbit: 0 notifikasi.')
             ->assertSuccessful();
         $this->artisan('notifikasi:harian')->assertSuccessful();
         Notification::assertSentToTimes($this->pemutus, PengingatPerubahanPkpt::class, 1);

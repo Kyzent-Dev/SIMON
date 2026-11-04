@@ -9,9 +9,11 @@ use App\Models\Spt;
 use App\Notifications\PengingatPerubahanPkpt;
 use App\Notifications\PengingatSkPerubahan;
 use App\Notifications\PengingatSptFinal;
+use App\Notifications\RangkumanNomorTerbit;
 use App\Notifications\SptTerlambat;
 use App\Services\PenandaSpt;
 use App\Services\PenerimaNotifikasi;
+use App\Services\RangkumanNomorTerbit as HitungRangkuman;
 use App\Services\Settings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Notification;
@@ -20,9 +22,9 @@ class NotifikasiHarian extends Command
 {
     protected $signature = 'notifikasi:harian';
 
-    protected $description = 'Kirim notifikasi SPT terlambat dan pengingat SPT final (sekali per SPT), serta pengingat harian Perubahan PKPT dan SK-nya.';
+    protected $description = 'Kirim notifikasi SPT terlambat dan pengingat SPT final (sekali per SPT), pengingat harian Perubahan PKPT dan SK-nya, serta rangkuman nomor SPT yang terbit kemarin untuk Pimpinan.';
 
-    public function handle(PenandaSpt $penanda, PenerimaNotifikasi $penerima, Settings $settings): int
+    public function handle(PenandaSpt $penanda, PenerimaNotifikasi $penerima, Settings $settings, HitungRangkuman $rangkuman): int
     {
         $batas = (int) $settings->get('penanda.batas_terlambat_hari');
         $hariIni = now('Asia/Jakarta')->startOfDay();
@@ -70,8 +72,18 @@ class NotifikasiHarian extends Command
                 }
             });
 
+        // One bell summary per Pimpinan per day: those who already got one today are skipped, so a second run sends nothing.
+        $hasil = $rangkuman->hitung($hariIni->toImmutable());
+        $ringkasan = 0;
+        if ($hasil['jumlah'] > 0) {
+            $baru = $penerima->pimpinanBelumRangkuman($hariIni);
+            Notification::send($baru, new RangkumanNomorTerbit($hasil));
+            $ringkasan = $baru->count();
+        }
+
         $this->info("Terlambat: {$terlambat} notifikasi, pengingat SPT final: {$pengingat} notifikasi, "
-            ."pengingat perubahan PKPT: {$perubahan} notifikasi, pengingat SK perubahan: {$sk} notifikasi.");
+            ."pengingat perubahan PKPT: {$perubahan} notifikasi, pengingat SK perubahan: {$sk} notifikasi, "
+            ."rangkuman nomor terbit: {$ringkasan} notifikasi.");
 
         return self::SUCCESS;
     }
