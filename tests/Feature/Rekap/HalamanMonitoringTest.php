@@ -118,9 +118,11 @@ class HalamanMonitoringTest extends TestCase
 
     public function test_per_spt_view_lists_rows_without_group_rows(): void
     {
+        Spt::query()->update(['tanggal_spt' => null]); // no Terbit line without a date
         $this->halaman(['tampilan' => 'spt'])
             ->assertDontSeeHtml('<th scope="rowgroup"')->assertDontSee('Buka semua')->assertSee('Urutkan')
-            ->assertSeeHtmlInOrder(['Nomor SPT', 'Tanggal SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'])
+            ->assertSeeHtmlInOrder(['Nomor SPT', 'Realisasi Periode', 'Kesesuaian dengan Jadwal PKPT', 'Status', 'Permasalahan/Kendala'])
+            ->assertDontSee('Tanggal SPT')->assertDontSee('Terbit 0')->assertDontSee('Terbit 1')->assertDontSee('Terbit 2')
             ->assertSee('Jenis Satu · Irban A', false);
         // Unfinished first by earliest end (m2 5 Apr, m5 20 Des), then the finished one.
         $this->assertSame([2, 5, 1], $this->urutan(['tampilan' => 'spt']));
@@ -133,7 +135,7 @@ class HalamanMonitoringTest extends TestCase
         $this->m[5]->forceFill(['tanggal_spt' => '2026-12-01'])->save();
 
         $this->assertSame([5, 2, 1], $this->urutan(['tampilan' => 'spt', 'urut' => 'terbit']));
-        $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit'])->assertSee('1 Desember 2026');
+        $this->halaman(['tampilan' => 'spt', 'urut' => 'terbit'])->assertSee('Terbit 01 Desember 2026');
     }
 
     public function test_unknown_tampilan_and_urut_fall_back(): void
