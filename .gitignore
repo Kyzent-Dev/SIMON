@@ -31,6 +31,7 @@ Thumbs.db
 
 # graphify knowledge graph (local, rebuilt by hooks)
 /graphify-out/
+scripts
 
 # unnecesarry .md file
 docs/plans/
@@ -41,3 +42,4 @@ design/
 !README.md
 !DEPLOY.md
 !NOTES.md
+/scripts/
