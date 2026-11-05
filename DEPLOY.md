@@ -30,7 +30,7 @@ flowchart LR
     C[Cron setiap menit<br/>schedule:run] --> P
     W[Queue worker<br/>supervisor] --> D
     W -->|email, ekspor besar| M[Server SMTP]
-    C -->|backup:run 01.30| B[storage/app/backup]
+    C -->|backup:run 12.10| B[storage/app/backup]
     B -->|rsync harian| O[Penyimpanan di luar server]
 ```
 
@@ -99,6 +99,18 @@ Langkah instalasi aplikasi sama untuk keduanya. Perbedaannya ada di persiapan me
 
 > [!CAUTION]
 > Jangan meneruskan port 22 (SSH) atau 3306 (MariaDB) dari router ke internet. Akses SSH dari luar kantor sebaiknya lewat VPN.
+
+5. **Server yang hanya menyala di jam kerja.** Laptop atau PC yang dinyalakan 08.00 dan dimatikan 16.00 boleh dipakai.
+   - Nyalakan sebelum 08.30. Tugas terjadwal berjalan 08.30 sampai 12.40 ([8](#8-cron-dan-queue-worker)).
+   - Matikan dengan `sudo systemctl poweroff`. Jangan mencabut daya.
+   - Pastikan cron dan supervisor berjalan otomatis saat boot. `systemctl is-enabled cron supervisor` harus menampilkan `enabled` untuk keduanya.
+   - Nonaktifkan suspend dan hibernate:
+     ```bash
+     sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+     ```
+     Untuk laptop, abaikan tutup layar: set `HandleLidSwitch=ignore` di `/etc/systemd/logind.conf`, lalu `sudo systemctl restart systemd-logind`.
+   - Halaman publik dan login tidak dapat dibuka di luar jam itu.
+   - Salinan cadangan ke luar mesin ([10](#salin-ke-luar-server)) wajib. Cron rsync pukul 03.00 tidak akan menemukan server menyala, jadi jadwalkan setelah 12.10 di jam kerja (mis. 13.00).
 
 ### 2C. Langkah bersama VPS dan server fisik
 
@@ -518,13 +530,15 @@ Cek dengan `php artisan schedule:list`. Harus ada delapan pekerjaan:
 | Waktu (WIB) | Pekerjaan | Fungsi |
 |---|---|---|
 | Setiap hari 00.00 | `publik:segarkan` (closure terjadwal) | Mengganti hari pada angka publik ("Hari ini", status). |
-| Setiap hari 00.10 | `cache:pangkas` (closure terjadwal) | Dengan `CACHE_STORE=database`, menghapus baris `cache`/`cache_locks` kedaluwarsa. Tanpa efek untuk `redis`. |
-| Setiap hari 01.00 | `backup:clean` | Hapus cadangan lama sesuai retensi. |
-| Setiap hari 01.30 | `backup:run` | Cadangan basis data dan berkas. |
-| Setiap hari 05.00 | `ekspor:bersihkan` | Hapus file ekspor berumur lebih dari 7 hari. |
-| Setiap hari 06.00 | `notifikasi:harian` | SPT Terlambat, pengingat SPT final, pengingat Perubahan PKPT. |
-| Senin 07.00 | `notifikasi:ringkasan-mingguan` | Ringkasan mingguan ke Pimpinan. |
-| Setiap hari 08.00 | `backup:monitor` | Memeriksa cadangan terbaru ada dan sehat. |
+| Setiap hari 08.30 | `ekspor:bersihkan` | Hapus file ekspor berumur lebih dari 7 hari. |
+| Setiap hari 08.35 | `cache:pangkas` (closure terjadwal) | Dengan `CACHE_STORE=database`, menghapus baris `cache`/`cache_locks` kedaluwarsa. Tanpa efek untuk `redis`. |
+| Setiap hari 08.40 | `notifikasi:harian` | SPT Terlambat, pengingat SPT final, pengingat Perubahan PKPT. |
+| Senin 08.45 | `notifikasi:ringkasan-mingguan` | Ringkasan mingguan ke Pimpinan. |
+| Setiap hari 12.00 | `backup:clean` | Hapus cadangan lama sesuai retensi. |
+| Setiap hari 12.10 | `backup:run` | Cadangan basis data dan berkas. |
+| Setiap hari 12.40 | `backup:monitor` | Memeriksa cadangan terbaru ada dan sehat. |
+
+Scheduler tidak mengejar jadwal yang terlewat. Karena itu semua tugas kecuali `publik:segarkan` dijadwalkan antara 08.30 dan 12.40, agar server yang hanya menyala di jam kantor tetap menjalankannya. Server harus sudah menyala sebelum 08.30. Bila server mati di hari libur atau akhir pekan, tidak ada cadangan hari itu, dan ringkasan Senin yang jatuh di hari libur tidak dikirim.
 
 > [!IMPORTANT]
 > Memasang SINTAS pada basis data yang **sudah berisi SPT** (pindahan server lama)? Baca dulu butir "Scheduler pertama kali" di [Migrasi khusus](#13-migrasi-khusus) sebelum memasang cron, agar pengguna tidak dibanjiri notifikasi.
@@ -596,7 +610,7 @@ Tambahkan cron setiap menit sebagai pengganti:
 | **Isi** | Dump basis data (termasuk `activity_log`), `storage/app/private` (dokumen SPT, SK Perubahan PKPT; tanpa `ekspor/` dan `livewire-tmp/`), dan `storage/app/public` (slide, foto profil). |
 | **Tidak ikut** | `.env` dan kode. Tabel `cache`, `cache_locks`, `sessions`, `jobs` (isinya sementara). |
 | **Lokasi** | `storage/app/backup/SINTAS/sintas-<tanggal>.zip`. Tidak publik. Jalur di dalam zip relatif terhadap folder aplikasi. |
-| **Jadwal** | `backup:run` 01.30, `backup:clean` 01.00, `backup:monitor` 08.00 WIB. |
+| **Jadwal** | `backup:clean` 12.00, `backup:run` 12.10, `backup:monitor` 12.40 WIB. |
 | **Retensi** | Semua cadangan 7 hari, satu per hari 30 hari, satu per pekan 8 pekan, satu per bulan 12 bulan. Tertua dihapus bila total lebih dari 5000 MB. |
 | **Laporan** | Email sukses/gagal/tidak sehat ke `BACKUP_MAIL_TO`. |
 
@@ -616,6 +630,8 @@ Cadangan di disk yang sama tidak melindungi dari disk rusak, server dicuri, atau
 ```cron
 0 3 * * * rsync -a sintas@<ip-server>:/var/www/sintas/storage/app/backup/ /cadangan/sintas/
 ```
+
+Untuk server yang hanya menyala di jam kerja, ganti jadwalnya menjadi `0 13 * * 1-5`.
 
 Untuk server fisik, simpan salinan di lokasi lain dari gedung yang sama (mis. penyimpanan objek awan atau kantor lain). Untuk VPS, salinan ke NAS kantor sudah memenuhi.
 
