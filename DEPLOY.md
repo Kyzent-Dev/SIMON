@@ -1,101 +1,539 @@
-# Panduan deploy SINTAS
+<div align="center">
 
-Panduan untuk operator server. Perintah di bawah ditulis untuk Linux (Ubuntu/Debian) dengan Nginx atau Apache dan PHP-FPM; jalur contoh `/var/www/sintas`. Riwayat keputusan teknis ada di `decisions/catatan-deploy.md` dan `decisions/fase-11.md`.
+<img src="public/images/logo.png" alt="Lambang Kabupaten Muara Enim" width="80">
 
-## Kebutuhan server
+# Panduan Deploy SINTAS
 
-- PHP 8.5.12 atau lebih baru dengan ekstensi `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `fileinfo`, `bcmath`, `zip`, `gd` (dengan dukungan WebP), `exif`, `intl`. Periksa dengan `php -m` dan `php -r 'var_dump(function_exists("imagewebp"));'`.
-- MySQL 8 atau MariaDB 10.6+. Biner dump harus ada di server: `mysqldump` untuk `DB_CONNECTION=mysql`, `mariadb-dump` untuk `DB_CONNECTION=mariadb` (paket klien MariaDB/MySQL).
-- Composer 2.
-- Node.js 24.22.1 atau lebih baru (24.x) hanya di mesin build (`npm ci && npm run build`); server produksi tidak memerlukan Node.
-- RAM minimal 1 GB, ditambah ±512 MB untuk setiap worker ekspor yang berjalan bersamaan.
-- Disk: ruang untuk `storage/app` (dokumen SPT, SK, gambar) dan cadangan.
-- Cron (untuk scheduler) dan supervisor (untuk queue worker), atau cron saja di shared hosting.
+**Memasang SINTAS di VPS atau server fisik kantor, dari server kosong sampai siap dipakai.**
 
-## Instalasi pertama
+[Gambaran](#gambaran) · [Pilih jalur](#1-pilih-jalur-vps-atau-server-fisik) · [Siapkan server](#2-siapkan-server) · [Pasang paket](#3-pasang-paket-sistem) · [Pasang aplikasi](#4-pasang-aplikasi) · [Web server dan HTTPS](#6-web-server-dan-https) · [Cron dan worker](#8-cron-dan-queue-worker) · [Cadangan](#10-cadangan-dan-pemulihan) · [Pembaruan](#12-memperbarui-aplikasi) · [Masalah umum](#14-masalah-umum)
 
-Jalankan sebagai pengguna aplikasi (bukan root) di folder aplikasi, mis. `/var/www/sintas`.
+</div>
 
-1. Ambil kode: `git clone --branch main <url-repo> /var/www/sintas && cd /var/www/sintas`.
-2. Pasang dependensi PHP: `composer install --no-dev --optimize-autoloader`.
-3. Bangun aset (di mesin build bila server tanpa Node, lalu salin folder `public/build`): `npm ci && npm run build`.
-4. Buat basis data kosong dan pengguna khusus:
-   ```sql
-   CREATE DATABASE sintas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'sintas'@'localhost' IDENTIFIED BY '<kata-sandi-kuat>';
-   GRANT ALL PRIVILEGES ON sintas.* TO 'sintas'@'localhost';
+Panduan ini untuk operator server. Semua perintah ditulis untuk **Ubuntu Server 24.04 LTS** dengan **Nginx + PHP-FPM + MariaDB**. Distribusi Debian lain bisa dipakai dengan penyesuaian nama paket. Jalur contoh aplikasi adalah `/var/www/sintas`, nama domain contoh `sintas.contoh.go.id`.
+
+Riwayat keputusan teknis ada di `decisions/catatan-deploy.md` dan `decisions/fase-11.md`.
+
+> [!WARNING]
+> `php artisan migrate:fresh`, `migrate:fresh --seed`, dan `migrate:rollback` **tidak pernah** dijalankan di produksi. Perintah itu menghapus seluruh data, termasuk `activity_log`, satu-satunya jejak audit yang wajib disimpan.
+
+## Gambaran
+
+SINTAS butuh lima komponen yang berjalan bersama. Kalau satu mati, sebagian fitur berhenti tanpa pesan galat yang jelas.
+
+```mermaid
+flowchart LR
+    U[Peramban pengguna] -->|HTTPS 443| N[Nginx]
+    N -->|FastCGI| P[PHP-FPM<br/>aplikasi Laravel]
+    P --> D[(MariaDB / MySQL)]
+    P --> S[storage/app<br/>dokumen, gambar]
+    C[Cron setiap menit<br/>schedule:run] --> P
+    W[Queue worker<br/>supervisor] --> D
+    W -->|email, ekspor besar| M[Server SMTP]
+    C -->|backup:run 01.30| B[storage/app/backup]
+    B -->|rsync harian| O[Penyimpanan di luar server]
+```
+
+| Komponen | Kalau tidak berjalan |
+|---|---|
+| Nginx + PHP-FPM | Aplikasi tidak dapat dibuka. |
+| MariaDB/MySQL | Semua halaman galat 500. |
+| Cron `schedule:run` | Cadangan tidak dibuat, angka publik tidak berganti hari, notifikasi harian dan mingguan tidak terkirim. |
+| Queue worker | Email tidak terkirim, ekspor besar tetap `menunggu` selamanya. Lonceng di aplikasi tetap tertulis. |
+| Salinan cadangan ke luar server | Kerusakan disk menghapus data dan cadangannya sekaligus. |
+
+## 1. Pilih jalur: VPS atau server fisik
+
+Langkah instalasi aplikasi sama untuk keduanya. Perbedaannya ada di persiapan mesin, jaringan, dan HTTPS.
+
+| | VPS (sewa di penyedia cloud) | Server fisik (di ruang server kantor) |
+|---|---|---|
+| Cocok bila | Aplikasi harus dapat dibuka dari internet, tidak ada ruang server | Data harus tinggal di gedung sendiri, atau aplikasi hanya dipakai di jaringan kantor |
+| Listrik, disk, jaringan | Diurus penyedia | Diurus sendiri: UPS, RAID, perawatan |
+| Alamat publik | Sudah ada IP publik | Butuh IP publik statis dari ISP dan *port forwarding*, atau hanya LAN |
+| HTTPS | Let's Encrypt (gratis, otomatis) | Let's Encrypt bila terjangkau dari internet; sertifikat internal bila hanya LAN |
+| Bagian yang dibaca | [2A](#2a-vps) | [2B](#2b-server-fisik) |
+
+### Spesifikasi minimal
+
+| Sumber daya | Minimal | Disarankan | Catatan |
+|---|---|---|---|
+| CPU | 1 vCPU | 2 vCPU | |
+| RAM | 1 GB | 2 GB | Tambah ±512 MB untuk setiap worker ekspor yang berjalan bersamaan. Build aset di server butuh ±1 GB bebas. |
+| Disk | 20 GB SSD | 40 GB SSD | Dokumen SPT, SK, gambar di `storage/app`, ditambah cadangan harian (dibatasi 5000 MB). |
+| Sistem operasi | Ubuntu Server 24.04 LTS | | |
+
+## 2. Siapkan server
+
+### 2A. VPS
+
+1. **Buat VPS** dengan Ubuntu 24.04 LTS. Pilih pusat data terdekat (Jakarta/Singapura) agar halaman terasa cepat.
+2. **Arahkan domain.** Di pengelola DNS domain, buat *A record* `sintas.contoh.go.id` ke IP publik VPS. Periksa dengan `ping sintas.contoh.go.id` setelah beberapa menit.
+3. **Masuk sebagai root** lewat SSH, lalu lanjut ke [2C](#2c-langkah-bersama-vps-dan-server-fisik).
+
+### 2B. Server fisik
+
+1. **Siapkan perangkat keras.**
+   - Pasang di belakang **UPS**. Mati listrik mendadak saat MariaDB menulis dapat merusak tabel.
+   - Pakai dua disk dengan **RAID 1** bila memungkinkan. RAID bukan pengganti cadangan, tetapi menahan satu disk rusak.
+   - Di BIOS, aktifkan **"Restore on AC power loss: Power On"** agar server menyala sendiri setelah listrik kembali.
+2. **Pasang Ubuntu Server 24.04 LTS** dari USB. Saat instalasi, centang **Install OpenSSH server**. Tidak perlu desktop.
+3. **Beri IP statis.** Server yang IP-nya berubah tidak dapat ditemukan pengguna. Ubah `/etc/netplan/50-cloud-init.yaml` (sesuaikan nama antarmuka dari `ip a`, alamat, dan gateway):
+   ```yaml
+   network:
+     version: 2
+     ethernets:
+       eno1:
+         dhcp4: false
+         addresses: [192.168.1.20/24]
+         routes:
+           - to: default
+             via: 192.168.1.1
+         nameservers:
+           addresses: [1.1.1.1, 8.8.8.8]
    ```
-5. Buat `.env`: `cp .env.example .env`, lalu isi sesuai bagian "Konfigurasi .env" (minimal `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*`, `DB_DUMP_BINARY_PATH` bila perlu, `CACHE_STORE`, `QUEUE_CONNECTION`, `MAIL_*`).
-6. Kunci aplikasi: `php artisan key:generate --force`. Simpan `APP_KEY` di tempat aman di luar server; kehilangan kunci ini membuat sesi dan tautan bertanda tangan tidak valid.
-7. Migrasi: `php artisan migrate --force`.
-8. Data rujukan: `php artisan db:seed --force`. Di produksi seeder hanya menulis Irban, Objek, dan Jenis Penugasan (klasifikasi datang dari migrasi). **Nama Objek dan Jenis Penugasan bawaan adalah contoh**: ganti dengan data sebenarnya lewat menu Admin sebelum aplikasi dipakai. Tidak ada akun, PKPT, atau SPT yang dibuat. `APP_ENV=production` di `.env` wajib sudah terisi: di lingkungan lain seeder demo ikut berjalan dan gagal (`Call to undefined function fake()`) karena paket pengembangan tidak terpasang (`--no-dev`).
-9. Admin pertama: `php artisan sintas:buat-admin <username> --nama="<Nama Lengkap>" --email=<email>`. Kata sandi (min. 8 karakter, huruf besar dan kecil, angka) ditanyakan dua kali tanpa ditampilkan dan tidak masuk riwayat shell maupun log; jalankan di terminal interaktif. Akun dibuat tanpa kewajiban ganti kata sandi karena operator memilihnya sendiri.
-10. Tautan penyimpanan publik: `php artisan storage:link` (gambar slide dan foto profil dilayani lewat `public/storage`). Di shared hosting tanpa symlink, salin atau arahkan `public/storage` ke `storage/app/public`.
-11. Izin folder: `storage` dan `bootstrap/cache` harus dapat ditulis oleh pengguna web dan worker, mis. `chown -R www-data:www-data storage bootstrap/cache`. `storage/app/private` tidak boleh berada di bawah `public/`.
-12. Cache konfigurasi, rute, dan view: `php artisan optimize`.
-13. Pasang scheduler dan queue worker (bagian "Cron dan scheduler" dan "Queue worker"), arahkan web server ke `public/`, lalu jalankan "Pemeriksaan setelah deploy".
+   Lalu `sudo netplan apply`. Atau minta admin jaringan membuat reservasi DHCP untuk MAC server.
+4. **Tentukan cara akses.** Pilih salah satu:
+   - **Hanya jaringan kantor (LAN).** Pengguna membuka `https://sintas.kantor.lan` atau IP server. Buat nama itu di DNS internal/router kantor. HTTPS memakai sertifikat internal ([6C](#6c-https-untuk-jaringan-kantor-saja)).
+   - **Dari internet.** Minta IP publik statis ke ISP, buat *port forwarding* port **80** dan **443** di router kantor ke IP server, lalu buat *A record* domain ke IP publik itu. HTTPS memakai Let's Encrypt ([6B](#6b-https-dengan-lets-encrypt)).
 
-`php artisan migrate:fresh` dan `migrate:fresh --seed` **tidak pernah** dijalankan di produksi: keduanya menghapus semua data, termasuk `activity_log` yang tidak boleh dihapus.
+> [!CAUTION]
+> Jangan meneruskan port 22 (SSH) atau 3306 (MariaDB) dari router ke internet. Akses SSH dari luar kantor sebaiknya lewat VPN.
 
-## Konfigurasi .env
+### 2C. Langkah bersama VPS dan server fisik
+
+Jalankan sebagai root atau dengan `sudo`.
+
+1. **Perbarui sistem dan aktifkan pembaruan keamanan otomatis:**
+   ```bash
+   apt update && apt upgrade -y
+   apt install -y unattended-upgrades && dpkg-reconfigure -plow unattended-upgrades
+   ```
+2. **Buat pengguna aplikasi** (pemilik kode, bukan root) dan beri akses `sudo`:
+   ```bash
+   adduser sintas
+   usermod -aG sudo sintas
+   ```
+   Salin kunci SSH Anda ke pengguna ini (`ssh-copy-id sintas@<ip-server>` dari komputer Anda), lalu masuk ulang sebagai `sintas`.
+3. **Pasang firewall.** Hanya SSH, HTTP, dan HTTPS yang dibuka:
+   ```bash
+   sudo ufw allow OpenSSH
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   sudo ufw enable
+   ```
+4. **Pastikan jam server akurat.** Penomoran, status SPT, dan jadwal bergantung pada tanggal. Zona waktu server boleh apa saja (aplikasi memakai `Asia/Jakarta` sendiri), tetapi jamnya harus sinkron:
+   ```bash
+   sudo timedatectl set-ntp true
+   timedatectl   # "System clock synchronized: yes"
+   ```
+
+## 3. Pasang paket sistem
+
+### PHP 8.5.12 atau lebih baru
+
+Ubuntu 24.04 belum membawa PHP 8.5, jadi pakai repositori `ondrej/php`:
+
+```bash
+sudo add-apt-repository -y ppa:ondrej/php
+sudo apt update
+sudo apt install -y php8.5-fpm php8.5-cli php8.5-mysql php8.5-mbstring php8.5-xml \
+  php8.5-bcmath php8.5-zip php8.5-gd php8.5-intl php8.5-curl
+```
+
+Periksa versi dan ekstensi. Aplikasi menolak berjalan di PHP lebih lama dari 8.5.12:
+
+```bash
+php -v                                              # PHP 8.5.12 atau lebih baru
+php -m | grep -Ei 'pdo_mysql|mbstring|openssl|tokenizer|xml|ctype|fileinfo|bcmath|zip|gd|exif|intl'
+php -r 'var_dump(function_exists("imagewebp"));'    # bool(true)
+```
+
+| Ekstensi | Dipakai untuk |
+|---|---|
+| `gd` dengan WebP | Gambar slide dan foto profil diubah ke WebP. |
+| `exif` | Foto ponsel diputar sesuai orientasi sebelum dipotong. |
+| `zip` | Ekspor Excel dan arsip cadangan. |
+| `intl`, `mbstring` | Tanggal dan teks Bahasa Indonesia. |
+
+### Nginx, MariaDB, dan alat pendukung
+
+```bash
+sudo apt install -y nginx mariadb-server mariadb-client supervisor git unzip p7zip-full acl
+sudo mysql_secure_installation   # set kata sandi root, hapus pengguna anonim dan basis "test"
+```
+
+`mariadb-client` memberi `mariadb-dump` untuk cadangan. `p7zip-full` dibutuhkan untuk membuka cadangan terenkripsi. `acl` dipakai untuk izin folder di langkah 4.
+
+MySQL 8 juga didukung (`apt install mysql-server`). Pastikan biner dump cocok dengan `DB_CONNECTION` (lihat [Konfigurasi .env](#5-konfigurasi-env)).
+
+### Composer 2
+
+```bash
+cd ~
+curl -sS https://getcomposer.org/installer -o composer-setup.php
+sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm composer-setup.php
+composer --version
+```
+
+### Node.js 24 (hanya untuk build aset)
+
+Aset CSS/JS (`public/build`) tidak ikut repo, jadi harus dibangun. Node.js 24.22.1 atau lebih baru (24.x) cukup ada di mesin yang menjalankan build. Server produksi tidak butuh Node saat aplikasi berjalan.
+
+- **Paling mudah:** pasang Node di server dan build di sana.
+- **Server ber-RAM kecil:** build di komputer lain, lalu salin folder `public/build` ke server (`rsync -a public/build/ sintas@server:/var/www/sintas/public/build/`).
+
+Pasang lewat `nvm` sebagai pengguna `sintas` (versi dibaca dari `.nvmrc` di repo):
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+source ~/.bashrc
+nvm install 24.22.1
+node -v
+```
+
+## 4. Pasang aplikasi
+
+Jalankan sebagai pengguna `sintas`.
+
+### 4.1 Ambil kode dan dependensi
+
+```bash
+sudo mkdir -p /var/www/sintas && sudo chown sintas:sintas /var/www/sintas
+git clone --branch main https://github.com/andhika-tama/Sintas.git /var/www/sintas
+cd /var/www/sintas
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+```
+
+> [!NOTE]
+> `composer install` sengaja gagal bila PHP di server lebih lama dari 8.5.12 (platform check). Perbarui PHP dulu, jangan pakai `--ignore-platform-reqs`.
+
+### 4.2 Buat basis data
+
+```bash
+sudo mariadb
+```
+
+```sql
+CREATE DATABASE sintas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'sintas'@'localhost' IDENTIFIED BY '<kata-sandi-kuat>';
+GRANT ALL PRIVILEGES ON sintas.* TO 'sintas'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+Pakai pengguna khusus ini di aplikasi, jangan root. MariaDB bawaan Ubuntu hanya mendengarkan `127.0.0.1`; biarkan begitu.
+
+### 4.3 Isi `.env`
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Ubah minimal kunci berikut. Penjelasan lengkap tiap kunci ada di [bagian 5](#5-konfigurasi-env).
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://sintas.contoh.go.id
+
+DB_CONNECTION=mariadb
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=sintas
+DB_USERNAME=sintas
+DB_PASSWORD=<kata-sandi-kuat>
+
+SESSION_SECURE_COOKIE=true
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+LOG_LEVEL=warning
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.penyedia.id
+MAIL_PORT=587
+MAIL_USERNAME=<pengguna>
+MAIL_PASSWORD=<kata-sandi>
+MAIL_SCHEME=null
+MAIL_FROM_ADDRESS="sintas@contoh.go.id"
+MAIL_FROM_NAME="SINTAS"
+
+BACKUP_MAIL_TO=operator@contoh.go.id
+BACKUP_ARCHIVE_PASSWORD=<kata-sandi-panjang-acak>
+```
+
+> [!IMPORTANT]
+> `APP_ENV=production` harus sudah terisi **sebelum** `db:seed`. Di lingkungan lain seeder demo ikut berjalan dan gagal dengan `Call to undefined function fake()` karena paket pengembangan tidak terpasang.
+
+Batasi agar `.env` hanya dapat dibaca pemilik dan web server:
+
+```bash
+chmod 640 .env && sudo chgrp www-data .env
+```
+
+### 4.4 Kunci aplikasi, migrasi, dan data rujukan
+
+```bash
+php artisan key:generate --force
+php artisan migrate --force
+php artisan db:seed --force
+```
+
+- **`APP_KEY`**: salin nilainya dari `.env` ke tempat aman di luar server (pengelola kata sandi kantor). Kehilangan kunci ini membuat sesi dan tautan bertanda tangan tidak valid. Jangan pernah menggantinya setelah aplikasi dipakai.
+- **Seeder produksi** hanya menulis Irban, Objek, dan Jenis Penugasan. Klasifikasi datang dari migrasi. Tidak ada akun, PKPT, atau SPT yang dibuat.
+
+> [!IMPORTANT]
+> Nama Objek dan Jenis Penugasan bawaan hanya **contoh**. Ganti dengan data sebenarnya lewat menu Admin sebelum aplikasi dipakai.
+
+### 4.5 Admin pertama
+
+```bash
+php artisan sintas:buat-admin <username> --nama="<Nama Lengkap>" --email=<email>
+```
+
+Kata sandi ditanyakan dua kali tanpa ditampilkan, dan tidak masuk riwayat shell maupun log. Jalankan di terminal interaktif. Syarat: minimal 8 karakter, ada huruf besar, huruf kecil, dan angka. Akun ini tidak wajib ganti kata sandi karena operator memilihnya sendiri.
+
+### 4.6 Penyimpanan dan izin folder
+
+```bash
+php artisan storage:link
+```
+
+Gambar slide dan foto profil dilayani lewat `public/storage`. Tanpa tautan ini gambar beranda dan foto profil tidak tampil.
+
+Folder `storage` dan `bootstrap/cache` ditulis oleh dua pengguna: `www-data` (web, worker, cron) dan `sintas` (perintah manual, `composer`). ACL memberi keduanya hak tulis, termasuk untuk berkas yang dibuat kemudian:
+
+```bash
+cd /var/www/sintas
+sudo setfacl -R  -m u:www-data:rwX -m u:sintas:rwX storage bootstrap/cache
+sudo setfacl -dR -m u:www-data:rwX -m u:sintas:rwX storage bootstrap/cache
+```
+
+`storage/app/private` berisi dokumen SPT dan tidak boleh berada di bawah `public/`. Struktur bawaan repo sudah benar; jangan dipindah.
+
+### 4.7 Cache konfigurasi
+
+```bash
+php artisan optimize
+```
+
+Jalankan ulang setiap kali `.env` berubah, disusul `php artisan queue:restart`.
+
+Lanjutkan ke [web server](#6-web-server-dan-https), [batas PHP](#7-batas-php-dan-mitigasi-keamanan), [cron dan worker](#8-cron-dan-queue-worker), lalu [pemeriksaan](#11-pemeriksaan-setelah-deploy).
+
+## 5. Konfigurasi .env
 
 Hanya kunci yang dibaca aplikasi dan berbeda dari bawaan Laravel atau `.env.example`.
 
 | Kunci | Nilai produksi | Keterangan |
 |---|---|---|
 | `APP_NAME` | `SINTAS` | Juga menjadi nama folder cadangan. |
-| `APP_ENV` | `production` | Menentukan seeder produksi dan guard seeder demo. |
-| `APP_DEBUG` | `false` | Wajib `false`; `true` menampilkan jejak galat. |
-| `APP_URL` | `https://alamat-publik` | Harus alamat publik dengan https: tombol email dan tautan verifikasi memakai `url()` dan tanda tangannya bergantung pada nilai ini. |
+| `APP_ENV` | `production` | Menentukan seeder produksi dan penjaga seeder demo. |
+| `APP_DEBUG` | `false` | Wajib `false`. Nilai `true` menampilkan jejak galat dan isi konfigurasi ke pengunjung. |
+| `APP_URL` | `https://alamat-publik` | Harus alamat yang dibuka pengguna, dengan https. Tombol di email dan tautan verifikasi memakai nilai ini; alamat salah membuat pengguna mendapat 403. |
 | `APP_KEY` | dari `key:generate` | Jangan diganti setelah dipakai. |
-| `APP_LOCALE` / `APP_TIMEZONE` | `id` / `Asia/Jakarta` | Jangan diubah: jadwal, tanggal, dan penomoran memakai zona Jakarta. |
-| `DB_CONNECTION` | `mysql` atau `mariadb` | `mariadb` memanggil `mariadb-dump` saat cadangan; `mysql` memanggil `mysqldump`. |
+| `APP_LOCALE` / `APP_TIMEZONE` | `id` / `Asia/Jakarta` | Jangan diubah. Jadwal, tanggal, dan penomoran memakai zona Jakarta. |
+| `DB_CONNECTION` | `mariadb` atau `mysql` | `mariadb` memanggil `mariadb-dump` saat cadangan, `mysql` memanggil `mysqldump`. |
 | `DB_HOST` `DB_PORT` `DB_DATABASE` `DB_USERNAME` `DB_PASSWORD` | sesuai server | Pengguna khusus, bukan root. |
-| `DB_DUMP_BINARY_PATH` | kosong | Folder berisi `mysqldump`/`mariadb-dump` bila tidak ada di PATH. |
+| `DB_DUMP_BINARY_PATH` | kosong | Isi dengan folder berisi `mysqldump`/`mariadb-dump` hanya bila biner itu tidak ada di PATH. |
 | `SESSION_DRIVER` | `database` | Bawaan `.env.example`. |
-| `SESSION_SECURE_COOKIE` | `true` | Setelah https aktif. |
-| `CACHE_STORE` | `database` atau `redis` | **Wajib dibagi antarproses**, bukan `array`. Dipakai kunci per tahun (penomoran, komposisi irban), pembatas laju, dan cache angka publik. |
+| `SESSION_SECURE_COOKIE` | `true` | Setelah HTTPS aktif. Tanpa HTTPS, nilai `true` membuat login gagal terus. |
+| `CACHE_STORE` | `database` atau `redis` | **Wajib dibagi antarproses**, bukan `array`. Dipakai kunci penomoran per tahun, pembatas laju, dan cache angka publik. |
 | `QUEUE_CONNECTION` | `database` | Email dan ekspor besar lewat antrean. |
-| `DB_QUEUE_RETRY_AFTER` | `660` (atau hapus barisnya) | Harus lebih besar dari batas waktu job ekspor (600 detik). `.env` lama bernilai 90 merusak ekspor besar. |
-| `MAIL_MAILER` | `smtp` | Lihat bagian "Email (SMTP)". |
-| `MAIL_HOST` `MAIL_PORT` `MAIL_USERNAME` `MAIL_PASSWORD` `MAIL_SCHEME` `MAIL_FROM_ADDRESS` `MAIL_FROM_NAME` | sesuai penyedia | `MAIL_SCHEME=smtps` untuk port 465; kosongkan/`null` untuk STARTTLS di 587. |
-| `TRUSTED_PROXIES` | `127.0.0.1` (proxy di mesin yang sama) atau IP/CIDR proxy, dipisah koma | Wajib bila di belakang Nginx/load balancer; kosong berarti header `X-Forwarded-*` tidak dipercaya. `*` hanya untuk proxy beralamat berubah-ubah, dan hanya bila PHP-FPM/port aplikasi tidak dapat dijangkau selain lewat proxy (lihat "Reverse proxy dan HTTPS"). |
-| `BACKUP_MAIL_TO` | alamat email | Penerima laporan cadangan; kosong = tanpa notifikasi. |
-| `BACKUP_ARCHIVE_PASSWORD` | kata sandi panjang acak | Sangat disarankan: zip cadangan berisi hash kata sandi, NIP, dan PDF SPT, dan disalin ke luar server. Zip dienkripsi AES-256. Simpan kata sandi ini terpisah bersama `APP_KEY`: tanpa itu cadangan tidak dapat dipulihkan. Kosong = zip tidak terenkripsi. |
-| `LOG_LEVEL` | `warning` | Opsional. `debug` hanya untuk gladi/lokal (dengan `MAIL_MAILER=log` isi email baru tertulis di log pada level ini). |
+| `DB_QUEUE_RETRY_AFTER` | `660` atau hapus barisnya | Harus lebih besar dari batas waktu job ekspor (600 detik). `.env` lama bernilai `90` merusak ekspor besar. |
+| `MAIL_MAILER` | `smtp` | `log` hanya menulis email ke `storage/logs` (untuk gladi, butuh `LOG_LEVEL=debug`). |
+| `MAIL_HOST` `MAIL_PORT` `MAIL_USERNAME` `MAIL_PASSWORD` `MAIL_SCHEME` `MAIL_FROM_ADDRESS` `MAIL_FROM_NAME` | sesuai penyedia | `MAIL_SCHEME=smtps` untuk port 465; `null` untuk STARTTLS di port 587. |
+| `TRUSTED_PROXIES` | lihat [6D](#6d-di-belakang-proxy-atau-load-balancer) | Kosong bila Nginx langsung menerima pengunjung. Isi IP proxy bila ada proxy/load balancer di depan Nginx. |
+| `BACKUP_MAIL_TO` | alamat email | Penerima laporan cadangan. Kosong = tanpa notifikasi. Alamat tidak valid membuat perintah cadangan gagal. |
+| `BACKUP_ARCHIVE_PASSWORD` | kata sandi panjang acak | Sangat disarankan. Zip cadangan berisi hash kata sandi, NIP, dan PDF SPT, dan disalin ke luar server. Dienkripsi AES-256. Simpan bersama `APP_KEY`: tanpa kata sandi ini cadangan tidak dapat dipulihkan. Kosong = zip tidak terenkripsi. |
+| `LOG_LEVEL` | `warning` | `debug` hanya untuk gladi/lokal. |
 
-Setelah mengubah `.env`: `php artisan optimize` lalu `php artisan queue:restart`.
+## 6. Web server dan HTTPS
 
-## Cron dan scheduler
+### 6A. Server block Nginx
 
-Satu baris cron untuk pengguna aplikasi (`crontab -e`):
+Buat `/etc/nginx/sites-available/sintas` (ganti `server_name`):
 
+```nginx
+server {
+    listen 80;
+    server_name sintas.contoh.go.id;
+    root /var/www/sintas/public;
+    index index.php;
+    client_max_body_size 13m;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+        fastcgi_read_timeout 300;
+    }
+
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+}
 ```
+
+Aktifkan dan matikan situs bawaan:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/sintas /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+- `root` harus `public/`, bukan folder aplikasi. Mengarahkan ke folder aplikasi membuka `.env` ke internet.
+- `client_max_body_size 13m` selaras dengan batas unggah aplikasi 12 MB.
+- `fastcgi_read_timeout 300` dibutuhkan impor SPT data lama yang berjalan sinkron.
+- Aplikasi sudah mengirim `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, dan `Permissions-Policy`. Jangan tambahkan header yang sama dengan nilai berbeda di Nginx. Belum ada CSP.
+
+Lalu pasang HTTPS dengan salah satu cara di bawah.
+
+### 6B. HTTPS dengan Let's Encrypt
+
+Untuk VPS, atau server fisik yang port 80 dan 443-nya dapat dijangkau dari internet:
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d sintas.contoh.go.id --redirect
+```
+
+Certbot menambahkan blok `listen 443 ssl`, mengalihkan http ke https, dan memperbarui sertifikat otomatis. Uji pembaruan dengan `sudo certbot renew --dry-run`.
+
+### 6C. HTTPS untuk jaringan kantor saja
+
+Let's Encrypt tidak dapat memverifikasi server yang tidak terjangkau internet. Pakai sertifikat internal:
+
+1. Buat sertifikat (berlaku 2 tahun; ganti nama dan IP):
+   ```bash
+   sudo openssl req -x509 -nodes -newkey rsa:2048 -days 730 \
+     -keyout /etc/ssl/private/sintas.key -out /etc/ssl/certs/sintas.crt \
+     -subj "/CN=sintas.kantor.lan" \
+     -addext "subjectAltName=DNS:sintas.kantor.lan,IP:192.168.1.20"
+   ```
+2. Di server block, ganti `listen 80;` dengan:
+   ```nginx
+   listen 443 ssl;
+   ssl_certificate     /etc/ssl/certs/sintas.crt;
+   ssl_certificate_key /etc/ssl/private/sintas.key;
+   ```
+   dan tambahkan blok pengalih:
+   ```nginx
+   server {
+       listen 80;
+       server_name sintas.kantor.lan;
+       return 301 https://$host$request_uri;
+   }
+   ```
+3. `sudo nginx -t && sudo systemctl reload nginx`.
+4. Pasang `sintas.crt` sebagai *trusted root* di komputer pengguna (lewat Group Policy bila ada domain Windows), agar peramban tidak memberi peringatan. Bila kantor punya CA internal, minta sertifikat dari CA itu saja.
+
+Setelah HTTPS aktif, setel HSTS di Nginx bila sudah yakin stabil: `add_header Strict-Transport-Security "max-age=31536000" always;`.
+
+### 6D. Di belakang proxy atau load balancer
+
+Bila Nginx di server ini **langsung** menerima pengunjung (susunan di atas), biarkan `TRUSTED_PROXIES` kosong. PHP-FPM sudah menerima IP klien dan status https dari Nginx.
+
+Bila ada **proxy lain di depan** (load balancer penyedia cloud, reverse proxy kantor, Nginx di mesin lain):
+
+- Isi `TRUSTED_PROXIES` dengan IP atau CIDR proxy itu, dipisah koma. Gunakan `127.0.0.1` bila proxy itu ada di mesin yang sama dan meneruskan lewat HTTP.
+- Proxy harus meneruskan header berikut:
+  ```nginx
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Forwarded-Host $host;
+  ```
+- Tanpa pengaturan ini, `activity_log.ip` mencatat alamat proxy, pembatas laju "per IP" berlaku untuk semua orang sekaligus, dan aplikasi menyangka permintaan http.
+
+> [!CAUTION]
+> `TRUSTED_PROXIES=*` hanya untuk proxy yang alamatnya berubah-ubah, dan hanya bila server aplikasi tidak dapat dijangkau langsung selain lewat proxy. Kalau dapat, siapa pun bisa mengirim `X-Forwarded-For` palsu: pembatas laju publik dilewati dan `activity_log.ip` dipalsukan.
+
+Pembatas laju yang terpengaruh: halaman publik 120/menit per IP, login 5/menit per nama pengguna+IP, ekspor 10/menit per pengguna, ganti email 3 per 10 menit.
+
+## 7. Batas PHP dan mitigasi keamanan
+
+### Batas PHP-FPM
+
+Ubah `/etc/php/8.5/fpm/php.ini`:
+
+```ini
+upload_max_filesize = 13M
+post_max_size = 13M
+memory_limit = 256M
+max_execution_time = 300
+session.upload_progress.enabled = 0
+```
+
+Dan di `/etc/php/8.5/fpm/pool.d/www.conf`:
+
+```ini
+request_terminate_timeout = 300
+```
+
+Lalu `sudo systemctl restart php8.5-fpm`.
+
+| Pengaturan | Alasan |
+|---|---|
+| `upload_max_filesize`, `post_max_size` 13M | Batas unggah aplikasi maksimal 12 MB (batas sementara Livewire); impor `.xlsx` 5 MB; gambar slide 5 MB. |
+| `memory_limit` 256M | Ekspor dan pemrosesan gambar menaikkannya sendiri ke 512M lewat `ini_set`. Jangan masukkan `ini_set` ke `disable_functions` dan jangan pasang `php_admin_value` yang lebih rendah. |
+| `max_execution_time`, `request_terminate_timeout` 300 | Impor SPT data lama berjalan sinkron dalam satu permintaan (maks 2000 baris per berkas). |
+
+### Mitigasi CVE-2026-115560
+
+PHP 8.5.12 belum memperbaiki CVE-2026-115560. Sampai rilis PHP berikutnya, `session.upload_progress.enabled` harus `0` (sudah ada di `php.ini` di atas).
+
+- Repo juga memuatnya di `public/.user.ini` (berlaku untuk PHP-FPM/CGI, dibaca ulang tiap `user_ini.cache_ttl`, default 300 detik). Hapus berkas itu setelah PHP merilis perbaikan.
+- Atur juga di `/etc/php/8.5/cli/php.ini` untuk CLI.
+- Cek CLI: `php -r 'var_dump(ini_get("session.upload_progress.enabled"));'` harus `string(1) "0"`. Ini tidak membuktikan PHP-FPM.
+- Cek PHP-FPM: buat `public/cek-ini.php` berisi `<?php var_dump(ini_get('session.upload_progress.enabled'));`, buka di peramban (harus `string(1) "0"`), lalu **hapus segera**.
+- Apache mod_php mengabaikan `.user.ini`: pakai `php_admin_value` di vhost atau ubah `php.ini`.
+
+## 8. Cron dan queue worker
+
+### Cron untuk scheduler
+
+Cron dan worker berjalan sebagai `www-data`, sama dengan web server, agar berkas yang dibuat dapat dibaca semua proses:
+
+```bash
+sudo crontab -u www-data -e
+```
+
+Tambahkan satu baris:
+
+```cron
 * * * * * cd /var/www/sintas && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Server boleh memakai zona waktu apa pun; setiap jadwal dipasang dengan zona `Asia/Jakarta`. Daftar pekerjaan (cek dengan `php artisan schedule:list`):
+Cek dengan `php artisan schedule:list`. Harus ada delapan pekerjaan:
 
 | Waktu (WIB) | Pekerjaan | Fungsi |
 |---|---|---|
-| Setiap hari 00.00 | `publik:segarkan` (closure terjadwal, bukan perintah artisan) | Mengganti hari pada angka publik ("Hari ini", status). |
-| Setiap hari 00.10 | `cache:pangkas` (closure terjadwal) | Dengan `CACHE_STORE=database`: menghapus baris `cache`/`cache_locks` yang kedaluwarsa (versi lama angka publik, penghitung pembatas laju per IP). Store database hanya menghapus baris kedaluwarsa saat kunci yang sama dibaca lagi. Tanpa efek untuk `redis`. |
+| Setiap hari 00.00 | `publik:segarkan` (closure terjadwal) | Mengganti hari pada angka publik ("Hari ini", status). |
+| Setiap hari 00.10 | `cache:pangkas` (closure terjadwal) | Dengan `CACHE_STORE=database`, menghapus baris `cache`/`cache_locks` kedaluwarsa. Tanpa efek untuk `redis`. |
 | Setiap hari 01.00 | `backup:clean` | Hapus cadangan lama sesuai retensi. |
 | Setiap hari 01.30 | `backup:run` | Cadangan basis data dan berkas. |
-| Setiap hari 05.00 | `ekspor:bersihkan` | Hapus file ekspor berumur > 7 hari. |
+| Setiap hari 05.00 | `ekspor:bersihkan` | Hapus file ekspor berumur lebih dari 7 hari. |
 | Setiap hari 06.00 | `notifikasi:harian` | SPT Terlambat, pengingat SPT final, pengingat Perubahan PKPT. |
 | Senin 07.00 | `notifikasi:ringkasan-mingguan` | Ringkasan mingguan ke Pimpinan. |
 | Setiap hari 08.00 | `backup:monitor` | Memeriksa cadangan terbaru ada dan sehat. |
 
-Tanpa cron ini cadangan tidak berjalan, angka publik tidak berganti hari, dan notifikasi harian tidak terkirim.
+> [!IMPORTANT]
+> Memasang SINTAS pada basis data yang **sudah berisi SPT** (pindahan server lama)? Baca dulu butir "Scheduler pertama kali" di [Migrasi khusus](#13-migrasi-khusus) sebelum memasang cron, agar pengguna tidak dibanjiri notifikasi.
 
-## Queue worker
+### Queue worker dengan supervisor
 
-Tanpa worker, email tidak terkirim dan ekspor besar (PDF > 200 baris, xlsx > 1.000 baris) tetap `menunggu` tanpa notifikasi. Lonceng di aplikasi tetap tertulis.
+Buat `/etc/supervisor/conf.d/sintas-worker.conf`:
 
-Supervisor (`/etc/supervisor/conf.d/sintas-worker.conf`):
-
-```
+```ini
 [program:sintas-worker]
 command=php /var/www/sintas/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600 --memory=512
 directory=/var/www/sintas
@@ -110,158 +548,194 @@ stdout_logfile=/var/www/sintas/storage/logs/worker.log
 stopwaitsecs=3660
 ```
 
-Lalu `sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start sintas-worker:*`. `--timeout=600` mengikuti batas job ekspor; `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar. Setiap worker ekspor dapat memakai ±512 MB (job menaikkan `memory_limit` ke 512M lewat `ini_set` dan batas waktu ke 570 detik): pastikan `ini_set` tidak ada di `disable_functions` dan RAM cukup. `--memory=512` menyelaraskan batas restart worker dengan batas itu (bawaan 128 MB membuat worker berhenti setelah satu ekspor besar). PDF dompdf memakan ±0,26 MB per baris, karena itu PDF > 200 baris selalu lewat antrean.
+Aktifkan:
 
-Shared hosting tanpa supervisor: tambahkan cron setiap menit
-
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start sintas-worker:*
+sudo supervisorctl status            # sintas-worker ... RUNNING
 ```
+
+- `--timeout=600` mengikuti batas job ekspor. `DB_QUEUE_RETRY_AFTER` (660) harus tetap lebih besar.
+- `--memory=512` menyelaraskan batas restart worker dengan kebutuhan ekspor. Bawaan 128 MB membuat worker berhenti setelah satu ekspor besar.
+- Ekspor yang selalu lewat antrean: PDF lebih dari 200 baris (dompdf ±0,26 MB per baris) dan xlsx lebih dari 1.000 baris.
+- `numprocs=1` cukup untuk satu kantor. Menambah worker berarti menambah ±512 MB RAM per worker.
+
+<details>
+<summary>Tanpa supervisor (hosting terbatas)</summary>
+
+Tambahkan cron setiap menit sebagai pengganti:
+
+```cron
 * * * * * cd /var/www/sintas && flock -n storage/framework/queue.lock php artisan queue:work --stop-when-empty --max-time=55 --timeout=600 --memory=512 >> /dev/null 2>&1
 ```
 
-`flock -n` mencegah worker bertumpuk: satu job ekspor dapat berjalan hingga 600 detik, melewati `--max-time=55`, dan tanpa kunci cron berikutnya menyalakan worker kedua setiap menit. Bila `flock` tidak tersedia, ekspor besar dapat menumpuk proses PHP; minta penyedia hosting mengaktifkan supervisor.
+`flock -n` mencegah worker bertumpuk: satu job ekspor dapat berjalan hingga 600 detik, melewati `--max-time=55`, dan tanpa kunci cron berikutnya menyalakan worker kedua setiap menit. Bila `flock` tidak tersedia, minta penyedia mengaktifkan supervisor.
 
-## Email (SMTP)
+</details>
 
-1. Isi `MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` (lihat tabel). `MAIL_MAILER=log` hanya menulis email ke `storage/logs` (cocok untuk gladi; butuh `LOG_LEVEL=debug`).
-2. Pastikan `APP_URL` adalah alamat publik: tombol di email dan tautan verifikasi email memakai `url()`; alamat salah membuat tanda tangan tidak cocok dan pengguna mendapat 403.
-3. `php artisan optimize` dan `php artisan queue:restart`.
-4. Uji: `php artisan tinker --execute="Mail::raw('uji', fn(\$m) => \$m->to('alamat@anda.id')->subject('Uji SINTAS'));"`, lalu periksa kotak masuk (email aplikasi sendiri dikirim lewat antrean, jadi worker harus berjalan).
-5. Pegawai tanpa alamat email tidak menerima pemberitahuan: isi email pegawai (menu Pegawai atau impor).
+## 9. Email (SMTP)
 
-## Cadangan dan pemulihan
+1. Isi `MAIL_*` di `.env` (lihat [bagian 5](#5-konfigurasi-env)). Gunakan akun SMTP resmi kantor atau layanan pengiriman email; Gmail pribadi sering memblokir pengiriman massal.
+2. Pastikan `APP_URL` adalah alamat yang dibuka pengguna. Tombol di email dan tautan verifikasi memakai nilai ini.
+3. `php artisan optimize && php artisan queue:restart`.
+4. Uji kirim:
+   ```bash
+   php artisan tinker --execute="Mail::raw('uji', fn(\$m) => \$m->to('alamat@anda.id')->subject('Uji SINTAS'));"
+   ```
+   Periksa kotak masuk dan folder spam. Email aplikasi sendiri dikirim lewat antrean, jadi worker harus berjalan.
+5. Pegawai tanpa alamat email tidak menerima pemberitahuan. Isi email pegawai lewat menu Pegawai atau impor.
 
-**Apa yang dicadangkan** (`spatie/laravel-backup`, `config/backup.php`): dump basis data (termasuk `activity_log`, satu-satunya jejak audit), `storage/app/private` (dokumen SPT, SK Perubahan PKPT; tanpa `ekspor/` dan `livewire-tmp/`), dan `storage/app/public` (slide, foto profil). `.env` dan kode tidak ikut: simpan `.env` (terutama `APP_KEY`) terpisah dan aman.
+## 10. Cadangan dan pemulihan
 
-**Di mana:** `storage/app/backup/<APP_NAME>/sintas-<tanggal>.zip` (disk `backup`, tidak publik, tidak ter-commit). Jalur di dalam zip relatif terhadap folder aplikasi (`storage/app/private/...`, `db-dumps/*.sql`).
+### Apa, di mana, kapan
 
-**Kapan:** `backup:run` 01.30 WIB, `backup:clean` 01.00, `backup:monitor` 08.00 (lihat "Cron dan scheduler"). Jalankan sekali manual setelah instalasi: `php artisan backup:run`; lihat hasilnya dengan `php artisan backup:list`.
+| | |
+|---|---|
+| **Isi** | Dump basis data (termasuk `activity_log`), `storage/app/private` (dokumen SPT, SK Perubahan PKPT; tanpa `ekspor/` dan `livewire-tmp/`), dan `storage/app/public` (slide, foto profil). |
+| **Tidak ikut** | `.env` dan kode. Tabel `cache`, `cache_locks`, `sessions`, `jobs` (isinya sementara). |
+| **Lokasi** | `storage/app/backup/SINTAS/sintas-<tanggal>.zip`. Tidak publik. Jalur di dalam zip relatif terhadap folder aplikasi. |
+| **Jadwal** | `backup:run` 01.30, `backup:clean` 01.00, `backup:monitor` 08.00 WIB. |
+| **Retensi** | Semua cadangan 7 hari, satu per hari 30 hari, satu per pekan 8 pekan, satu per bulan 12 bulan. Tertua dihapus bila total lebih dari 5000 MB. |
+| **Laporan** | Email sukses/gagal/tidak sehat ke `BACKUP_MAIL_TO`. |
 
-**Retensi:** semua cadangan 7 hari, satu per hari 30 hari, satu per pekan 8 pekan, satu per bulan 12 bulan; cadangan tertua dihapus bila total > 5000 MB. `activity_log` hanya bertambah (±230 B `properties` per baris), jadi pantau ukuran cadangan.
+Jalankan sekali setelah instalasi dan pastikan hasilnya `Healthy`:
 
-**Salin ke luar server.** Cadangan di disk yang sama tidak melindungi dari kerusakan disk. Contoh cron harian 03.00 dari mesin lain: `rsync -a sintas@server:/var/www/sintas/storage/app/backup/ /cadangan/sintas/`, atau unggah ke penyimpanan objek.
+```bash
+sudo -u www-data php artisan backup:run
+php artisan backup:list
+```
 
-**Laporan:** isi `BACKUP_MAIL_TO` dengan alamat valid untuk mendapat email sukses/gagal/tidak sehat (butuh `MAIL_*` yang berfungsi). Kosong = kegagalan hanya terlihat di keluaran perintah dan `storage/logs`. Alamat tidak valid membuat perintah gagal.
+`activity_log` hanya bertambah (±230 B per baris), jadi pantau ukuran cadangan dari waktu ke waktu.
 
-**Tabel yang tidak ikut dump:** `cache`, `cache_locks`, `sessions`, dan `jobs` (`exclude_tables` di `config/database.php`): isinya sementara dan dapat dibangun ulang. `failed_jobs` dan `activity_log` tetap ikut. Akibatnya saat pemulihan pengguna harus masuk ulang dan job antrean yang belum jalan hilang (ekspor dapat diminta lagi).
+### Salin ke luar server
 
-**Biner dump:** `DB_CONNECTION=mysql` memanggil `mysqldump`, `mariadb` memanggil `mariadb-dump`. Bila biner tidak di PATH, isi `DB_DUMP_BINARY_PATH` dengan foldernya. Di XAMPP (hanya `mysqldump`) pakai `DB_CONNECTION=mysql`.
+Cadangan di disk yang sama tidak melindungi dari disk rusak, server dicuri, atau VPS dihapus. Salin setiap hari ke mesin lain. Contoh cron pukul 03.00 di mesin cadangan (NAS kantor, server lain):
 
-**Pulihkan** (di server tujuan yang sudah terpasang sesuai "Instalasi pertama", atau di server yang rusak):
+```cron
+0 3 * * * rsync -a sintas@<ip-server>:/var/www/sintas/storage/app/backup/ /cadangan/sintas/
+```
 
-1. Ekstrak zip ke folder sementara (zip dari server Linux; zip buatan Windows memakai tanda `\` pada nama entri dan perlu diekstrak dengan alat yang menormalkannya): `mkdir /tmp/pulih && unzip storage/app/backup/SINTAS/sintas-<tanggal>.zip -d /tmp/pulih`. Zip terenkripsi (`BACKUP_ARCHIVE_PASSWORD`) memakai AES-256 yang tidak dibuka `unzip`: pakai `7z x -o/tmp/pulih storage/app/backup/SINTAS/sintas-<tanggal>.zip` (paket `p7zip-full`) dan masukkan kata sandi saat diminta.
-2. Basis data: bila basis `sintas` masih kosong, jalankan dulu `php artisan migrate --force` dengan kode versi yang sama dengan cadangan agar tabel yang tidak ikut dump (`cache`, `cache_locks`, `sessions`, `jobs`) ada; lalu `mysql -u sintas -p sintas < /tmp/pulih/db-dumps/<berkas>.sql` (dump mengganti tabel lain beserta isinya, termasuk `migrations`).
-3. Berkas: entri zip relatif terhadap folder aplikasi, jadi salin dari akar ekstraksi ke akar aplikasi: `cp -a /tmp/pulih/storage/app/. /var/www/sintas/storage/app/` (ini hanya menambahkan `private/` dan `public/`; jangan timpa `storage/app/backup`).
-4. Pulihkan `.env` dari simpanan Anda, lalu `chown -R www-data:www-data storage bootstrap/cache` (berkas hasil salin milik pengguna yang menyalin), `php artisan storage:link`, `php artisan optimize:clear`, `php artisan optimize`.
-5. Periksa: masuk, buka satu SPT dan unduh dokumennya, buka `/jadwal`.
-6. Hapus `/tmp/pulih` (berisi data pribadi).
+Untuk server fisik, simpan salinan di lokasi lain dari gedung yang sama (mis. penyimpanan objek awan atau kantor lain). Untuk VPS, salinan ke NAS kantor sudah memenuhi.
 
-**Uji pemulihan sekali** sebelum go-live dan berkala (mis. tiap kuartal) ke basis data sementara. Cadangan yang tidak pernah dipulihkan belum terbukti.
+### Pulihkan
 
-## Reverse proxy dan HTTPS
+Lakukan di server yang sudah terpasang sesuai [bagian 4](#4-pasang-aplikasi), dengan kode versi yang sama dengan cadangan.
 
-- Terminasi TLS di Nginx/load balancer. Set `APP_URL=https://...` dan `SESSION_SECURE_COOKIE=true`.
-- Set `TRUSTED_PROXIES` ke `127.0.0.1` bila Nginx berada di mesin yang sama, atau ke IP/CIDR proxy (dipisah koma). Tanpa itu `request()->ip()` dan `activity_log.ip` mencatat alamat proxy, dan aplikasi menyangka permintaan http.
-- `*` hanya untuk proxy yang alamatnya berubah-ubah (mis. load balancer awan), dan hanya bila PHP-FPM/port aplikasi tidak dapat dijangkau langsung. Kalau dapat, siapa pun bisa mengirim `X-Forwarded-For` palsu: pembatas laju publik dilewati dan `activity_log.ip` dipalsukan.
-- Proxy harus meneruskan `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, dan `Host`:
-  ```
-  proxy_set_header Host $host;
-  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  proxy_set_header X-Forwarded-Proto $scheme;
-  ```
-- Contoh server block Nginx (PHP-FPM di mesin yang sama; sesuaikan nama soket dan domain):
-  ```
-  server {
-      listen 443 ssl;
-      server_name alamat-publik;
-      root /var/www/sintas/public;
-      index index.php;
-      client_max_body_size 13m;
+1. **Ekstrak** ke folder sementara. Zip terenkripsi AES-256 tidak dapat dibuka `unzip`, pakai `7z` dan masukkan `BACKUP_ARCHIVE_PASSWORD`:
+   ```bash
+   mkdir /tmp/pulih
+   7z x -o/tmp/pulih storage/app/backup/SINTAS/sintas-<tanggal>.zip
+   ```
+   Zip tanpa sandi dapat dibuka `unzip ... -d /tmp/pulih`. Zip buatan Windows memakai `\` pada nama entri dan perlu alat yang menormalkannya.
+2. **Basis data.** Bila basis `sintas` masih kosong, jalankan dulu `php artisan migrate --force` agar tabel yang tidak ikut dump ada. Lalu muat dump (dump mengganti tabel lain beserta isinya, termasuk `migrations`):
+   ```bash
+   mariadb -u sintas -p sintas < /tmp/pulih/db-dumps/<berkas>.sql
+   ```
+3. **Berkas.** Salin dari akar ekstraksi ke akar aplikasi. Ini hanya menambahkan `private/` dan `public/`; jangan timpa `storage/app/backup`:
+   ```bash
+   cp -a /tmp/pulih/storage/app/. /var/www/sintas/storage/app/
+   ```
+4. **Pulihkan `.env`** dari simpanan Anda (terutama `APP_KEY` yang sama), lalu:
+   ```bash
+   sudo setfacl -R  -m u:www-data:rwX -m u:sintas:rwX storage bootstrap/cache
+   sudo setfacl -dR -m u:www-data:rwX -m u:sintas:rwX storage bootstrap/cache
+   php artisan storage:link
+   php artisan optimize:clear && php artisan optimize
+   ```
+5. **Periksa:** masuk, buka satu SPT dan unduh dokumennya, buka `/jadwal`.
+6. **Hapus `/tmp/pulih`.** Isinya data pribadi.
 
-      location / {
-          try_files $uri $uri/ /index.php?$query_string;
-      }
+Setelah pemulihan pengguna harus masuk ulang, dan job antrean yang belum jalan hilang (ekspor dapat diminta lagi).
 
-      location ~ \.php$ {
-          include fastcgi_params;
-          fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-          fastcgi_pass unix:/run/php/php8.5-fpm.sock;
-          fastcgi_read_timeout 300;
-      }
+> [!TIP]
+> Uji pemulihan sekali sebelum go-live dan berkala (mis. tiap kuartal) ke basis data sementara. Cadangan yang tidak pernah dipulihkan belum terbukti bisa dipakai.
 
-      location ~ /\.(?!well-known) {
-          deny all;
-      }
-  }
-  ```
-- Aplikasi sendiri mengirim `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, dan `Permissions-Policy`; jangan digandakan dengan nilai berbeda di web server. Belum ada CSP. Tambahkan HSTS di web server setelah https stabil.
-- Pembatas laju (halaman publik 120/menit per IP, ekspor 10/menit per pengguna, ganti email 3 per 10 menit, login 5 per menit per nama pengguna+IP) memakai `CACHE_STORE`; butuh `TRUSTED_PROXIES` benar agar "per IP" tidak berarti "per proxy".
+## 11. Pemeriksaan setelah deploy
 
-## Batas PHP dan web server
+- [ ] `curl -sI https://alamat-publik/` mengembalikan `200`, dengan header `X-Frame-Options` dan `X-Content-Type-Options`.
+- [ ] `https://alamat-publik/tidak-ada` menampilkan halaman 404 SINTAS tanpa jejak galat.
+- [ ] `/`, `/jadwal`, `/realisasi` terbuka tanpa login dan gambar slide tampil.
+- [ ] Login Admin berhasil; menu Profil menyimpan foto (GD/WebP/exif).
+- [ ] `php artisan about` menunjukkan `Environment production`, `Debug mode OFF`, `Cache database`/`redis`, `Queue database`, `Maintenance mode OFF`.
+- [ ] `php artisan schedule:list` menunjukkan delapan pekerjaan; `php artisan schedule:run` tidak galat.
+- [ ] `sudo supervisorctl status` menunjukkan `sintas-worker` RUNNING. Ekspor Register lebih dari 1.000 baris (atau PDF lebih dari 200 baris) selesai dan notifikasi `File ekspor siap` muncul.
+- [ ] Email uji sampai ke kotak masuk.
+- [ ] `backup:run` sukses, `backup:list` menunjukkan `Healthy`, zip memuat `db-dumps/` dan `storage/app/private/`. Salinan ke luar server berjalan.
+- [ ] Pemulihan diuji sekali ke basis sementara.
+- [ ] Baris terbaru di menu Log Aktivitas berisi IP komputer Anda, bukan IP proxy.
+- [ ] `session.upload_progress.enabled` bernilai `0` di PHP-FPM.
+- [ ] Nama Objek dan Jenis Penugasan contoh sudah diganti data sebenarnya.
+- [ ] Tidak ada akun demo (kata sandi `password`) di menu Pengguna.
+- [ ] `APP_KEY` dan `BACKUP_ARCHIVE_PASSWORD` tersimpan di luar server.
 
-| Pengaturan | Nilai | Alasan |
-|---|---|---|
-| `upload_max_filesize` dan `post_max_size` | minimal `13M` (minimal 12M) | Batas unggah aplikasi `upload.maks_mb` maksimal 12 MB (batas sementara Livewire); impor `.xlsx` 5 MB; gambar slide 5 MB. |
-| Nginx `client_max_body_size` | `13m` | Selaras dengan di atas. |
-| `memory_limit` | 256M atau lebih | Ekspor dan pemrosesan gambar menaikkannya sendiri ke 512M lewat `ini_set`; jangan blokir `ini_set` di `disable_functions` atau `php_admin_value` yang lebih rendah. |
-| `max_execution_time` / `request_terminate_timeout` (PHP-FPM) / `fastcgi_read_timeout` (Nginx) | minimal 300 detik | Impor SPT data lama berjalan sinkron dalam satu permintaan (maks 2000 baris per berkas; `set_time_limit(300)`). |
-| Ekstensi `gd` (WebP), `exif` | aktif | Gambar slide/profil diproses ke WebP; `exif` memutar foto ponsel sesuai orientasi. |
-| `public/` | satu-satunya document root | Jangan arahkan ke folder aplikasi. |
+## 12. Memperbarui aplikasi
 
-## Mitigasi keamanan PHP
+Lakukan di jendela rilis (di luar jam kerja), dari `/var/www/sintas` sebagai `sintas`:
 
-PHP 8.5.12 belum memperbaiki CVE-2026-115560. Sampai rilis PHP berikutnya, matikan `session.upload_progress.enabled`:
+```bash
+sudo -u www-data php artisan backup:run   # 1. cadangan dulu, wajib bila ada migrasi baru
+php artisan down --retry=60               # 2. mode perawatan
+git pull --ff-only                        # 3. ambil kode baru
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build                   # atau salin public/build dari mesin build
+php artisan migrate --force
+php artisan optimize
+php artisan queue:restart                 # worker memuat kode baru
+php artisan up
+```
 
-- Di `php.ini` PHP-FPM (mis. `/etc/php/8.5/fpm/php.ini`): `session.upload_progress.enabled = 0`, lalu `systemctl reload php8.5-fpm`. Untuk mod_php dan CLI, atur di `php.ini` masing-masing.
-- Repo sudah memuatnya di `public/.user.ini` (berlaku untuk PHP-FPM/CGI; PHP membaca ulang berkas ini tiap `user_ini.cache_ttl`, default 300 detik). Hapus berkas itu setelah PHP merilis perbaikan.
-- Cek CLI (hanya membaca `php.ini` CLI, tidak membuktikan PHP-FPM): `php -r 'var_dump(ini_get("session.upload_progress.enabled"));'` harus menampilkan `string(1) "0"`.
-- Cek PHP-FPM: buat berkas sementara `public/cek-ini.php` berisi `<?php var_dump(ini_get('session.upload_progress.enabled'));`, buka lewat peramban (harus `string(1) "0"`), lalu hapus segera. Perubahan `.user.ini` baru berlaku setelah `user_ini.cache_ttl` (default 300 detik).
-- Di Apache mod_php `.user.ini` diabaikan: pakai `php_admin_value` di vhost atau ubah `php.ini`.
+Lalu jalankan [pemeriksaan setelah deploy](#11-pemeriksaan-setelah-deploy) yang relevan.
 
-## Memperbarui aplikasi
+- `composer install` sengaja gagal bila PHP di server lebih lama dari 8.5.12. Perbarui PHP dulu (`sudo apt upgrade`).
+- Jangan menjalankan `migrate:rollback` atau `migrate:fresh` di produksi. Bila rilis bermasalah, pulihkan dari cadangan langkah 1.
 
-Dari folder aplikasi, pada jendela rilis:
+## 13. Migrasi khusus
 
-1. Cadangan dulu: `php artisan backup:run` (wajib bila rilis memuat migrasi baru).
-2. `php artisan down --retry=60`
-3. `git pull --ff-only`
-4. `composer install --no-dev --optimize-autoloader`. Perintah ini sengaja gagal bila PHP di server < 8.5.12 (platform check); perbarui PHP dulu. Bila pembuatan autoload berhenti di Windows, jalankan `composer dump-autoload -o`.
-5. `npm ci && npm run build` (di mesin build; salin `public/build` bila perlu)
-6. `php artisan migrate --force`
-7. `php artisan optimize`
-8. `php artisan queue:restart` (worker memuat kode baru)
-9. `php artisan up`
-10. Jalankan "Pemeriksaan setelah deploy".
-
-Jangan menjalankan `migrate:rollback` atau `migrate:fresh` di produksi.
-
-## Migrasi khusus
-
-- **Migrasi revisi jadwal (Fase 9.2)** `2026_11_20_000020_migrasi_revisi_jadwal` mengubah isi `pkpt_item_revisi` menjadi paket Perubahan (`sumber = migrasi_revisi`) dan Usulan, lalu menghapus tabel lama. **Tidak dapat dibalik** (`down()` melempar exception). Pada database yang sudah berisi data lama: cadangkan sebelum `migrate`, jalankan di jendela rilis, jangan rollback. Pada instalasi baru tidak ada yang terpengaruh.
-- **Batas unggah** `2026_12_01_000001_batasi_upload_maks_mb` menjepit nilai `upload.maks_mb` tersimpan yang lebih besar dari 12 menjadi 12 (idempoten).
-- **Scheduler pertama kali pada database yang sudah berisi SPT:** `notifikasi:harian` pertama akan memberi notifikasi untuk setiap SPT yang sudah Terlambat atau lewat 3 hari tanpa SPT final. Isi dulu kolom idempotensi, sebelum cron dipasang:
+- **Migrasi revisi jadwal (Fase 9.2).** `2026_11_20_000020_migrasi_revisi_jadwal` mengubah isi `pkpt_item_revisi` menjadi paket Perubahan (`sumber = migrasi_revisi`) dan Usulan, lalu menghapus tabel lama. **Tidak dapat dibalik.** Pada basis yang sudah berisi data lama: cadangkan sebelum `migrate`, jalankan di jendela rilis, jangan rollback. Instalasi baru tidak terpengaruh.
+- **Batas unggah.** `2026_12_01_000001_batasi_upload_maks_mb` menjepit nilai `upload.maks_mb` tersimpan yang lebih dari 12 menjadi 12 (aman dijalankan ulang).
+- **Scheduler pertama kali pada basis yang sudah berisi SPT.** `notifikasi:harian` pertama akan mengirim notifikasi untuk setiap SPT yang sudah Terlambat atau lewat 3 hari tanpa SPT final. Sebelum memasang cron, isi kolom idempotensi:
   ```sql
   UPDATE spt SET terlambat_diberitahu_pada = NOW(), pengingat_final_pada = NOW()
   WHERE status_pengajuan = 'diterima' AND ditandai_selesai_pada IS NULL;
   ```
-  (atau saring per kondisi bila pengingat untuk SPT tertentu tetap diinginkan). Pada instalasi baru tidak perlu.
-- **Impor SPT data lama:** bila hasil impor memperingatkan `Nomor urut {n} melebihi nomor terakhir register {tahun}`, atur `Nomor awal` di Register untuk tahun berjalan sebelum menerbitkan nomor baru agar tidak bentrok. Impor berjalan sinkron, maks 2000 baris dan 5 MB per berkas `.xlsx`, tidak mengirim notifikasi.
-- **Log aktivitas:** `activity_log` tidak boleh dihapus (PRD §7.12). `php artisan activitylog:clean` sengaja menolak dengan kode keluar 1. Jangan menghapus baris secara manual; pengarsipan dilakukan di luar aplikasi lewat cadangan.
+  Saring per kondisi bila pengingat untuk SPT tertentu tetap diinginkan. Instalasi baru tidak perlu.
+- **Impor SPT data lama.** Bila hasil impor memperingatkan `Nomor urut {n} melebihi nomor terakhir register {tahun}`, atur `Nomor awal` di Register untuk tahun berjalan sebelum menerbitkan nomor baru. Impor berjalan sinkron, maks 2000 baris dan 5 MB per berkas `.xlsx`, tanpa notifikasi.
+- **Log aktivitas.** `activity_log` tidak boleh dihapus (PRD §7.12). `php artisan activitylog:clean` sengaja menolak dengan kode keluar 1. Jangan menghapus baris secara manual; pengarsipan dilakukan lewat cadangan.
 
-## Data demo
+## 14. Masalah umum
 
-Untuk presentasi di mesin lokal atau server demo (BUKAN produksi):
+| Gejala | Penyebab paling mungkin | Perbaikan |
+|---|---|---|
+| Halaman putih atau galat 500 | Izin `storage`/`bootstrap/cache`, atau `.env` salah | Lihat `storage/logs/laravel.log` dan `/var/log/nginx/error.log`. Ulangi `setfacl` di [4.6](#46-penyimpanan-dan-izin-folder). |
+| Login selalu kembali ke halaman login | `SESSION_SECURE_COOKIE=true` tanpa HTTPS | Aktifkan HTTPS, atau sementara `false` lalu `php artisan optimize`. |
+| Tautan di email memberi 403 | `APP_URL` tidak sama dengan alamat publik | Perbaiki `APP_URL`, `php artisan optimize`, kirim ulang email. |
+| Ekspor besar tetap `menunggu` | Worker mati | `sudo supervisorctl status`, lalu lihat `storage/logs/worker.log`. |
+| Ekspor besar gagal di tengah atau terulang | `DB_QUEUE_RETRY_AFTER` terlalu kecil, atau `--memory` 128 | Set 660, pakai perintah worker di [bagian 8](#queue-worker-dengan-supervisor), `queue:restart`. |
+| Gambar slide/foto profil tidak tampil | `storage:link` belum dijalankan | `php artisan storage:link`. |
+| Unggah berkas gagal atau 413 | Batas Nginx/PHP lebih kecil dari 12 MB | `client_max_body_size 13m`, `upload_max_filesize`/`post_max_size` 13M. |
+| Impor SPT terputus | Batas waktu PHP-FPM/Nginx | `request_terminate_timeout` dan `fastcgi_read_timeout` 300. |
+| Angka publik tidak berganti hari, tidak ada cadangan | Cron tidak berjalan | `sudo crontab -u www-data -l`, lalu `php artisan schedule:run`. |
+| `/jadwal` menampilkan "Jadwal gagal dimuat" setelah pembaruan | Entri cache publik versi lama | `php artisan tinker --execute="App\Support\CachePublik::segarkan();"`. Jangan pakai `cache:clear` (ikut menghapus pembatas laju dan verifikasi email yang menunggu). |
+| `backup:run` gagal `mariadb-dump not found` | Biner dump tidak cocok dengan `DB_CONNECTION` | Pasang `mariadb-client`, atau ganti ke `DB_CONNECTION=mysql` bila hanya ada `mysqldump`, atau isi `DB_DUMP_BINARY_PATH`. |
+| Log Aktivitas mencatat IP yang sama untuk semua orang | Proxy di depan tanpa `TRUSTED_PROXIES` | Lihat [6D](#6d-di-belakang-proxy-atau-load-balancer). |
+| `composer install` menolak berjalan | PHP lebih lama dari 8.5.12 | `sudo apt update && sudo apt upgrade`, cek `php -v`. |
 
-```
+## Lampiran: data demo
+
+Untuk presentasi di mesin lokal atau server demo, **bukan produksi**:
+
+```bash
 php artisan migrate:fresh --seed
 ```
 
-`migrate:fresh --seed` **tidak pernah** dijalankan di produksi: menghapus seluruh data. Di `APP_ENV=production`, `db:seed --force` hanya menulis data rujukan (lihat Instalasi pertama).
-
 Akun demo (kata sandi semuanya `password`, hanya dibuat di lingkungan non-produksi): `admin` (Admin), `pimpinan` (Pimpinan), `bagianumum` (Bagian Umum), `irban1` sampai `irban5` (Irban I sampai V). Ganti atau hapus bila server demo dapat dijangkau dari internet.
 
-`KinerjaSeeder` hanya untuk pengukuran kinerja di mesin pengembang (±5.000 SPT, akun dengan kata sandi `password`); jangan dijalankan di produksi atau di server yang berisi data nyata.
+`KinerjaSeeder` hanya untuk pengukuran kinerja di mesin pengembang (±5.000 SPT) dan menolak berjalan di `APP_ENV=production`.
 
-Skrip presentasi 10 langkah (±15 menit):
+<details>
+<summary>Skrip presentasi 10 langkah (±15 menit)</summary>
 
 1. Buka beranda `/` tanpa login: slide, angka ringkas, lalu `/jadwal` (linimasa dan kalender bulanan) dan `/realisasi` (grafik dan tabel). Tunjukkan bahwa tidak ada nama pegawai, NIP, atau nomor SPT.
 2. Masuk sebagai `irban1`: Dasbor Irban (status SPT, penanda), lalu menu PKPT untuk melihat rencana yang sudah disahkan.
@@ -274,18 +748,4 @@ Skrip presentasi 10 langkah (±15 menit):
 9. Masuk sebagai `admin`: Dasbor Admin, master data (Irban, Objek, Jenis Penugasan), Pengaturan (nomor dan tampilan publik), Slide beranda.
 10. Masih `admin`: Log Aktivitas (siapa mengubah apa, dari IP mana), Pengguna, lalu Impor SPT data lama.
 
-## Pemeriksaan setelah deploy
-
-- [ ] `curl -sI https://alamat-publik/` mengembalikan `200`, header `X-Frame-Options` dan `X-Content-Type-Options` ada, tidak ada jejak galat di halaman.
-- [ ] Halaman `/tidak-ada` menampilkan halaman 404 SINTAS tanpa jejak tumpukan (`APP_DEBUG=false`).
-- [ ] `/`, `/jadwal`, `/realisasi` terbuka tanpa login dan gambar slide tampil (`storage:link` benar).
-- [ ] Login Admin berhasil; menu Profil terbuka dan menyimpan foto (GD/WebP/exif).
-- [ ] `php artisan about` menunjukkan `Environment production`, `Debug mode OFF`, `Cache database`/`redis`, `Queue database`, `Maintenance mode OFF`.
-- [ ] `php artisan schedule:list` menunjukkan delapan pekerjaan (tabel "Cron dan scheduler"); `php artisan schedule:run` tidak galat.
-- [ ] Worker berjalan: `sudo supervisorctl status sintas-worker:*` RUNNING. Ekspor Register > 1.000 baris (atau PDF > 200 baris) selesai dan notifikasi `File ekspor siap` muncul.
-- [ ] Email uji sampai ke kotak masuk (bagian "Email (SMTP)").
-- [ ] `php artisan backup:run` sukses, `php artisan backup:list` menunjukkan `Healthy`, dan zip memuat `db-dumps/` serta `storage/app/private/`. Salinan ke luar server berjalan.
-- [ ] Pemulihan diuji sekali ke basis sementara.
-- [ ] Setelah login lewat proxy, baris `activity_log` terbaru berisi IP klien, bukan IP proxy (cek menu Log Aktivitas).
-- [ ] Nama Objek dan Jenis Penugasan contoh sudah diganti dengan data sebenarnya.
-- [ ] Tidak ada akun demo (`password`) di database produksi (menu Pengguna).
+</details>
