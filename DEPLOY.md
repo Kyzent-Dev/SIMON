@@ -101,7 +101,7 @@ Langkah instalasi aplikasi sama untuk keduanya. Perbedaannya ada di persiapan me
 > Jangan meneruskan port 22 (SSH) atau 3306 (MariaDB) dari router ke internet. Akses SSH dari luar kantor sebaiknya lewat VPN.
 
 5. **Server yang hanya menyala di jam kerja.** Laptop atau PC yang dinyalakan 08.00 dan dimatikan 16.00 boleh dipakai.
-   - Nyalakan sebelum 08.30. Tugas terjadwal berjalan 08.30 sampai 12.40 ([8](#8-cron-dan-queue-worker)).
+   - Nyalakan sebelum 08.30. Tugas terjadwal berjalan 08.30 sampai 12.40 ([8](#8-cron-dan-queue-worker)). Bila menyala terlambat (misalnya 08.50), tugas yang jamnya sudah lewat dilewati hari itu, termasuk `notifikasi:harian`; cadangan 12.xx tidak terpengaruh.
    - Matikan dengan `sudo systemctl poweroff`. Jangan mencabut daya.
    - Pastikan cron dan supervisor berjalan otomatis saat boot. `systemctl is-enabled cron supervisor` harus menampilkan `enabled` untuk keduanya.
    - Nonaktifkan suspend dan hibernate:
@@ -620,6 +620,8 @@ Jalankan sekali setelah instalasi dan pastikan hasilnya `Healthy`:
 sudo -u www-data php artisan backup:run
 php artisan backup:list
 ```
+
+Dump memakai `--single-transaction`, jadi cadangan 12.10 tidak mengunci tabel saat pengguna bekerja.
 
 `activity_log` hanya bertambah (±230 B per baris), jadi pantau ukuran cadangan dari waktu ke waktu.
 

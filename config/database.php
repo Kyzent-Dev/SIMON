@@ -62,8 +62,8 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md).
-            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs']],
+            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md). Single transaction: the 12.10 backup must not lock tables while users work.
+            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs'], 'use_single_transaction' => true],
         ],
 
         'mariadb' => [
@@ -84,8 +84,8 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md).
-            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs']],
+            // spatie/laravel-backup; unset binary path = use PATH. Volatile tables stay out of the dump (restore: migrate first, DEPLOY.md). Single transaction: the 12.10 backup must not lock tables while users work.
+            'dump' => ['dump_binary_path' => env('DB_DUMP_BINARY_PATH'), 'exclude_tables' => ['cache', 'cache_locks', 'sessions', 'jobs'], 'use_single_transaction' => true],
         ],
 
         'pgsql' => [

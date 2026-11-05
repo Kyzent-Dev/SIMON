@@ -76,6 +76,7 @@ class CadanganTest extends TestCase
         $this->assertArrayHasKey('dump_binary_path', config('database.connections.mariadb.dump'));
         foreach (['mysql', 'mariadb'] as $koneksi) { // volatile tables out of the dump; failed_jobs and activity_log stay
             $this->assertSame(['cache', 'cache_locks', 'sessions', 'jobs'], config("database.connections.{$koneksi}.dump.exclude_tables"), $koneksi);
+            $this->assertTrue(config("database.connections.{$koneksi}.dump.use_single_transaction"), $koneksi);
         }
     }
 
