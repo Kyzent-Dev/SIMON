@@ -38,7 +38,7 @@ class CadanganTest extends TestCase
         $acara = collect(app(Schedule::class)->events());
         $cari = fn (string $perintah): Event => $acara->first(fn (Event $e) => str_contains($e->command, $perintah));
 
-        foreach (['backup:clean' => '0 1 * * *', 'backup:run' => '30 1 * * *', 'backup:monitor' => '0 8 * * *'] as $perintah => $cron) {
+        foreach (['backup:clean' => '0 12 * * *', 'backup:run' => '10 12 * * *', 'backup:monitor' => '40 12 * * *'] as $perintah => $cron) {
             $e = $cari($perintah);
             $this->assertNotNull($e, $perintah);
             $this->assertSame($cron, $e->expression, $perintah);

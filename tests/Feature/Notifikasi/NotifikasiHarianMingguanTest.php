@@ -247,7 +247,7 @@ class NotifikasiHarianMingguanTest extends TestCase
     public function test_schedule_registered(): void
     {
         $events = collect(app(Schedule::class)->events());
-        foreach (['notifikasi:harian' => '0 6 * * *', 'notifikasi:ringkasan-mingguan' => '0 7 * * 1'] as $cmd => $cron) {
+        foreach (['notifikasi:harian' => '40 8 * * *', 'notifikasi:ringkasan-mingguan' => '45 8 * * 1'] as $cmd => $cron) {
             $e = $events->first(fn ($e) => str_contains($e->command, $cmd));
             $this->assertNotNull($e, $cmd);
             $this->assertSame($cron, $e->expression);

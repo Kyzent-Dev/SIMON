@@ -356,7 +356,7 @@ class EksporTest extends TestCase
     {
         $e = collect(app(Schedule::class)->events())->first(fn ($e) => str_contains($e->command, 'ekspor:bersihkan'));
         $this->assertNotNull($e);
-        $this->assertSame('0 5 * * *', $e->expression);
+        $this->assertSame('30 8 * * *', $e->expression);
         $this->assertSame('Asia/Jakarta', (string) $e->timezone);
         $this->assertTrue($e->withoutOverlapping);
     }

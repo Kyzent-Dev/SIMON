@@ -69,8 +69,11 @@ class CachePublikTest extends TestCase
     {
         $acara = collect(app(Schedule::class)->events())->first(fn (Event $e) => $e->description === 'cache:pangkas');
         $this->assertNotNull($acara);
-        $this->assertSame('10 0 * * *', $acara->expression);
+        $this->assertSame('35 8 * * *', $acara->expression);
         $this->assertSame('Asia/Jakarta', (string) $acara->timezone);
+        $segarkan = collect(app(Schedule::class)->events())->first(fn (Event $e) => $e->description === 'publik:segarkan');
+        $this->assertNotNull($segarkan);
+        $this->assertSame('0 0 * * *', $segarkan->expression); // tetap tengah malam, lihat routes/console.php
 
         config(['cache.default' => 'database']);
         Cache::put('publik:1:lama', 'x', 60);
